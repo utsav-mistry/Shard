@@ -1,0 +1,19 @@
+# Use official Python image
+FROM python:3.12-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements and install
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Expose the port Flask will run on
+EXPOSE 5000
+
+# Note: Project-specific environment variables are injected at runtime via --env-file flag
+CMD ["python", "run.py"]
+

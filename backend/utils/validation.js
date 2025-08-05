@@ -1,0 +1,76 @@
+const Joi = require('joi');
+
+// Validation schemas
+const projectSchema = Joi.object({
+    name: Joi.string().min(1).max(100).required(),
+    repoUrl: Joi.string().uri().required(),
+    stack: Joi.string().valid('mern', 'django', 'flask').required()
+});
+
+const envVarSchema = Joi.object({
+    key: Joi.string().min(1).max(100).pattern(/^[A-Z_][A-Z0-9_]*$/).required(),
+    value: Joi.string().max(1000).required()
+});
+
+const deploymentSchema = Joi.object({
+    projectId: Joi.string().hex().length(24).required()
+});
+
+// Validation middleware
+const validateProject = (req, res, next) => {
+    const { error } = projectSchema.validate(req.body);
+    if (error) {
+        return res.status(400).json({
+            message: "Validation error",
+            details: error.details.map(detail => detail.message)
+        });
+    }
+    next();
+};
+
+const validateEnvVar = (req, res, next) => {
+    const { error } = envVarSchema.validate(req.body);
+    if (error) {
+        return res.status(400).json({
+            message: "Validation error",
+            details: error.details.map(detail => detail.message)
+        });
+    }
+    next();
+};
+
+const validateDeployment = (req, res, next) => {
+    const { error } = deploymentSchema.validate(req.body);
+    if (error) {
+        return res.status(400).json({
+            message: "Validation error",
+            details: error.details.map(detail => detail.message)
+        });
+    }
+    next();
+};
+
+// Input sanitization
+const sanitizeInput = (input) => {
+    if (typeof input === 'string') {
+        return input.trim().replace(/[<>]/g, '');
+    }
+    return input;
+};
+
+const sanitizeBody = (req, res, next) => {
+    if (req.body) {
+        Object.keys(req.body).forEach(key => {
+            req.body[key] = sanitizeInput(req.body[key]);
+        });
+    }
+    next();
+};
+
+module.exports = {
+    validateProject,
+    validateEnvVar,
+    validateDeployment,
+    sanitizeBody,
+    sanitizeInput
+}; 
