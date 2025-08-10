@@ -12,12 +12,11 @@ router.post("/", createLog);
 // Frontend calls this route — protected (user must be logged in)
 router.get("/:deploymentId", protect, getLogs);
 
-module.exports = router;
-
-
+// Define log directory path
 const LOG_DIR = path.join(__dirname, "../../../deployment-worker/logs");
 
-router.get("/download/:deploymentId", (req, res) => {
+// Protected route for downloading logs - requires authentication
+router.get("/download/:deploymentId", protect, (req, res) => {
     const { deploymentId } = req.params;
     const logPath = path.join(LOG_DIR, `${deploymentId}.log`);
 
@@ -27,3 +26,5 @@ router.get("/download/:deploymentId", (req, res) => {
 
     res.download(logPath, `${deploymentId}.log`);
 });
+
+module.exports = router;

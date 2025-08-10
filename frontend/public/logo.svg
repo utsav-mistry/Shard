@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#222222" />
+      <stop offset="100%" stop-color="#444444" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="40" fill="url(#gradient)"/>
+  <path d="M60 60 L140 60 L100 140 Z" fill="white"/>
+  <path d="M80 100 L120 100 L100 140 Z" fill="#aaaaaa"/>
+  <text x="100" y="180" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="white" text-anchor="middle">SHARD</text>
+</svg>

@@ -5,17 +5,30 @@ const googleService = require("../services/googleService");
 
 // -------------------- Manual Signup --------------------
 const registerUser = async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, name } = req.body;
     try {
         let user = await User.findOne({ email });
         if (user) return res.status(400).json({ message: "User already exists" });
 
-        user = new User({ email, passwordHash: password });
+        user = new User({ 
+            email, 
+            passwordHash: password,
+            name: name || email.split('@')[0] // Use part of email as name if not provided
+        });
         await user.save();
 
         const token = generateToken(user);
-        res.json({ token });
+        res.json({ 
+            token, 
+            user: { 
+                id: user._id, 
+                email: user.email,
+                name: user.name,
+                avatar: user.avatar
+            } 
+        });
     } catch (err) {
+        console.error('Register error:', err);
         res.status(500).json({ message: "Server error" });
     }
 };
@@ -33,8 +46,19 @@ const loginUser = async (req, res) => {
             return res.status(401).json({ message: "Invalid credentials" });
 
         const token = generateToken(user);
-        res.json({ token });
+        res.json({ 
+            token, 
+            user: { 
+                id: user._id, 
+                email: user.email,
+                name: user.name,
+                avatar: user.avatar,
+                githubId: user.githubId,
+                googleId: user.googleId
+            } 
+        });
     } catch (err) {
+        console.error('Login error:', err);
         res.status(500).json({ message: "Server error" });
     }
 };
@@ -59,7 +83,7 @@ const githubOAuthCallback = async (req, res) => {
         }
 
         const token = generateToken(user);
-        res.json({ token });
+        res.json({ token, user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar, githubId: user.githubId } });
     } catch (err) {
         res.status(500).json({ message: "GitHub OAuth failed" });
     }
@@ -85,9 +109,63 @@ const googleOAuthCallback = async (req, res) => {
         }
 
         const token = generateToken(user);
-        res.json({ token });
+        res.json({ token, user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar, googleId: user.googleId } });
     } catch (err) {
         res.status(500).json({ message: "Google OAuth failed" });
+    }
+};
+
+// -------------------- Get User Profile --------------------
+const getUserProfile = async (req, res) => {
+    try {
+        // req.user is set by the auth middleware
+        const user = req.user;
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json({
+            id: user._id,
+            email: user.email,
+            name: user.name,
+            avatar: user.avatar,
+            githubId: user.githubId,
+            googleId: user.googleId
+        });
+    } catch (err) {
+        console.error('Get profile error:', err);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+// -------------------- Update User Profile --------------------
+const updateUserProfile = async (req, res) => {
+    try {
+        // req.user is set by the auth middleware
+        const user = req.user;
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const { name, avatar } = req.body;
+        
+        // Update only the fields that were provided
+        if (name) user.name = name;
+        if (avatar) user.avatar = avatar;
+        
+        await user.save();
+
+        res.json({
+            id: user._id,
+            email: user.email,
+            name: user.name,
+            avatar: user.avatar,
+            githubId: user.githubId,
+            googleId: user.googleId
+        });
+    } catch (err) {
+        console.error('Update profile error:', err);
+        res.status(500).json({ message: "Server error" });
     }
 };
 
@@ -95,5 +173,7 @@ module.exports = {
     registerUser,
     loginUser,
     githubOAuthCallback,
-    googleOAuthCallback
+    googleOAuthCallback,
+    getUserProfile,
+    updateUserProfile
 };

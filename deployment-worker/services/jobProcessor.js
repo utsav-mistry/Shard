@@ -4,6 +4,7 @@ const { cloneRepo } = require("./repoCloner");
 const { injectEnv } = require("./envInjector");
 const { buildAndRunContainer } = require("../utils/dockerHelpers");
 const { sendDeploymentNotification } = require("./emailNotifier");
+const { updateDeploymentStatus } = require("./statusUpdater");
 const axios = require("axios");
 const util = require("util");
 const exec = util.promisify(require("child_process").exec);
@@ -37,6 +38,8 @@ const processJob = async (job) => {
     const logPath = path.join(CONFIG.LOG_DIR, `${deploymentId}.log`);
 
     try {
+        // Update deployment status to running
+        await updateDeploymentStatus(deploymentId, "running", token);
         // === Step 1: Clone Repository ===
         await logStep(projectId, deploymentId, "setup", "Cloning repository");
         const localPath = await cloneRepo(repoUrl, projectId);
@@ -79,11 +82,12 @@ const processJob = async (job) => {
 
         // === Step 5: Finalize ===
         await logStep(projectId, deploymentId, "complete", "Deployment successful");
+        await updateDeploymentStatus(deploymentId, "success", token);
         await notifySuccess(userEmail, projectId);
 
     } catch (error) {
         // === Step 6: Handle Any Errors ===
-        await handleDeploymentError(error, projectId, deploymentId, userEmail, logPath);
+        await handleDeploymentError(error, projectId, deploymentId, userEmail, logPath, token);
         throw error;
     }
 };
@@ -154,7 +158,7 @@ const notifySuccess = async (userEmail, projectId) => {
     }
 };
 
-const handleDeploymentError = async (error, projectId, deploymentId, userEmail, logPath) => {
+const handleDeploymentError = async (error, projectId, deploymentId, userEmail, logPath, token) => {
     const errorDetails = {
         message: error.message,
         stack: error.stack,
@@ -172,6 +176,7 @@ const handleDeploymentError = async (error, projectId, deploymentId, userEmail, 
             timestamp: new Date().toISOString()
         });
 
+        await updateDeploymentStatus(deploymentId, "failed", token);
         await sendDeploymentNotification(userEmail, projectId, "failed");
     } catch (err) {
         console.error("Error handling failed:", err.message);

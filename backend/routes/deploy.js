@@ -9,6 +9,6 @@ router.post("/", protect, sanitizeBody, validateDeployment, createDeployment);
 
 router.get("/", protect, getDeployments);
 
-router.post("/update-status", sanitizeBody, updateDeploymentStatus);
+router.post("/update-status", protect, sanitizeBody, updateDeploymentStatus);
 
 module.exports = router;
