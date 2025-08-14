@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../utils/axiosConfig';
 import { Server, AlertTriangle, Clock, CheckCircle, XCircle, ArrowLeft, ExternalLink } from 'lucide-react';
 
 const DeploymentDetail = () => {
@@ -16,22 +16,13 @@ const DeploymentDetail = () => {
       try {
         setLoading(true);
 
-        // Fetch deployment details
-        const deploymentResponse = await axios.get(`${process.env.REACT_APP_API_URL}/deploy/${id}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
-
+        // Fetch deployment details first
+        const deploymentResponse = await api.get(`/deploy/${id}`);
         const deploymentData = deploymentResponse.data;
         setDeployment(deploymentData);
 
-        // Fetch project details
-        const projectResponse = await axios.get(`${process.env.REACT_APP_API_URL}/projects/${deploymentData.projectId}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
+        // Then fetch project details using the deployment's projectId
+        const projectResponse = await api.get(`/projects/${deploymentData.projectId}`);
 
         setProject(projectResponse.data);
         setLoading(false);
@@ -346,8 +337,8 @@ const DeploymentDetail = () => {
           <button
             onClick={async () => {
               try {
-                await axios.post(
-                  `${process.env.REACT_APP_API_URL}/deploy/retry/${deployment._id}`,
+                await api.post(
+                  `/deploy/retry/${deployment._id}`,
                   {},
                   {
                     headers: {

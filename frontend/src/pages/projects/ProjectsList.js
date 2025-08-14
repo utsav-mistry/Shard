@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../utils/axiosConfig';
 import { Plus, AlertTriangle, Search, ExternalLink, Server, Package } from 'lucide-react';
 
 const ProjectsList = () => {
@@ -13,11 +13,7 @@ const ProjectsList = () => {
     const fetchProjects = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/projects`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
+        const response = await api.get('/projects');
         setProjects(response.data);
         setLoading(false);
       } catch (err) {

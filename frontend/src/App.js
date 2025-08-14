@@ -45,6 +45,10 @@ import Settings from './pages/Settings';
 
 // Profile page
 import Profile from './pages/Profile';
+
+// Admin page
+import Admin from './pages/Admin';
+
 import ThemeToggle from './components/ThemeToggle';
 
 function App() {
@@ -101,6 +105,9 @@ function App() {
                 
                 {/* Profile route */}
                 <Route path="profile" element={<Profile />} />
+                
+                {/* Admin route */}
+                <Route path="admin" element={<Admin />} />
               </Route>
             </Routes>
             <ThemeToggle className="fixed bottom-4 right-4" />

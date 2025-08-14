@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import api from '../utils/axiosConfig';
 import { AlertTriangle, Save, Key, User, Shield } from 'lucide-react';
 
 const Settings = () => {
@@ -53,11 +53,7 @@ const Settings = () => {
     const fetchApiKeys = async () => {
         try {
             setApiKeyLoading(true);
-            const response = await axios.get(`${process.env.REACT_APP_API_URL}/auth/api-keys`, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                },
-            });
+            const response = await api.get('/auth/api-keys');
             setApiKeys(response.data);
             setApiKeyLoading(false);
         } catch (err) {
@@ -75,15 +71,7 @@ const Settings = () => {
         setProfileSuccess(false);
 
         try {
-            const response = await axios.put(
-                `${process.env.REACT_APP_API_URL}/auth/profile`,
-                { name, email },
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`,
-                    },
-                }
-            );
+            const response = await api.put('/auth/profile', { name, email });
 
             updateUser(response.data);
             setProfileSuccess(true);
@@ -118,15 +106,7 @@ const Settings = () => {
         setPasswordSuccess(false);
 
         try {
-            await axios.put(
-                `${process.env.REACT_APP_API_URL}/auth/password`,
-                { currentPassword, newPassword },
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`,
-                    },
-                }
-            );
+            await api.put('/auth/password', { currentPassword, newPassword });
 
             setPasswordSuccess(true);
             setCurrentPassword('');
@@ -157,18 +137,10 @@ const Settings = () => {
         setNewKeyGenerated(null);
 
         try {
-            const response = await axios.post(
-                `${process.env.REACT_APP_API_URL}/auth/api-keys`,
-                {
-                    name: newKeyName,
-                    expiry: newKeyExpiry === 'never' ? null : newKeyExpiry
-                },
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`,
-                    },
-                }
-            );
+            const response = await api.post('/auth/api-keys', {
+                name: newKeyName,
+                expiry: newKeyExpiry === 'never' ? null : newKeyExpiry
+            });
 
             // The API returns the full key only once
             setNewKeyGenerated(response.data.key);
@@ -194,11 +166,7 @@ const Settings = () => {
 
         try {
             setApiKeyLoading(true);
-            await axios.delete(`${process.env.REACT_APP_API_URL}/auth/api-key/${keyId}`, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                },
-            });
+            await api.delete(`/auth/api-key/${keyId}`);
 
             // Refresh the API keys list
             fetchApiKeys();
@@ -219,12 +187,9 @@ const Settings = () => {
         try {
             if (!twoFactorEnabled) {
                 // Enable 2FA - this will return a setup code and QR code URL
-                const response = await axios.post(
-                    `${process.env.REACT_APP_API_URL}/auth/2fa/setup`,
-                    {},
-                    {
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem('token')}`,
+                const response = await api.post('/auth/2fa/setup', {}, {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`,
                         },
                     }
                 );
@@ -232,8 +197,8 @@ const Settings = () => {
                 setTwoFactorSetupCode(response.data);
             } else {
                 // Disable 2FA
-                await axios.post(
-                    `${process.env.REACT_APP_API_URL}/auth/2fa/disable`,
+                await api.post(
+                    '/auth/2fa/disable',
                     {},
                     {
                         headers: {
@@ -246,7 +211,7 @@ const Settings = () => {
                 setTwoFactorSuccess(true);
 
                 // Update user object
-                const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/auth/profile`, {
+                const userResponse = await api.get('/auth/profile', {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem('token')}`,
                     },
@@ -280,12 +245,9 @@ const Settings = () => {
         setTwoFactorError(null);
 
         try {
-            await axios.post(
-                `${process.env.REACT_APP_API_URL}/auth/2fa/verify`,
-                { code },
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`,
+            await api.post('/auth/2fa/verify', { code }, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`,
                     },
                 }
             );
@@ -295,7 +257,7 @@ const Settings = () => {
             setTwoFactorSuccess(true);
 
             // Update user object
-            const userResponse = await axios.get(`${process.env.REACT_APP_API_URL}/auth/profile`, {
+            const userResponse = await api.get('/auth/profile', {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem('token')}`,
                 },

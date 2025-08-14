@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../utils/axiosConfig';
 import { ArrowLeft, Server, Clock, CheckCircle, XCircle, AlertTriangle, Key, Trash2 } from 'lucide-react';
 
 const ProjectDetail = () => {
@@ -20,21 +20,21 @@ const ProjectDetail = () => {
         setLoading(true);
         
         // Fetch project details
-        const projectResponse = await axios.get(`${process.env.REACT_APP_API_URL}/projects/${id}`, {
+        const projectResponse = await api.get(`/projects/${id}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`,
           },
         });
         
         // Fetch project deployments
-        const deploymentsResponse = await axios.get(`${process.env.REACT_APP_API_URL}/deploy?projectId=${id}`, {
+        const deploymentsResponse = await api.get(`/deploy?projectId=${id}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`,
           },
         });
         
         // Fetch project environment variables
-        const envVarsResponse = await axios.get(`${process.env.REACT_APP_API_URL}/env/${id}`, {
+        const envVarsResponse = await api.get(`/env/${id}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`,
           },
@@ -98,7 +98,7 @@ const ProjectDetail = () => {
   const handleDeleteProject = async () => {
     try {
       setDeleteLoading(true);
-      await axios.delete(`${process.env.REACT_APP_API_URL}/projects/${id}`, {
+      await api.delete(`/projects/${id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../utils/axiosConfig';
 import { AlertTriangle, Plus, Search, Eye, EyeOff, Edit, Trash2, ArrowLeft } from 'lucide-react';
 
 const EnvironmentVariables = () => {
@@ -19,21 +19,13 @@ const EnvironmentVariables = () => {
       try {
         setLoading(true);
         
-        // Fetch project details
-        const projectResponse = await axios.get(`${process.env.REACT_APP_API_URL}/projects/${projectId}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
+        // Fetch project details and environment variables in parallel
+        const [projectResponse, envResponse] = await Promise.all([
+          api.get(`/projects/${projectId}`),
+          api.get(`/env/${projectId}`)
+        ]);
         
         setProject(projectResponse.data);
-        
-        // Fetch environment variables
-        const envResponse = await axios.get(`${process.env.REACT_APP_API_URL}/env/${projectId}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
         
         setEnvVars(envResponse.data);
         setLoading(false);
@@ -63,11 +55,7 @@ const EnvironmentVariables = () => {
     if (!envToDelete) return;
     
     try {
-      await axios.delete(`${process.env.REACT_APP_API_URL}/env/${envToDelete._id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      await api.delete(`/env/${envToDelete._id}`);
       
       // Remove deleted env var from state
       setEnvVars(envVars.filter(env => env._id !== envToDelete._id));

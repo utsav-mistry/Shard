@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../utils/axiosConfig';
 import { AlertTriangle, ArrowLeft, GitBranch, GitCommit, Server } from 'lucide-react';
 
 const NewDeployment = () => {
@@ -27,21 +27,13 @@ const NewDeployment = () => {
       try {
         setLoading(true);
         
-        // Fetch project details
-        const projectResponse = await axios.get(`${process.env.REACT_APP_API_URL}/projects/${projectId}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
+        // Fetch project details and environment variables in parallel
+        const [projectResponse, envResponse] = await Promise.all([
+          api.get(`/projects/${projectId}`),
+          api.get(`/env/${projectId}`)
+        ]);
         
         setProject(projectResponse.data);
-        
-        // Fetch environment variables
-        const envResponse = await axios.get(`${process.env.REACT_APP_API_URL}/env/${projectId}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
         
         setEnvVars(envResponse.data);
         
@@ -68,22 +60,25 @@ const NewDeployment = () => {
     try {
       setLoadingBranches(true);
       
-      // Mock API call to fetch branches
-      // In a real app, this would call your backend API that interfaces with GitHub
-      // const branchesResponse = await axios.get(`${process.env.REACT_APP_API_URL}/github/branches?repo=${encodeURIComponent(repoUrl)}`, {
-      //   headers: {
-      //     Authorization: `Bearer ${localStorage.getItem('token')}`,
-      //   },
-      // });
+      // Fetch branches from GitHub API via backend
+      try {
+        const branchesResponse = await api.get(`/github/branches?repo=${encodeURIComponent(repoUrl)}`);
+        setBranches(branchesResponse.data);
+        setSelectedBranch(branchesResponse.data[0] || 'main'); // Default to first branch or main
+        
+        // Fetch commits for the default branch
+        if (branchesResponse.data.length > 0) {
+          fetchCommits(branchesResponse.data[0] || 'main');
+        }
+      } catch (apiError) {
+        console.warn('GitHub branches API not available, using fallback:', apiError);
+        // Fallback to default branch if GitHub API is not implemented
+        setBranches(['main']);
+        setSelectedBranch('main');
+        fetchCommits('main');
+      }
       
-      // Mock data for demonstration
-      const mockBranches = ['main', 'develop', 'feature/auth', 'feature/deployments'];
-      setBranches(mockBranches);
-      setSelectedBranch('main'); // Default to main branch
       setLoadingBranches(false);
-      
-      // Fetch commits for the default branch
-      fetchCommits('main');
     } catch (err) {
       console.error('Error fetching branches:', err);
       setLoadingBranches(false);
@@ -94,24 +89,24 @@ const NewDeployment = () => {
     try {
       setLoadingCommits(true);
       
-      // Mock API call to fetch commits
-      // In a real app, this would call your backend API that interfaces with GitHub
-      // const commitsResponse = await axios.get(`${process.env.REACT_APP_API_URL}/github/commits?repo=${encodeURIComponent(project.repoUrl)}&branch=${branch}`, {
-      //   headers: {
-      //     Authorization: `Bearer ${localStorage.getItem('token')}`,
-      //   },
-      // });
+      // Fetch commits from GitHub API via backend
+      try {
+        const commitsResponse = await api.get(`/github/commits?repo=${encodeURIComponent(project.repoUrl)}&branch=${branch}`);
+        setCommits(commitsResponse.data);
+        setSelectedCommit(commitsResponse.data[0]?.hash || 'latest'); // Default to latest commit
+      } catch (apiError) {
+        console.warn('GitHub commits API not available, using fallback:', apiError);
+        // Fallback to generic commit if GitHub API is not implemented
+        const fallbackCommit = {
+          hash: 'latest',
+          message: `Latest commit from ${branch} branch`,
+          author: 'Repository Owner',
+          date: new Date().toISOString()
+        };
+        setCommits([fallbackCommit]);
+        setSelectedCommit('latest');
+      }
       
-      // Mock data for demonstration
-      const mockCommits = [
-        { hash: 'a1b2c3d4e5f6g7h8i9j0', message: 'Update deployment configuration', author: 'John Doe', date: '2023-06-15T10:30:00Z' },
-        { hash: 'b2c3d4e5f6g7h8i9j0k1', message: 'Fix authentication bug', author: 'Jane Smith', date: '2023-06-14T15:45:00Z' },
-        { hash: 'c3d4e5f6g7h8i9j0k1l2', message: 'Add new feature', author: 'Bob Johnson', date: '2023-06-13T09:20:00Z' },
-        { hash: 'd4e5f6g7h8i9j0k1l2m3', message: 'Initial commit', author: 'Alice Brown', date: '2023-06-12T14:10:00Z' },
-      ];
-      
-      setCommits(mockCommits);
-      setSelectedCommit(mockCommits[0].hash); // Default to latest commit
       setLoadingCommits(false);
     } catch (err) {
       console.error('Error fetching commits:', err);
@@ -141,21 +136,13 @@ const NewDeployment = () => {
         }));
       
       // Create deployment
-      const response = await axios.post(
-        `${process.env.REACT_APP_API_URL}/deploy`,
-        {
-          projectId,
-          branch: selectedBranch,
-          commitHash: selectedCommit,
-          message: deployMessage,
-          environmentVariables: deploymentEnvVars
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      const response = await api.post(`/deploy`, {
+        projectId,
+        branch: selectedBranch,
+        commitHash: selectedCommit,
+        message: deployMessage,
+        environmentVariables: deploymentEnvVars
+      });
       
       // Navigate to deployment details page
       navigate(`/deployments/${response.data._id}`);

@@ -41,8 +41,71 @@ const createDeployment = async (req, res) => {
         // Log deployment start
         await logService.addLog(projectId, deployment._id, "build", "Deployment started");
 
-        // Add job to worker queue
-        await axios.post("http://localhost:9000/queue", job);
+        // Step 1: AI Review Process
+        await logService.addLog(projectId, deployment._id, "ai-review", "Starting AI code review");
+        
+        try {
+            const aiReviewResponse = await axios.post(
+                `${process.env.AI_SERVICE_URL || 'http://localhost:8000'}/review/`,
+                { projectId: project._id.toString() },
+                { timeout: 60000 } // 1 minute timeout for AI review
+            );
+
+            const { verdict, issueCount, issues } = aiReviewResponse.data;
+            
+            // Log AI review results
+            await logService.addLog(projectId, deployment._id, "ai-review", 
+                `AI review completed: ${verdict} (${issueCount} issues found)`);
+
+            // Handle AI review verdict
+            if (verdict === "deny") {
+                deployment.status = "failed";
+                deployment.finishedAt = new Date();
+                await deployment.save();
+                
+                await logService.addLog(projectId, deployment._id, "ai-review", 
+                    "Deployment blocked by AI review due to critical issues");
+                
+                return res.status(400).json({ 
+                    message: "Deployment blocked by AI review",
+                    verdict,
+                    issueCount,
+                    issues: issues.slice(0, 5) // Return first 5 issues
+                });
+            }
+
+            if (verdict === "manual_review") {
+                deployment.status = "pending_review";
+                await deployment.save();
+                
+                await logService.addLog(projectId, deployment._id, "ai-review", 
+                    "Deployment requires manual review");
+                
+                return res.status(202).json({ 
+                    message: "Deployment requires manual review",
+                    verdict,
+                    issueCount,
+                    issues: issues.slice(0, 5),
+                    deploymentId: deployment._id
+                });
+            }
+
+            // If verdict is "allow", proceed with deployment
+            await logService.addLog(projectId, deployment._id, "ai-review", 
+                "AI review passed, proceeding with deployment");
+
+        } catch (aiError) {
+            console.error("AI review failed:", aiError);
+            await logService.addLog(projectId, deployment._id, "ai-review", 
+                `AI review failed: ${aiError.message}`);
+            
+            // Continue with deployment even if AI review fails (fallback)
+            await logService.addLog(projectId, deployment._id, "ai-review", 
+                "Proceeding with deployment despite AI review failure");
+        }
+
+        // Step 2: Add job to worker queue (only if AI review passed or failed)
+        await axios.post(`${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/jobs`, job);
 
         res.status(201).json({ deploymentId: deployment._id });
     } catch (err) {

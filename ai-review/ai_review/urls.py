@@ -21,6 +21,7 @@ from app import views
 urlpatterns = [
     path('', views.root, name='root'),
     path('admin/', admin.site.urls),
-    path('review/', views.review_repo),
-
+    path('review/', views.review_repo, name='review_repo'),
+    path('api/shutdown/', views.shutdown, name='shutdown'),
+    path('health/', views.health_check, name='health_check'),
 ]

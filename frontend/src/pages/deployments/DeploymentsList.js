@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../utils/axiosConfig';
 import { Server, AlertTriangle, Search, Clock, CheckCircle, XCircle } from 'lucide-react';
 
 const DeploymentsList = () => {
@@ -16,19 +16,11 @@ const DeploymentsList = () => {
       try {
         setLoading(true);
         
-        // Fetch all deployments
-        const deploymentsResponse = await axios.get(`${process.env.REACT_APP_API_URL}/deploy`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
-        
-        // Fetch all projects to map project names to deployments
-        const projectsResponse = await axios.get(`${process.env.REACT_APP_API_URL}/projects`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
+        // Fetch all deployments and projects in parallel using unified API utility
+        const [deploymentsResponse, projectsResponse] = await Promise.all([
+          api.get('/deploy'),
+          api.get('/projects')
+        ]);
         
         setDeployments(deploymentsResponse.data);
         setProjects(projectsResponse.data);

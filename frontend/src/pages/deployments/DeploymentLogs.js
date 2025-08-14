@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../utils/axiosConfig';
 import { ArrowLeft, AlertTriangle, Download, RefreshCw, Clock, CheckCircle, XCircle, Server } from 'lucide-react';
 
 const DeploymentLogs = () => {
@@ -19,31 +19,18 @@ const DeploymentLogs = () => {
   // Fetch deployment, project and logs data
   const fetchData = async () => {
     try {
-      // Fetch deployment details
-      const deploymentResponse = await axios.get(`${process.env.REACT_APP_API_URL}/deploy/${id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      
+      // Fetch deployment details first
+      const deploymentResponse = await api.get(`/deploy/${id}`);
       const deploymentData = deploymentResponse.data;
       setDeployment(deploymentData);
       
-      // Fetch project details
-      const projectResponse = await axios.get(`${process.env.REACT_APP_API_URL}/projects/${deploymentData.projectId}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      // Fetch project details and logs in parallel
+      const [projectResponse, logsResponse] = await Promise.all([
+        api.get(`/projects/${deploymentData.projectId}`),
+        api.get(`/logs/${id}`)
+      ]);
       
       setProject(projectResponse.data);
-      
-      // Fetch logs
-      const logsResponse = await axios.get(`${process.env.REACT_APP_API_URL}/logs/${id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
       
       setLogs(logsResponse.data);
       setLoading(false);

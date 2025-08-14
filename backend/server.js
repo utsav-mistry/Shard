@@ -1,78 +1,519 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
-const connectDB = require("./config/db");
-const passport = require("passport");
-const authRoutes = require("./routes/auth");
-const projectRoutes = require("./routes/project");
-const deployRoutes = require("./routes/deploy");
-const logsRoutes = require("./routes/logs");
-const envRoutes = require("./routes/env");
+require('dotenv').config();
+const express = require('express');
+const colors = require('colors');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
+const mongoose = require('mongoose');
+const helmet = require('helmet');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const { v4: uuidv4 } = require('uuid');
+const path = require('path');
+const axios = require('axios');
 
-// Initialize Express app
+// Configure colors
+colors.setTheme({
+    info: 'cyan',
+    warn: 'yellow',
+    error: 'red',
+    success: 'green',
+    shutdown: ['white', 'bgRed'],
+    step: ['black', 'bgCyan'],
+    timestamp: 'gray'
+});
+
+const log = {
+    info: (message) => {
+        const timestamp = new Date().toISOString();
+        console.log(`${timestamp.gray} : [${'INFO'.cyan}] : ${message}`);
+    },
+    warn: (message) => {
+        const timestamp = new Date().toISOString();
+        console.log(`${timestamp.gray} : [${'WARN'.yellow}] : ${message}`);
+    },
+    error: (message) => {
+        const timestamp = new Date().toISOString();
+        console.log(`${timestamp.gray} : [${'ERROR'.red}] : ${message}`);
+    },
+    success: (message) => {
+        const timestamp = new Date().toISOString();
+        console.log(`${timestamp.gray} : [${'SUCCESS'.green}] : ${message}`);
+    }
+};
+
+// Create Express app
 const app = express();
+const httpServer = createServer(app);
 
-// Security middleware
+// Configure Socket.IO with CORS and other options
+const io = new Server(httpServer, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+        credentials: true
+    },
+    path: '/socket.io', // Removed trailing slash for better compatibility
+    serveClient: true, // Serve the client
+    connectTimeout: 10000,
+    pingTimeout: 60000, // Increased timeout
+    pingInterval: 25000,
+    cookie: false,
+    transports: ['websocket', 'polling'],
+    allowEIO3: true, // For Socket.IO v2 client compatibility
+    maxHttpBufferSize: 1e8, // 100MB max payload size
+    cors: {
+        origin: true, // Allow all origins
+        methods: ["GET", "POST", "OPTIONS"],
+        credentials: true
+    }
+});
+
+// Handle connection errors
+io.engine.on('connection_error', (err) => {
+    log.error(`Socket.IO connection error: ${err.message}`);
+    log.error(`Error details: ${err.description}`);
+    log.error(`Error context: ${JSON.stringify(err.context)}`);
+});
+
+// Basic middleware
 app.use(helmet());
-
-// CORS configuration
-app.use(cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    credentials: true
-}));
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Rate limiting
-const limiter = rateLimit({
+const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // limit each IP to 100 requests per windowMs
-    message: "Too many requests from this IP, please try again later."
+    standardHeaders: true,
+    legacyHeaders: false
 });
-app.use(limiter);
+app.use(apiLimiter);
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Request logging middleware
+// Request ID middleware
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    req.id = uuidv4();
     next();
 });
 
-// Database connection
-connectDB();
-
-// require("./config/passport")(passport);
-// app.use(passport.initialize());
-
-app.get("/", (req, res) => {
-    res.send("Shard API Running...");
+// Set Content Security Policy headers
+app.use((req, res, next) => {
+    res.setHeader('Content-Security-Policy',
+        "default-src 'self'; " +
+        "connect-src 'self' ws: wss: http: https:; " +
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.socket.io https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "img-src 'self' data:; " +
+        "font-src 'self'; " +
+        "object-src 'none'; " +
+        "base-uri 'self'; " +
+        "form-action 'self'; " +
+        "frame-ancestors 'none'; " +
+        "upgrade-insecure-requests;"
+    );
+    next();
 });
 
-// Routes
-app.use("/auth", authRoutes);
-app.use("/projects", projectRoutes);
-app.use("/deploy", deployRoutes);
-app.use("/logs", logsRoutes);
-app.use("/env", envRoutes);
+// Serve static files from the public directory
+app.use(express.static('public', {
+    setHeaders: (res, path) => {
+        // Set cache control headers for HTML files
+        if (path.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+        }
+    }
+}));
 
-// 404 handler
-app.use((req, res) => {
-    res.status(404).json({ message: "Route not found" });
+// Set app locals
+app.locals.io = io;
+app.locals.log = log;
+
+// Health dashboard route
+app.get('/dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'health.html'));
 });
 
-// Global error handler
-app.use((err, req, res, next) => {
-    console.error("Global error:", err);
-    res.status(err.status || 500).json({
-        message: err.message || "Internal server error",
-        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+// Realtime health metrics
+const getHealthMetrics = async () => {
+    const memUsage = process.memoryUsage();
+
+    // Base health data (preserving original structure)
+    const healthData = {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || 'development',
+        memory: {
+            rss: Math.round(memUsage.rss / 1024 / 1024) + ' MB',
+            heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024) + ' MB',
+            heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + ' MB',
+            external: Math.round(memUsage.external / 1024 / 1024) + ' MB'
+        },
+        cpu: {
+            loadAverage: process.platform !== 'win32' ? require('os').loadavg() : [0, 0, 0],
+            cpuCount: require('os').cpus().length
+        },
+        database: {
+            status: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+            host: mongoose.connection.host || 'unknown',
+            name: mongoose.connection.name || 'unknown',
+            collections: [],
+            driver: {
+                name: 'MongoDB',
+                version: mongoose.version
+            }
+        },
+        server: {
+            platform: process.platform,
+            nodeVersion: process.version,
+            pid: process.pid
+        }
+    };
+
+    // Add database collections if connected
+    if (mongoose.connection.readyState === 1) {
+        try {
+            const collections = await mongoose.connection.db.listCollections().toArray();
+            healthData.database.collections = collections.map(coll => coll.name);
+        } catch (error) {
+            console.error('Error fetching collections:', error);
+            healthData.database.collectionsError = 'Failed to fetch collections';
+        }
+    }
+
+    // Add services health check (new addition)
+    try {
+        const axios = require('axios');
+        const services = {};
+
+        // Check deployment worker
+        try {
+            const workerStart = Date.now();
+            const workerResponse = await axios.get('http://localhost:9000/health', { timeout: 2000 });
+            const workerResponseTime = Date.now() - workerStart;
+            services['deployment-worker'] = {
+                status: 'ok',
+                responseTime: workerResponseTime,
+                details: workerResponse.data
+            };
+        } catch (error) {
+            services['deployment-worker'] = {
+                status: 'error',
+                error: 'Service unavailable'
+            };
+        }
+
+        // Check AI review service
+        try {
+            const aiStart = Date.now();
+            const aiResponse = await axios.get('http://localhost:8000/health', { timeout: 2000 });
+            const aiResponseTime = Date.now() - aiStart;
+            services['ai-review'] = {
+                status: 'ok',
+                responseTime: aiResponseTime,
+                details: aiResponse.data
+            };
+        } catch (error) {
+            services['ai-review'] = {
+                status: 'error',
+                error: 'Service unavailable'
+            };
+        }
+
+        healthData.services = services;
+    } catch (error) {
+        // Fallback if axios is not available
+        healthData.services = {
+            'deployment-worker': { status: 'error', error: 'Health check failed' },
+            'ai-review': { status: 'error', error: 'Health check failed' }
+        };
+    }
+
+    return healthData;
+};
+
+// Health check endpoint with realtime data
+app.get('/health', async (req, res) => {
+    try {
+        const healthData = await getHealthMetrics();
+        res.json(healthData);
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            error: error.message,
+            timestamp: new Date().toISOString(),
+            services: {
+                'deployment-worker': { status: 'error', error: 'Health check failed' },
+                'ai-review': { status: 'error', error: 'Health check failed' }
+            }
+        });
+    }
+});
+
+// Socket.IO connection for realtime health updates
+io.on('connection', (socket) => {
+    const clientIp = socket.handshake.address;
+    const clientId = socket.id;
+
+    log.info(`Client connected: ${clientId} from ${clientIp}`);
+    log.info(`Client transport: ${socket.conn.transport.name}`);
+    log.info(`Connection headers: ${JSON.stringify(socket.handshake.headers, null, 2)}`);
+    log.info(`Client transport state: ${JSON.stringify(socket.conn.transport.state)}`);
+
+    // Log transport upgrade
+    socket.conn.on('upgrade', () => {
+        log.info(`Client ${clientId} upgraded to: ${socket.conn.transport.name}`);
+    });
+
+    // Handle transport errors
+    socket.conn.on('error', (error) => {
+        log.error(`Transport error for client ${clientId}:`, error);
+    });
+
+    // Send initial health data
+    const sendHealthData = async () => {
+        try {
+            log.info(`Sending health data to client ${clientId}`);
+            const healthData = await getHealthMetrics();
+            socket.emit('health-data', healthData, (response) => {
+                log.info(`Received ACK from client ${clientId}:`, response);
+            });
+        } catch (error) {
+            log.error(`Error sending health data to client ${clientId}:`, error);
+            const errorData = {
+                status: 'error',
+                error: 'Failed to get health data',
+                timestamp: new Date().toISOString(),
+                services: {
+                    'deployment-worker': {
+                        status: 'error',
+                        error: 'Health check failed',
+                        details: error.message
+                    },
+                    'ai-review': {
+                        status: 'error',
+                        error: 'Health check failed',
+                        details: error.message
+                    }
+                }
+            };
+            socket.emit('health-data', errorData);
+        }
+    };
+
+    // Send initial health data
+    sendHealthData();
+
+    // Set up realtime health updates every 5 seconds
+    const healthInterval = setInterval(sendHealthData, 5000);
+
+    // Handle client requesting health data
+    socket.on('request-health', sendHealthData);
+
+    // Clean up on disconnect
+    socket.on('disconnect', () => {
+        log.info(`Client disconnected: ${socket.id}`);
+        clearInterval(healthInterval);
     });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`Server started on port ${PORT}`);
+// Check service health
+const checkService = async (name, url) => {
+    try {
+        const start = Date.now();
+        const response = await axios.get(url, { timeout: 2000 });
+        const responseTime = Date.now() - start;
+
+        log.success(`${name} service is up (${responseTime}ms)`);
+        return {
+            status: 'ok',
+            responseTime,
+            details: response.data
+        };
+    } catch (error) {
+        log.error(`${name} service check failed: ${error.message}`);
+        return {
+            status: 'error',
+            error: error.message
+        };
+    }
+};
+
+// Database connection with retry logic
+const connectWithRetry = async (maxRetries = 3, retryDelay = 3000) => {
+    let retryCount = 0;
+
+    while (retryCount < maxRetries) {
+        try {
+            log.info(`Connecting to MongoDB (attempt ${retryCount + 1}/${maxRetries})...`);
+
+            await mongoose.connect(process.env.MONGO_URI, {
+                serverSelectionTimeoutMS: 5000,
+                socketTimeoutMS: 10000,
+            });
+
+            log.success('MongoDB connected successfully');
+
+            // Check other services after successful DB connection
+            log.info('Checking dependent services...');
+
+            // Check deployment worker
+            const deploymentWorkerCheck = await checkService(
+                'Deployment Worker',
+                process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000/health'
+            );
+
+            // Check AI service
+            const aiServiceCheck = await checkService(
+                'AI Service',
+                process.env.AI_SERVICE_URL || 'http://localhost:8000/health'
+            );
+
+            return true;
+        } catch (error) {
+            retryCount++;
+            log.error(`MongoDB connection failed (attempt ${retryCount}/${maxRetries}): ${error.message}`);
+
+            if (retryCount < maxRetries) {
+                log.info(`Retrying in ${retryDelay / 1000} seconds...`);
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+            } else {
+                log.error('Max retries reached. Could not connect to MongoDB.');
+                return false;
+            }
+        }
+    }
+};
+
+// Graceful shutdown
+const gracefulShutdown = async (signal) => {
+    console.log('\n' + '═'.repeat(80).yellow.bold);
+    console.log(
+        `${new Date().toISOString()} : `.black.bold +
+        `[${signal}]`.bgYellow.black.bold +
+        ` : received — initiating graceful shutdown`.yellow
+    );
+    console.log('─'.repeat(80).yellow.bold + '\n');
+
+    try {
+        // Close HTTP server
+        httpServer.close(() => {
+            log.success('HTTP server closed');
+        });
+
+        // Close database connection if connected
+        if (mongoose.connection.readyState === 1) {
+            await mongoose.connection.close(false);
+            log.success('MongoDB connection closed');
+        }
+
+        // Give connections a chance to close gracefully
+        setTimeout(() => {
+            log.success('All connections closed');
+            console.log('\n' + '='.repeat(80).green);
+            console.log(' Shutdown complete. Goodbye! '.cyan);
+            console.log('='.repeat(80).green + '\n');
+            process.exit(0);
+        }, 1000);
+
+        // Force exit after timeout
+        setTimeout(() => {
+            log.error('Could not close connections in time, forcing shutdown');
+            process.exit(1);
+        }, 10000).unref();
+
+    } catch (error) {
+        log.error(`Error during shutdown: ${error.message}`);
+        process.exit(1);
+    }
+};
+
+// Handle shutdown signals
+const shutdownSignals = ['SIGINT', 'SIGTERM', 'SIGQUIT'];
+shutdownSignals.forEach(signal => {
+    process.on(signal, () => gracefulShutdown(signal));
 });
+
+// Handle unhandled rejections
+process.on('unhandledRejection', (reason, promise) => {
+    log.error(`Unhandled Rejection: ${reason}`);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+    log.error(`Uncaught Exception: ${error.message}`);
+    if (process.env.NODE_ENV === 'production') {
+        process.exit(1);
+    }
+});
+
+// Start the server
+const startServer = async () => {
+    try {
+        // Configure server settings
+        const PORT = process.env.PORT || 5000;
+
+        // Connect to database
+        log.info('Connecting to database...');
+        const dbConnected = await connectWithRetry();
+        if (!dbConnected) {
+            log.warn('Starting server in degraded mode without database connection');
+        }
+
+        // Initialize Socket.IO server
+        log.info('Initializing WebSocket server...');
+        io.engine.on('initial_headers', (headers, req) => {
+            headers['X-Health-Dashboard'] = 'true';
+        });
+
+        // Start HTTP server
+        log.info(`Starting HTTP server on port ${PORT}...`);
+        await new Promise((resolve) => {
+            httpServer.listen(PORT, '0.0.0.0', resolve);
+        });
+
+        // Server is now listening
+        const message = `Server started on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`;
+        log.success(message);
+
+        // Log server information
+        const line = '='.repeat(80);
+        const title = 'Shard Platform Backend'.bold;
+        const padding = Math.floor((line.length - title.length) / 2);
+
+        // Log WebSocket server status
+        log.info('WebSocket server status:', {
+            path: io.path(),
+            connectedClients: io.engine.clientsCount,
+            pingInterval: io.engine.pingInterval,
+            pingTimeout: io.engine.pingTimeout
+        });
+
+        // Log health dashboard URL
+        const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+        const host = process.env.HOST || 'localhost';
+        log.success(`Health Dashboard: ${protocol}://${host}:${PORT}/health.html`);
+
+        console.log(`\n${line}`.green);
+        console.log(`${' '.repeat(padding)}${title}`.white);
+        console.log(`${line}\n`.green);
+        console.log(`${message}`.green);
+        console.log(`Health Check: http://localhost:${PORT}/health`.blue);
+        console.log(`Dashboard: http://localhost:${PORT}/dashboard\n`.magenta);
+
+        return { httpServer, io };
+    }
+
+    catch (error) {
+        log.error(`Failed to start server: ${error.message}`);
+        process.exit(1);
+    }
+};
+
+// Start the server
+startServer();
+
+module.exports = { app, httpServer };

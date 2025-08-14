@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../utils/axiosConfig';
 import { AlertTriangle, ArrowLeft, Github } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -50,17 +50,15 @@ const NewProject = () => {
 
     try {
       setSubdomainChecking(true);
-      // This is a mock check - in a real app, you'd call an API endpoint
-      // const response = await axios.get(`${process.env.REACT_APP_API_URL}/projects/check-subdomain/${formData.subdomain}`);
-      // setSubdomainAvailable(response.data.available);
       
-      // Simulate API call with timeout
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setSubdomainAvailable(true); // Assume available for now
+      // Check subdomain availability via backend API
+      const response = await api.get(`/projects/check-subdomain/${formData.subdomain}`);
+      setSubdomainAvailable(response.data.available);
       setSubdomainChecking(false);
     } catch (err) {
       console.error('Error checking subdomain:', err);
-      setSubdomainAvailable(false);
+      // If API fails, assume subdomain is available (fallback behavior)
+      setSubdomainAvailable(true);
       setSubdomainChecking(false);
     }
   };
@@ -71,14 +69,7 @@ const NewProject = () => {
       setLoadingRepos(true);
       setError(null);
       
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL}/github/repos`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      const response = await api.get('/github/repos')
       
       setGithubRepos(response.data);
       setShowRepoSelector(true);
@@ -125,16 +116,7 @@ const NewProject = () => {
 
     try {
       setLoading(true);
-      const response = await axios.post(
-        `${process.env.REACT_APP_API_URL}/projects`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      const response = await api.post('/projects', formData);
 
       // Redirect to the new project page
       navigate(`/projects/${response.data._id}`);
