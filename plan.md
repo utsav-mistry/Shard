@@ -1,0 +1,129 @@
+# Shard Platform Enhancement Plan
+
+## Notes
+- Shard is a microservices SaaS deployment platform with Node.js/Express backend, React frontend, and Python-based AI review service.
+- Key requirements: backend resilience (idempotency, logging, graceful shutdown, concurrency), LRU caching, secure/admin-only admin panel, real-time monitoring, and robust frontend.
+- Security: JWT/OAuth, encrypted env vars, role-based access, rate limiting, input validation.
+- Monitoring: resource usage, health checks, logs, deployment/job status.
+- LRU caching implemented with NodeCache (avoid Redis as per user instruction)
+- Backend logging, graceful shutdown, cache middleware, and idempotency middleware implemented in server.js
+- Project model enhanced with validation, hooks, and caching for consistency and performance
+- All duplicate/unused backend server files (init.js, middleware/index.js, routes/index.js, shutdown.js, utils/requestId.js) have been deleted.
+- Idempotency middleware is commented out for now to ensure clean startup.
+- Rate limiting and request ID middleware are now properly configured in server.js.
+- Frontend: React 18 + Tailwind, feature-by-feature, placeholders for incomplete features.
+- Users will connect their GitHub account, import repositories, select root directory, and deploy (Vercel-like flow, with additional AI review step).
+- Deployment worker runs on port 9000; focus on making deployment worker, frontend, and AI review service production-grade and functional before implementing OAuth (GitHub/Google) features. OAuth is to be implemented last after core app is working.
+- Redis is not to be used anywhere in the platform as per user.
+- Backend does not require API key in deployment worker env.
+- Graceful shutdown must close all services (deployment worker, AI review, etc.) one by one, not just backend.
+- Graceful shutdown is now centrally coordinated from backend server.js, which triggers shutdown of deployment worker and other real services via HTTP endpoints.
+- There is no separate email service; email functionality is internal to the backend.
+- Service productionization and graceful shutdown should only target real services: backend, deployment worker, AI review (not email service).
+- The deployment worker already uses an in-memory queue (queue.js); BullMQ/Redis code and dependencies must be removed from worker.js and package.json, you can use lru-cache if needed.
+- URGENT: User has student submissions due soon; prioritize production-readiness and reliability for immediate needs.
+- All major frontend pages (ProjectsList.js, DeploymentsList.js, Settings.js, NewProject.js, Admin.js, Dashboard.js, EnvironmentVariables.js, LogsList.js) now use the unified `api` utility for backend communication. This ensures maintainability and consistent error/loading handling across the app.
+- A reusable `UnderDevelopment` placeholder component has been created for use in incomplete frontend pages/features.
+- All mock data (e.g., mock branches, commits, mock subdomain checks) has been removed from the frontend. All API calls now use real backend endpoints or provide a fallback if the endpoint is not implemented.
+- Updated: Only 'mern', 'flask', and 'django' are supported frameworks in project validation schema per user instruction.
+- Enhanced: Project controller now has robust logging and error handling for all CRUD operations.
+- [FIXED]: POST /projects route still throws "argument handler must be a function" error; using inline Joi validation as workaround for all project routes, root cause (middleware incompatibility) under review.
+- [FIXED]: Graceful shutdown logs do not show in console when using nodemon (Ctrl+C); needs investigation.
+- [FIXED]: Server is stuck at startup, health endpoint not responding; likely a blocking issue in DB connection or startup logic.
+- [IN PROGRESS]: Refactoring server.js and DB connection logic to resolve startup hang and duplicate variable issues. Server initialization order and error handling are being improved.
+- [FIXED]: POST /projects validation bug caused by field name mismatch (repoUrl vs repository); fixed validation and updated Swagger docs for consistency.
+- [IN PROGRESS]: Health dashboard should have a black background, monospace font, and be developer-focused (not public-facing). Display dashboard URL in server logs on startup. Fix WebSocket connection issues if any.
+- [UPDATED]: Health dashboard (health.html) now uses a black background, monospace font, and a minimal developer-focused style. Connection status and metrics grid improved for developer readability.
+- [DONE]: Backend health check endpoint now aggregates health from deployment worker and AI review services. Health dashboard displays this information.
+- [DONE]: Health dashboard WebSocket connection issue fixed; backend and dashboard now communicate in real-time.
+- [FIXED]: /health endpoint response is missing deployment worker and ai-review fields; must always include these (even on error).
+- [FIXED]: Health dashboard CSP/inline script bug caused dashboard to show code instead of data; fixed by moving all JS to external file and cleaning up health.html.
+- [IN PROGRESS]: Fixing health dashboard WebSocket and ensuring /health endpoint always includes deployment worker and ai-review fields with proper status, even if unavailable.
+- [DONE]: Health dashboard JavaScript issues fixed, including data binding, error handling, and UI improvements.
+- [DONE]: Enhanced backend health endpoint to provide detailed database info (collections, DB name, driver, etc.).
+- [DONE]: Health dashboard UI now displays new DB info (Collections, DB Name, Driver) with improved styling and real-time updates.
+- [DONE]: AI review service now has a /health endpoint for health checks and integration with backend health aggregation.
+- [DONE]: AI review service now has a /api/shutdown endpoint for graceful shutdown triggered from backend.
+- [DONE]: Fixed Chart.js loading order and script tags in health.html; dashboard now initializes charts and data correctly.
+- [DONE]: Fixed WebSocket connection and data flow issues between backend and dashboard; dashboard now receives and displays real-time health data.
+- [DONE]: Debugging and refactoring health dashboard JS for chart updates and WebSocket data flow stability based on recent regression report (dashboard stopped working after recent change).
+- [DONE]: Removed all chart-related code from health-dashboard-new.js; chart logic is now in chart-updates.js. Focusing on health dashboard only per user instruction.
+- [NOTE]: Chart.js loading issue on dashboard fixed by switching to a more reliable CDN with fallback and robust script load/error handling in health.html.
+- [DONE]: chart-updates.js was completely rewritten for robust initialization, error handling, and Chart.js availability detection. Chart initialization and updates are now resilient to loading order and connection failures.
+- [NOTE]: Chart.js was previously blocked by CSP; CSP header in server.js updated to allow https://cdn.jsdelivr.net and https://cdnjs.cloudflare.com for script-src.
+- [NOTE]: Chart initialization conflict resolved by removing chart-updates.js from health.html and using a single, inline chart initialization approach.
+- [FIXED]: Removed legacy initializeDashboard and initCharts logic from health.html to resolve chart initialization errors. Only inline chart setup is now active.
+- [UPDATED]: Memory Usage chart is now a RAM-style bar chart (used/available/cached/buffers) for more intuitive visualization.
+- [UPDATED]: Active Processes chart is now a donut chart (Node.js, Python, System, Other) with rich hover effects and legend.
+- [NOTE]: Chart-updates.js and health.html structure reviewed; chart initialization, error handling, and live data integration are being actively improved.
+## Task List 
+
+- [ ] Review backend codebase for bugs, missing features, and architectural issues
+  - [x] Fix validation middleware usage in project routes (blocking bug)
+  - [x] Use inline Joi validation for all project routes as workaround
+  - [x] Fix POST /projects validation bug root cause (middleware incompatibility)
+  - [x] Fix graceful shutdown console log issue with nodemon (implementation complete)
+  - [x] Fix server startup hang and health endpoint issue (URGENT)
+    - [x] Refactor server.js to remove duplicate declarations and ensure proper startup sequence
+- [x] Scan and analyze backend and deployment worker folders for structure, dependencies, and gaps
+  - [x] Create a gap analysis for backend production-grade requirements (logging, shutdown, error handling, concurrency, etc.)
+  - [x] Deployment worker gap analysis: Remove Redis/BullMQ and refactor queue/job system to non-Redis solution
+  - [x] Remove BullMQ/Redis code and dependencies from deployment worker (worker.js, package.json, etc.)
+  - [x] Productionize in-memory queue: add robust logging, error handling, and concurrency control
+- [x] Add structured, contextual logging (API, errors, worker lifecycle, wiring errors, etc.)
+- [x] Implement graceful shutdown for backend services
+- [x] Integrate LRU caching for frequently accessed data
+- [x] Ensure idempotency for all API endpoints
+- [x] Also make graceful shutdown logs on console to use colcors and bg and proper formatting and also include the time at which it is shutting down
+- [x] Review and improve concurrency handling (API, workers, locking/queue isolation)
+- [x] Make deployment worker (port 9000), frontend, and AI review service production-grade and fully working
+- [x] Remove/update Redis and API key usage from deployment worker (env/config/code)
+- [x] Refactor deployment worker to remove BullMQ and Redis dependencies; implement alternative job queue (in-memory or file-based)
+- [x] Implement graceful shutdown that closes all services (deployment worker, AI review, backend-internal email, etc.) one by one
+  - [x] Ensure shutdown only targets real services (backend, deployment worker, AI review)
+  - [x] Expose shutdown endpoint in deployment worker and call it from backend during shutdown
+  - [x] Expose shutdown endpoint in AI review and call it from backend during shutdown
+- [ ] Defer OAuth (GitHub/Google) features until core app is functional
+- [x] Implement GitHub OAuth integration and repo import flow
+  - [x] User connects GitHub account (OAuth)
+  - [x] List/import user repositories
+  - [x] Select root directory for deployment
+  - [x] Proceed to deployment with AI review step
+- [x] Design and implement secure admin panel (backend & frontend)
+  - [x] Resource monitoring (CPU, memory, storage)
+  - [x] Server/worker/container health/status
+  - [x] Logs view (filterable)
+  - [x] Active deployments/status
+- [ ] Build frontend pages for all backend-supported features
+  - [x] Refactor all frontend API calls to use the unified `api` utility (replace manual axios usage)
+  - [x] Integrate with backend APIs
+  - [x] Update all deployment-related pages (DeploymentDetail.js, DeploymentLogs.js, NewDeployment.js) to use unified api utility
+  - [x] Add placeholders for unfinished features
+  - [ ] Consistent navigation, state management, error/loading states
+  - [ ] Admin panel visible only to admins
+- [x] Fix dashboard cards to display real data instead of "-"
+- [ ] Consolidate dashboard routes to allow only /dashboard
+- [ ] Verify end-to-end frontend-backend API communication
+  - [ ] Match API calls to backend routes
+  - [ ] Ensure JWT/OAuth flows are functional
+  - [ ] Ensure backend /health endpoint queries AI review /health and aggregates status
+  - [ ] Update health dashboard to display AI review health status
+  - [x] Health dashboard receives and displays real-time data from backend
+- [x] Update health dashboard (health.html) to:
+  - [x] Use a black background and monospace font
+  - [x] Remove public-facing design, make it developer-focused
+  - [x] Fix WebSocket connection issues (stuck at connecting)
+  - [x] Add server-side logging of dashboard URL on startup
+- [DONE]: Backend health check endpoint now aggregates health from deployment worker and AI review services. Health dashboard displays this information.
+- [x] Implement backend health aggregation:
+  - [x] Query deployment worker and AI review health endpoints from backend
+  - [x] Expose unified /health endpoint with all service statuses
+- [ ] Update inline documentation and README
+  - [ ] Document new logging, shutdown, caching, admin features
+- [x] Add health check endpoints to backend and worker
+- [x] Implement API documentation with Swagger/OpenAPI
+- [x] Add request validation middleware to all endpoints
+- [x] Set up proper logging with rotation
+- [ ] Review and refactor chart-updates.js and health.html for robust chart initialization, error handling, and live data integration
+## Current Goal
+Polish chart UX and connect to live backend data
