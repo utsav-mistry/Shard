@@ -219,9 +219,4 @@ docs/
 structure.txt
 *.txt
 
-# Git ignore files (to prevent recursive gitignore issues)
-
-
-
-
 /logs

@@ -155,12 +155,54 @@ const getProjects = async (req, res) => {
         const [sortField, sortOrder] = sort.split(':');
         const sortOptions = { [sortField]: sortOrder === 'desc' ? -1 : 1 };
         
-        const projects = await Project.find({ ownerId: req.user._id })
-            .sort(sortOptions)
-            .skip(skip)
-            .limit(parseInt(limit));
+        // Validate user ID
+        if (!req.user || !req.user._id) {
+            logger.error('Invalid user in request', { userId: req.user?._id });
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid user information',
+                message: 'User information is missing or invalid'
+            });
+        }
+
+        // Validate pagination parameters
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        
+        if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1) {
+            logger.error('Invalid pagination parameters', { page, limit });
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid pagination parameters',
+                message: 'Page and limit must be positive numbers'
+            });
+        }
+
+        // Build query with error handling
+        let projects, total;
+        try {
+            [projects, total] = await Promise.all([
+                Project.find({ ownerId: req.user._id })
+                    .sort(sortOptions)
+                    .skip(skip)
+                    .limit(limitNum)
+                    .lean(),
+                Project.countDocuments({ ownerId: req.user._id })
+            ]);
+        } catch (dbError) {
+            logger.error('Database error when fetching projects', { 
+                error: dbError.message,
+                stack: dbError.stack,
+                userId: req.user._id
+            });
             
-        const total = await Project.countDocuments({ ownerId: req.user._id });
+            return res.status(500).json({
+                success: false,
+                error: 'Database Error',
+                message: 'Failed to fetch projects from database',
+                details: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+            });
+        }
 
         logger.info(`Fetched ${projects.length} projects`, { 
             ...logContext,

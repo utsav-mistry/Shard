@@ -44,6 +44,75 @@ body {
   color: #ffffff;
 }
 
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  display: none; /* Hide scrollbar for Chrome, Safari and Opera */
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+html {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* Global border styles */
+.border-1 {
+  border-width: 1px;
+}
+
+/* Card hover effects - More subtle */
+.card-hover {
+  transition: all 150ms ease-in-out;
+  border: 1px solid transparent;
+}
+
+.card-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.dark .card-hover:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Header styles */
+.site-header {
+  background-color: var(--background-light);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.dark .site-header {
+  background-color: var(--background-dark);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Dropdown styles */
+.dropdown {
+  background-color: var(--background-light);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+.dark .dropdown {
+  background-color: var(--background-dark);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Sidebar border */
+.sidebar-border {
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.dark .sidebar-border {
+  border-right-color: rgba(255, 255, 255, 0.1);
+}
+
 /* Custom button styles */
 .btn {
   @apply px-4 py-2 rounded-md font-medium transition-all duration-200 border-0;

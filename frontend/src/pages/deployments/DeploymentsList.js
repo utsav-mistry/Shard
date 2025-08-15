@@ -1,39 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../../utils/axiosConfig';
-import { Server, AlertTriangle, Search, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Server, AlertTriangle, Search, Clock, CheckCircle, XCircle, Plus } from 'lucide-react';
+import useDeployments from '../../hooks/useDeployments';
+import useProjects from '../../hooks/useProjects';
 
 const DeploymentsList = () => {
-  const [deployments, setDeployments] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { deployments, loading, error, refresh } = useDeployments();
+  const { projects, loading: projectsLoading, error: projectsError } = useProjects();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch all deployments and projects in parallel using unified API utility
-        const [deploymentsResponse, projectsResponse] = await Promise.all([
-          api.get('/deploy'),
-          api.get('/projects')
-        ]);
-        
-        setDeployments(deploymentsResponse.data);
-        setProjects(projectsResponse.data);
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching deployments:', err);
-        setError('Failed to load deployments');
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
 
   // Helper function to get project name by ID
   const getProjectName = (projectId) => {
@@ -43,38 +18,40 @@ const DeploymentsList = () => {
 
   // Helper function to get status badge
   const getStatusBadge = (status) => {
+    const baseClasses = "inline-flex items-center px-3 py-1 rounded-none text-xs font-medium border shadow-sm";
+    
     switch (status) {
       case 'pending':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-            <Clock className="w-3 h-3 mr-1" />
+          <span className={`${baseClasses} bg-white-100 text-black-900 dark:bg-black-800 dark:text-white-100 border-black-900 dark:border-white-100`}>
+            <Clock className="w-3 h-3 mr-1.5" />
             Pending
           </span>
         );
       case 'running':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-            <Server className="w-3 h-3 mr-1" />
+          <span className={`${baseClasses} bg-white-100 text-black-900 dark:bg-black-800 dark:text-white-100 border-black-900 dark:border-white-100`}>
+            <Server className="w-3 h-3 mr-1.5" />
             Running
           </span>
         );
       case 'success':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-            <CheckCircle className="w-3 h-3 mr-1" />
+          <span className={`${baseClasses} bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 border-black-900 dark:border-white-100`}>
+            <CheckCircle className="w-3 h-3 mr-1.5" />
             Success
           </span>
         );
       case 'failed':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-            <XCircle className="w-3 h-3 mr-1" />
+          <span className={`${baseClasses} bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 border-black-900 dark:border-white-100`}>
+            <XCircle className="w-3 h-3 mr-1.5" />
             Failed
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+          <span className={`${baseClasses} bg-white-100 text-black-900 dark:bg-black-800 dark:text-white-100 border-black-900 dark:border-white-100`}>
             {status}
           </span>
         );
@@ -89,19 +66,21 @@ const DeploymentsList = () => {
     return matchesSearch && matchesStatus;
   });
 
-  if (loading) {
+  if (loading || projectsLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black-900 dark:border-white-100"></div>
       </div>
     );
   }
 
-  if (error) {
+  if (error || projectsError) {
     return (
-      <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 p-4 rounded-md flex items-center">
-        <AlertTriangle className="h-5 w-5 mr-2" />
-        {error}
+      <div className="bg-white-100 dark:bg-black-900 p-6 rounded-none border-2 border-black-900 dark:border-white-100 shadow-sm flex items-center">
+        <AlertTriangle className="h-5 w-5 mr-3 text-black-900 dark:text-white-100" />
+        <span className="text-black-900 dark:text-white-100">
+          {error || projectsError || 'An error occurred while loading deployments.'}
+        </span>
       </div>
     );
   }

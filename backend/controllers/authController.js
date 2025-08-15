@@ -6,60 +6,120 @@ const googleService = require("../services/googleService");
 // -------------------- Manual Signup --------------------
 const registerUser = async (req, res) => {
     const { email, password, name } = req.body;
-    try {
-        let user = await User.findOne({ email });
-        if (user) return res.status(400).json({ message: "User already exists" });
-
-        user = new User({ 
-            email, 
-            passwordHash: password,
-            name: name || email.split('@')[0] // Use part of email as name if not provided
+    
+    // Input validation
+    if (!email || !password) {
+        return res.status(400).json({ 
+            success: false,
+            message: "Email and password are required" 
         });
+    }
+
+    try {
+        // Check if user exists
+        let user = await User.findOne({ email });
+        if (user) {
+            return res.status(400).json({ 
+                success: false,
+                message: "User already exists with this email" 
+            });
+        }
+
+        // Create new user - password will be hashed by pre-save hook
+        user = new User({ 
+            email: email.toLowerCase().trim(),
+            passwordHash: password, // Will be hashed by pre-save hook
+            name: (name || email.split('@')[0]).trim()
+        });
+        
         await user.save();
 
+        // Generate JWT token
         const token = generateToken(user);
-        res.json({ 
-            token, 
-            user: { 
-                id: user._id, 
-                email: user.email,
-                name: user.name,
-                avatar: user.avatar
-            } 
+        
+        // Prepare user data to return (exclude sensitive info)
+        const userResponse = {
+            id: user._id,
+            email: user.email,
+            name: user.name,
+            avatar: user.avatar,
+            role: user.role
+        };
+
+        res.status(201).json({ 
+            success: true,
+            message: "Registration successful",
+            token,
+            user: userResponse
         });
     } catch (err) {
         console.error('Register error:', err);
-        res.status(500).json({ message: "Server error" });
+        res.status(500).json({ 
+            success: false,
+            message: "Server error during registration" 
+        });
     }
 };
 
 // -------------------- Manual Login --------------------
 const loginUser = async (req, res) => {
     const { email, password } = req.body;
+    
+    // Input validation
+    if (!email || !password) {
+        return res.status(400).json({ 
+            success: false,
+            message: "Email and password are required" 
+        });
+    }
+
     try {
-        const user = await User.findOne({ email });
-        if (!user || !user.passwordHash)
-            return res.status(401).json({ message: "Invalid credentials" });
+        // Find user by email (case insensitive)
+        const user = await User.findOne({ email: email.toLowerCase().trim() });
+        
+        // Check if user exists and has a password set
+        if (!user || !user.passwordHash) {
+            return res.status(401).json({ 
+                success: false,
+                message: "Invalid email or password" 
+            });
+        }
 
+        // Verify password
         const isMatch = await user.matchPassword(password);
-        if (!isMatch)
-            return res.status(401).json({ message: "Invalid credentials" });
+        if (!isMatch) {
+            return res.status(401).json({ 
+                success: false,
+                message: "Invalid email or password" 
+            });
+        }
 
+        // Generate JWT token
         const token = generateToken(user);
+        
+        // Prepare user data to return (exclude sensitive info)
+        const userResponse = {
+            id: user._id,
+            email: user.email,
+            name: user.name,
+            avatar: user.avatar,
+            role: user.role,
+            githubId: user.githubId,
+            googleId: user.googleId
+        };
+
         res.json({ 
-            token, 
-            user: { 
-                id: user._id, 
-                email: user.email,
-                name: user.name,
-                avatar: user.avatar,
-                githubId: user.githubId,
-                googleId: user.googleId
-            } 
+            success: true,
+            message: "Login successful",
+            token,
+            user: userResponse
         });
     } catch (err) {
         console.error('Login error:', err);
-        res.status(500).json({ message: "Server error" });
+        res.status(500).json({ 
+            success: false,
+            message: "Server error during login" 
+        });
     }
 };
 

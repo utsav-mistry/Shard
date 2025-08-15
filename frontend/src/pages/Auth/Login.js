@@ -21,11 +21,17 @@ const Login = () => {
     setLoading(true);
 
     try {
+      // Clear any existing token to ensure a fresh login
+      localStorage.removeItem('token');
+      
+      // Call the login function from AuthContext
       await login(email, password);
-      // Redirect happens in the auth context after successful login
+      
+      // The actual redirect happens in the AuthContext after successful login
+      // We don't need to do anything here as the AuthContext will handle it
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to login');
-    } finally {
+      console.error('Login error:', err);
+      setError(err.message || 'Failed to login. Please check your credentials and try again.');
       setLoading(false);
     }
   };

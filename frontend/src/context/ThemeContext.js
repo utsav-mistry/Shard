@@ -1,22 +1,25 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 
 const ThemeContext = createContext();
 
 export const useTheme = () => useContext(ThemeContext);
 
+// Helper function to get initial theme
+const getInitialTheme = () => {
+  if (typeof window === 'undefined') return false;
+  
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme) return savedTheme === 'dark';
+  
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+};
+
 export const ThemeProvider = ({ children }) => {
-  const [darkMode, setDarkMode] = useState(() => {
-    // Check if user has a preference stored in localStorage
-    const savedTheme = localStorage.getItem('theme');
-    // Check if user has a system preference
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  // Initialize theme state with a function to prevent unnecessary re-renders
+  const [darkMode, setDarkMode] = useState(() => getInitialTheme());
 
-    // Return true if saved theme is 'dark' or if no saved theme but system prefers dark
-    return savedTheme === 'dark' || (!savedTheme && prefersDark);
-  });
-
+  // Apply theme class on initial render and when darkMode changes
   useEffect(() => {
-    // Update the class on the html element when darkMode changes
     if (darkMode) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');

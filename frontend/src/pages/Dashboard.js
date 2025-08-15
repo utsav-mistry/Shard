@@ -1,265 +1,521 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import api from '../utils/axiosConfig';
-import { Server, AlertTriangle, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import useProjects from '../hooks/useProjects';
+import useDeployments from '../hooks/useDeployments';
+import {
+  ArrowRight,
+  Plus,
+  Zap,
+  Box,
+  Activity,
+  Users,
+  User,
+  Settings,
+  FileText,
+  AlertTriangle,
+  Server,
+  Clock,
+  CheckCircle,
+  XCircle
+} from 'lucide-react';
+import { motion } from 'framer-motion';
+import PageTemplate from '../components/layout/PageTemplate';
 
 const Dashboard = () => {
   const { currentUser } = useAuth();
-  const [projects, setProjects] = useState([]);
-  const [deployments, setDeployments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const navigate = useNavigate();
+  const { darkMode } = useTheme();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch projects
-        const projectsResponse = await api.get('/projects');
-        
-        // Fetch recent deployments
-        const deploymentsResponse = await api.get('/deploy');
-        
-        setProjects(projectsResponse.data);
-        setDeployments(deploymentsResponse.data.slice(0, 5)); // Get only the 5 most recent deployments
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-        setError('Failed to load dashboard data');
-        setLoading(false);
-      }
-    };
+  // Use custom hooks for data fetching
+  const {
+    projects = [],
+    loading: projectsLoading,
+    error: projectsError,
+    refetch: refetchProjects
+  } = useProjects();
 
-    fetchData();
-  }, []);
+  const {
+    deployments = [],
+    loading: deploymentsLoading,
+    error: deploymentsError,
+    refetch: refetchDeployments
+  } = useDeployments();
 
-  // Helper function to get status badge
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'pending':
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-            <Clock className="w-3 h-3 mr-1" />
-            Pending
-          </span>
-        );
-      case 'running':
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-            <Server className="w-3 h-3 mr-1" />
-            Running
-          </span>
-        );
-      case 'success':
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-            <CheckCircle className="w-3 h-3 mr-1" />
-            Success
-          </span>
-        );
-      case 'failed':
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-            <XCircle className="w-3 h-3 mr-1" />
-            Failed
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-            {status}
-          </span>
-        );
+  const loading = projectsLoading || deploymentsLoading;
+  const error = projectsError || deploymentsError;
+
+  // Format date helper function
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid date';
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (err) {
+      console.error('Error formatting date:', err);
+      return 'Invalid date';
     }
   };
 
+  // Stats data - matching landing page style
+  const stats = [
+    {
+      id: 'total-projects',
+      name: 'Total Projects',
+      value: projects?.length || 0,
+      icon: Box,
+      action: () => navigate('/dashboard/projects')
+    },
+    {
+      id: 'active-deployments',
+      name: 'Active Deployments',
+      value: deployments?.filter(d => d.status === 'active' || d.status === 'deploying').length || 0,
+      icon: Zap,
+      action: () => navigate('/dashboard/deployments?status=active')
+    },
+    {
+      id: 'team-members',
+      name: 'Team Members',
+      value: currentUser?.team?.length || 1,
+      icon: Users,
+      action: () => navigate('/dashboard/team')
+    },
+    {
+      id: 'this-month',
+      name: 'This Month',
+      value: `${deployments?.filter(d => {
+        const deployDate = new Date(d.createdAt || d.updatedAt);
+        const now = new Date();
+        return deployDate.getMonth() === now.getMonth() &&
+          deployDate.getFullYear() === now.getFullYear();
+      }).length || 0}`,
+      icon: Activity,
+      action: () => navigate('/dashboard/deployments')
+    }
+  ];
+
+  // Quick actions - matching landing page button style
+  const quickActions = [
+    {
+      id: 'new-project',
+      name: 'New Project',
+      description: 'Create a new project from scratch',
+      icon: Plus,
+      action: () => navigate('/dashboard/projects/new'),
+      buttonText: 'Create Project',
+      className: "group relative flex flex-col items-start p-6 h-full w-full text-left border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200",
+      iconClassName: 'mb-4 p-2 border-2 border-black-900 dark:border-white-100 rounded-none group-hover:bg-white-100 dark:group-hover:bg-black-900 transition-colors duration-200',
+    },
+    {
+      id: 'new-deployment',
+      name: 'New Deployment',
+      description: 'Deploy a project',
+      icon: Zap,
+      action: () => navigate('/dashboard/deploy/new'),
+      buttonText: 'Deploy Now',
+      className: "group relative flex flex-col items-start p-6 h-full w-full text-left border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200",
+      iconClassName: 'mb-4 p-2 border-2 border-black-900 dark:border-white-100 rounded-none group-hover:bg-white-100 dark:group-hover:bg-black-900 transition-colors duration-200',
+    },
+    {
+      id: 'view-docs',
+      name: 'View Docs',
+      description: 'Read the documentation',
+      icon: FileText,
+      action: () => window.open('https://docs.shard.dev', '_blank', 'noopener,noreferrer'),
+      buttonText: 'Read More',
+      className: "group relative flex flex-col items-start p-6 h-full w-full text-left border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200",
+      iconClassName: 'mb-4 p-2 border-2 border-black-900 dark:border-white-100 rounded-none group-hover:bg-white-100 dark:group-hover:bg-black-900 transition-colors duration-200',
+    }
+  ];
+
+  // Helper function to get status badge with black/white theme
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      pending: {
+        bg: 'bg-white-100 dark:bg-black-800',
+        text: 'text-black-900 dark:text-white-100',
+        border: 'border-2 border-black-900 dark:border-white-100',
+        icon: <Clock className="w-3 h-3 mr-1" />,
+        label: 'Pending'
+      },
+      running: {
+        bg: 'bg-white-100 dark:bg-black-800',
+        text: 'text-black-900 dark:text-white-100',
+        border: 'border-2 border-black-900 dark:border-white-100',
+        icon: <Server className="w-3 h-3 mr-1" />,
+        label: 'Running'
+      },
+      success: {
+        bg: 'bg-black-900 dark:bg-white-100',
+        text: 'text-white-100 dark:text-black-900',
+        border: 'border-2 border-black-900 dark:border-white-100',
+        icon: <CheckCircle className="w-3 h-3 mr-1" />,
+        label: 'Success'
+      },
+      failed: {
+        bg: 'bg-white-100 dark:bg-black-800',
+        text: 'text-black-900 dark:text-white-100',
+        border: 'border-2 border-black-900 dark:border-white-100',
+        icon: <XCircle className="w-3 h-3 mr-1" />,
+        label: 'Failed'
+      },
+      default: {
+        bg: 'bg-white-100 dark:bg-black-800',
+        text: 'text-black-900 dark:text-white-100',
+        border: 'border-2 border-black-900 dark:border-white-100',
+        icon: null,
+        label: status
+      }
+    };
+
+    const config = statusConfig[status] || statusConfig.default;
+
+    return (
+      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium ${config.bg} ${config.text} ${config.border}`}>
+        {config.icon}
+        {config.label}
+      </span>
+    );
+  };
+
+  // Render loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
+      <PageTemplate title="Loading Dashboard...">
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+          <div className="animate-pulse">
+            <div className="h-12 w-12 border-4 border-black-900 dark:border-white-100 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        </div>
+      </PageTemplate>
     );
   }
 
+  // Render error state
   if (error) {
     return (
-      <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 p-4 rounded-md flex items-center">
-        <AlertTriangle className="h-5 w-5 mr-2" />
-        {error}
-      </div>
+      <PageTemplate>
+        <div className="min-h-screen bg-white-100 dark:bg-black-900 transition-colors duration-300 flex items-center justify-center p-4">
+          <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
+          <h2 className="text-2xl font-bold text-black-900 dark:text-white-100 mb-2">
+            Something went wrong
+          </h2>
+          <p className="text-black-600 dark:text-white-400 mb-6 max-w-md">
+            {error}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="group relative inline-flex items-center justify-center px-6 py-3 text-base font-medium rounded-none shadow-sm bg-black-900 text-white-100 hover:text-black-900 dark:bg-white-100 dark:text-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-2 dark:border-white-100"
+          >
+            <span className="absolute inset-0 w-full h-full bg-white-100 transition-all duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0 dark:bg-black-900"></span>
+            <span className="relative z-10">
+              Try Again
+            </span>
+          </button>
+        </div>
+      </PageTemplate>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Welcome section */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Welcome back{currentUser?.email ? `, ${currentUser.email.split('@')[0]}` : ''}!
-        </h1>
-        <p className="mt-1 text-gray-600 dark:text-gray-300">
-          Here's what's happening with your projects today.
-        </p>
-      </div>
-
-      {/* Stats overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-neutral-150 dark:bg-neutral-850 text-neutral-850 dark:text-neutral-150">
-              <div className="h-6 w-6 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"></path>
-                  <path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"></path>
-                </svg>
-              </div>
-            </div>
-            <div className="ml-4">
-              <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Total Projects</h2>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">{projects.length}</p>
-            </div>
+    <PageTemplate title="Dashboard">
+      <div className="relative mx-auto px-4 sm:px-6 lg:px-8 py-8 text-black-900 dark:text-white-100">
+        {/* Subtle grid background */}
+        <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:60px_60px]"></div>
+        </div>
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+          <div>
+            <p className="text-black-700 dark:text-white-300">Welcome back, {currentUser?.name || 'User'}</p>
+          </div>
+          <div className="mt-4 md:mt-0 flex space-x-3">
+            <button
+              onClick={() => navigate('/dashboard/settings')}
+              className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden hover:scale-[1.02] active:scale-95"
+            >
+              <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
+              <span className="relative z-10 flex items-center">
+                <span className="h-5 w-5 mr-2"><Settings /></span>
+                Settings
+              </span>
+            </button>
+            <button
+              onClick={() => navigate('/dashboard/profile')}
+              className="group relative inline-flex items-center px-4 py-2 bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 hover:bg-white-100 hover:text-black-900 dark:hover:bg-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-white-100 hover:scale-[1.02] active:scale-95"
+            >
+              <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform translate-x-full group-hover:translate-x-0"></span>
+              <span className="relative z-10 flex items-center">
+                <span className="h-5 w-5 mr-2"><User /></span>
+                Profile
+              </span>
+            </button>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-neutral-250 dark:bg-neutral-750 text-neutral-750 dark:text-neutral-250">
-              <Server className="h-6 w-6" />
-            </div>
-            <div className="ml-4">
-              <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Active Deployments</h2>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {deployments.filter(d => d.status === 'running').length}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-neutral-350 dark:bg-neutral-650 text-neutral-650 dark:text-neutral-350">
-              <Clock className="h-6 w-6" />
-            </div>
-            <div className="ml-4">
-              <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Pending Deployments</h2>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {deployments.filter(d => d.status === 'pending').length}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent projects */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Projects</h2>
-          <Link to="/projects" className="text-sm font-medium text-neutral-850 hover:text-neutral-750 dark:text-neutral-250 dark:hover:text-neutral-350">
-            View all
-          </Link>
-        </div>
-        {projects.length === 0 ? (
-          <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-            <p>You don't have any projects yet.</p>
-            <Link to="/projects/new" className="mt-2 inline-block text-neutral-850 hover:text-neutral-750 dark:text-neutral-250 dark:hover:text-neutral-350">
-              Create your first project
-            </Link>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {projects.slice(0, 5).map((project) => (
-              <div key={project._id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+        {/* Stats Grid - Matching Landing Page Style */}
+        <div className="grid grid-cols-1 gap-5 mb-10 sm:grid-cols-2 lg:grid-cols-4 relative z-0">
+          {stats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <motion.div
+                key={stat.id}
+                whileHover={{ y: -2 }}
+                onClick={stat.action}
+                className="group relative p-6 border-2 border-black-900 dark:border-white-100 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-300 cursor-pointer"
+              >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">{project.name}</h3>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      {project.repoUrl}
+                    <p className="text-sm font-medium opacity-80">
+                      {stat.name}
                     </p>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Created on {new Date(project.createdAt).toLocaleDateString()}
-                    </p>
+                    <p className="text-2xl font-bold mt-1">{stat.value}</p>
                   </div>
-                  <Link
-                    to={`/projects/${project._id}`}
-                    className="px-3 py-1 text-sm text-neutral-850 hover:text-neutral-750 dark:text-neutral-250 dark:hover:text-neutral-350 border border-neutral-850 dark:border-neutral-250 rounded-md hover:bg-neutral-150 dark:hover:bg-neutral-850 transition-colors"
-                  >
-                    View
-                  </Link>
+                  <div className="p-2 border-2 border-black-900 dark:border-white-100 group-hover:bg-white-100 group-hover:text-black-900 dark:group-hover:bg-black-900 dark:group-hover:text-white-100 transition-colors">
+                    <Icon className="w-5 h-5" />
+                  </div>
                 </div>
-              </div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Quick Actions - Matching Landing Page Buttons */}
+        <div className="mb-10 relative z-0">
+          <h2 className="text-xl font-bold text-black-900 dark:text-white-100 mb-6">
+            Quick Actions
+          </h2>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {quickActions.map((action) => (
+              <motion.div
+                key={action.id}
+                whileHover={{ y: -2 }}
+                className="group relative p-6 border-2 border-black-900 dark:border-white-100 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-300 cursor-pointer"
+                onClick={action.action}
+              >
+                <div className="flex flex-col h-full">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 border-2 border-black-900 dark:border-white-100 group-hover:bg-white-100 group-hover:text-black-900 dark:group-hover:bg-black-900 dark:group-hover:text-white-100 transition-colors">
+                      <action.icon className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-bold mb-2">{action.name}</h3>
+                  {action.description && (
+                    <p className="text-sm opacity-80 mb-4">
+                      {action.description}
+                    </p>
+                  )}
+                  <div className="mt-auto flex items-center text-sm font-medium group-hover:underline">
+                    {action.buttonText || 'Get started'}
+                    <ArrowRight className="ml-1 w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </div>
+              </motion.div>
             ))}
           </div>
-        )}
-      </div>
-
-      {/* Recent deployments */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Deployments</h2>
-          <Link to="/deployments" className="text-sm font-medium text-neutral-850 hover:text-neutral-750 dark:text-neutral-250 dark:hover:text-neutral-350">
-            View all
-          </Link>
         </div>
-        {deployments.length === 0 ? (
-          <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-            <p>No deployments found.</p>
+
+        {/* Recent Activity - Enhanced Table */}
+        <div className="mb-10 relative z-0">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-black-900 dark:text-white-100">
+              Recent Deployments
+            </h2>
+            <button
+              onClick={() => navigate('/dashboard/deployments')}
+              className="group relative inline-flex items-center text-sm font-medium text-black-900 dark:text-white-100 hover:opacity-80 transition-opacity"
+            >
+              View all
+              <ArrowRight className="ml-1 w-4 h-4 transition-transform group-hover:translate-x-1" />
+            </button>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-750">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Project
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Created
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {deployments.map((deployment) => {
-                  // Find the project for this deployment
-                  const project = projects.find(p => p._id === deployment.projectId) || { name: 'Unknown Project' };
-                  
-                  return (
-                    <tr key={deployment._id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
+
+          <div className="overflow-hidden border-2 border-black-100 dark:border-white-100">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-black-900/20 dark:divide-white-100/20">
+                <thead className="bg-black-900/5 dark:bg-white-100/5">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-black-500 dark:text-white-500 uppercase tracking-wider">
+                      Project
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-black-500 dark:text-white-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-black-500 dark:text-white-500 uppercase tracking-wider">
+                      Last Deployed
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-black-500 dark:text-white-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-black-900 divide-y divide-black-900/10 dark:divide-white-100/10">
+                  {deployments.slice(0, 5).map((deployment) => (
+                    <tr
+                      key={deployment._id}
+                      className="group hover:bg-black-900/5 dark:hover:bg-white-100/5 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/dashboard/projects/${deployment.project}/deployments/${deployment._id}`)}
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">{project.name}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(deployment.status)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {new Date(deployment.createdAt).toLocaleString()}
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center border-2 border-black-900 dark:border-white-100">
+                            <Server className="h-5 w-5" />
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-bold text-black-900 dark:text-white-100">
+                              {deployment.projectName || 'Unknown Project'}
+                            </div>
+                            <div className="text-sm text-black-500 dark:text-white-500">
+                              {deployment.branch || 'main'}
+                            </div>
+                          </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <Link
-                          to={`/deployments/${deployment._id}`}
-                          className="text-neutral-850 hover:text-neutral-750 dark:text-neutral-250 dark:hover:text-neutral-350"
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${deployment.status === 'success'
+                            ? 'bg-black-900/10 text-black-900 dark:bg-white-100/10 dark:text-white-100'
+                            : deployment.status === 'failed'
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                            }`}
                         >
-                          View
-                        </Link>
+                          {deployment.status === 'success' ? (
+                            <CheckCircle className="mr-1 h-3.5 w-3.5" />
+                          ) : deployment.status === 'failed' ? (
+                            <XCircle className="mr-1 h-3.5 w-3.5" />
+                          ) : (
+                            <Clock className="mr-1 h-3.5 w-3.5" />
+                          )}
+                          {deployment.status.charAt(0).toUpperCase() + deployment.status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black-500 dark:text-white-500">
+                        {formatDate(deployment.updatedAt || deployment.createdAt)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/dashboard/projects/${deployment.project}/deployments/${deployment._id}`);
+                          }}
+                          className="group relative inline-flex items-center text-black-900 dark:text-white-100 hover:opacity-80 transition-opacity"
+                        >
+                          View details
+                          <ArrowRight className="ml-1 w-4 h-4 transition-transform group-hover:translate-x-1" />
+                        </button>
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ))}
+                  {deployments.length === 0 ? (
+                    <tr>
+                      <td colSpan="4" className="px-6 py-8 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <Server className="h-12 w-12 text-black-400 dark:text-white-400 mb-3" />
+                          <h3 className="text-lg font-medium text-black-900 dark:text-white-100 mb-1">
+                            No deployments yet
+                          </h3>
+                          <p className="text-black-600 dark:text-white-400 max-w-md mb-4">
+                            Create your first project and deploy it to see it here.
+                          </p>
+                          <button
+                            onClick={() => navigate('/dashboard/deploy/new')}
+                            className="group relative inline-flex items-center px-4 py-2 bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 font-medium hover:bg-white-100 hover:text-black-900 dark:hover:bg-black-900 dark:hover:text-white-100 transition-colors duration-200 overflow-hidden border-2 border-black-900 dark:border-white-100"
+                          >
+                            <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
+                            <span className="relative z-10 flex items-center">
+                              <Zap className="h-4 w-4 mr-2" />
+                              New Deployment
+                            </span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    deployments.slice(0, 5).map((deployment) => (
+                      <tr
+                        key={deployment._id}
+                        className="group hover:bg-black-900/5 dark:hover:bg-white-100/5 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/dashboard/projects/${deployment.project}/deployments/${deployment._id}`)}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center border-2 border-black-900 dark:border-white-100">
+                              <Server className="h-5 w-5" />
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-bold text-black-900 dark:text-white-100">
+                                {deployment.projectName || 'Unknown Project'}
+                              </div>
+                              <div className="text-sm text-black-500 dark:text-white-500">
+                                {deployment.branch || 'main'}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${deployment.status === 'success'
+                              ? 'bg-black-900/10 text-black-900 dark:bg-white-100/10 dark:text-white-100'
+                              : deployment.status === 'failed'
+                                ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                              }`}
+                          >
+                            {deployment.status === 'success' ? (
+                              <CheckCircle className="mr-1 h-3.5 w-3.5" />
+                            ) : deployment.status === 'failed' ? (
+                              <XCircle className="mr-1 h-3.5 w-3.5" />
+                            ) : (
+                              <Clock className="mr-1 h-3.5 w-3.5" />
+                            )}
+                            {deployment.status.charAt(0).toUpperCase() + deployment.status.slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-black-500 dark:text-white-500">
+                          {formatDate(deployment.updatedAt || deployment.createdAt)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/dashboard/projects/${deployment.project}/deployments/${deployment._id}`);
+                            }}
+                            className="group relative inline-flex items-center text-black-900 dark:text-white-100 hover:opacity-80 transition-opacity"
+                          >
+                            View details
+                            <ArrowRight className="ml-1 w-4 h-4 transition-transform group-hover:translate-x-1" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+
+              {deployments.length > 0 && (
+                <div className="mt-4 text-right p-4">
+                  <button
+                    onClick={() => navigate('/dashboard/deployments')}
+                    className="text-sm font-medium hover:underline text-black-900 dark:text-white-100"
+                  >
+                    View all deployments →
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </div>
       </div>
-    </div>
+    </PageTemplate>
   );
 };
 

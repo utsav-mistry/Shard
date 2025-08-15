@@ -7,8 +7,8 @@ const User = require('../models/User');
  */
 const authenticate = async (req, res, next) => {
     try {
-        // Get token from header or cookies
-        let token = req.header('Authorization') || req.cookies?.token;
+        // Get token from header
+        let token = req.header('Authorization');
         
         // Remove 'Bearer ' if present
         if (token && token.startsWith('Bearer ')) {
@@ -38,7 +38,7 @@ const authenticate = async (req, res, next) => {
         req.user = user;
         next();
     } catch (error) {
-        logger.error('Authentication error:', error);
+        console.error('Authentication error:', error);
         
         if (error.name === 'JsonWebTokenError') {
             return res.status(401).json({ 

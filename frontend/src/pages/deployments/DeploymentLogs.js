@@ -385,15 +385,7 @@ const DeploymentLogs = () => {
           <button
             onClick={async () => {
               try {
-                await axios.post(
-                  `${process.env.REACT_APP_API_URL}/deploy/retry/${deployment._id}`,
-                  {},
-                  {
-                    headers: {
-                      Authorization: `Bearer ${localStorage.getItem('token')}`,
-                    },
-                  }
-                );
+                await api.post(`/deploy/retry/${deployment._id}`, {});
                 navigate('/deployments');
               } catch (err) {
                 console.error('Error retrying deployment:', err);

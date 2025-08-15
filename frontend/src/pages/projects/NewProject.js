@@ -128,36 +128,36 @@ const NewProject = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center">
         <button
           onClick={() => navigate('/projects')}
-          className="mr-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          className="mr-4 text-black-600 hover:text-black-900 dark:text-white-600 dark:hover:text-white-100 transition-colors duration-200"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Create New Project</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <h1 className="text-3xl font-bold text-black-900 dark:text-white-100">Create New Project</h1>
+          <p className="mt-2 text-base text-black-600 dark:text-white-400">
             Set up a new project for deployment
           </p>
         </div>
       </div>
 
       {/* Form */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+      <div className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 p-6">
         {error && (
-          <div className="mb-6 p-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded-md flex items-center">
-            <AlertTriangle className="h-5 w-5 mr-2" />
-            {error}
+          <div className="mb-6 p-4 bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 flex items-center">
+            <AlertTriangle className="h-5 w-5 mr-3 text-black-900 dark:text-white-100" />
+            <span className="text-black-900 dark:text-white-100">{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Project Name */}
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="name" className="block text-sm font-medium text-black-900 dark:text-white-100 mb-2">
               Project Name
             </label>
             <input
@@ -166,7 +166,7 @@ const NewProject = () => {
               name="name"
               value={formData.name}
               onChange={handleChange}
-              className="mt-1 block w-full border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="block w-full border-2 border-black-900 dark:border-white-100 py-3 px-4 focus:outline-none focus:ring-0 focus:border-black-900 dark:focus:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 placeholder-black-400 dark:placeholder-white-500 text-base"
               placeholder="My Awesome Project"
               required
             />
@@ -174,61 +174,68 @@ const NewProject = () => {
 
           {/* Repository URL */}
           <div>
-            <label htmlFor="repoUrl" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="repoUrl" className="block text-sm font-medium text-black-900 dark:text-white-100 mb-2">
               GitHub Repository URL
             </label>
-            <div className="flex items-center space-x-2">
-              <input
-                type="url"
-                id="repoUrl"
-                name="repoUrl"
-                value={formData.repoUrl}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                placeholder="https://github.com/username/repository"
-                required
-              />
+            <div className="flex">
+              <div className="relative flex-1">
+                <input
+                  type="url"
+                  id="repoUrl"
+                  name="repoUrl"
+                  value={formData.repoUrl}
+                  onChange={handleChange}
+                  className="block w-full border-2 border-black-900 dark:border-white-100 py-3 px-4 focus:outline-none focus:ring-0 focus:border-black-900 dark:focus:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 placeholder-black-400 dark:placeholder-white-500 text-base"
+                  placeholder="https://github.com/username/repository"
+                  required
+                />
+              </div>
               <button
                 type="button"
                 onClick={fetchGithubRepos}
                 disabled={loadingRepos}
-                className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="ml-2 group relative inline-flex items-center justify-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-sm font-medium text-black-900 dark:text-white-100 bg-transparent hover:bg-black-900 hover:text-white-100 dark:hover:bg-white-100 dark:hover:text-black-900 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loadingRepos ? (
-                  <span>Loading...</span>
-                ) : (
-                  <>
-                    <Github className="w-4 h-4 mr-2" />
-                    <span>Import</span>
-                  </>
-                )}
+                <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-all duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
+                <span className="relative z-10">
+                  {loadingRepos ? 'Loading...' : 'Import from GitHub'}
+                </span>
               </button>
             </div>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mt-2 text-sm text-black-500 dark:text-white-400">
               Must be a public GitHub repository URL
             </p>
             
             {/* GitHub Repository Selector */}
             {showRepoSelector && (
-              <div className="mt-3 p-3 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm dark:bg-gray-800">
-                <h4 className="text-sm font-medium mb-2">Select a repository:</h4>
-                {githubRepos.length > 0 ? (
-                  <div className="max-h-60 overflow-y-auto">
-                    {githubRepos.map((repo) => (
-                      <button
-                        key={repo.id}
-                        type="button"
-                        onClick={() => selectRepository(repo)}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md mb-1 flex items-center"
-                      >
-                        <Github className="w-4 h-4 mr-2 text-gray-500 dark:text-gray-300" />
-                        <span>{repo.full_name}</span>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">No repositories found.</p>
-                )}
+              <div className="mt-4 border-2 border-black-900 dark:border-white-100">
+                <div className="max-h-60 overflow-y-auto">
+                  {githubRepos.length > 0 ? (
+                    <ul className="divide-y divide-black-200 dark:divide-white-800">
+                      {githubRepos.map((repo) => (
+                        <li 
+                          key={repo.id} 
+                          className="px-4 py-3 hover:bg-black-50 dark:hover:bg-white-900 cursor-pointer transition-colors duration-200"
+                          onClick={() => selectRepository(repo)}
+                        >
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10 bg-black-100 dark:bg-white-900 rounded-full flex items-center justify-center border-2 border-black-900 dark:border-white-100">
+                              <Github className="h-5 w-5 text-black-900 dark:text-white-100" />
+                            </div>
+                            <div className="ml-4">
+                              <p className="text-sm font-medium text-black-900 dark:text-white-100">{repo.name}</p>
+                              <p className="text-xs text-black-500 dark:text-white-400 truncate max-w-xs">{repo.html_url}</p>
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="p-4 text-sm text-black-500 dark:text-white-400">
+                      No repositories found. Make sure your GitHub account has some repositories.
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

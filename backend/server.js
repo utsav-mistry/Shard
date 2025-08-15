@@ -45,28 +45,27 @@ const log = {
 const app = express();
 const httpServer = createServer(app);
 
+// Configure CORS for Express
+const corsOptions = {
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    optionsSuccessStatus: 200 // For legacy browser support
+};
+
 // Configure Socket.IO with CORS and other options
 const io = new Server(httpServer, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-        credentials: true
-    },
-    path: '/socket.io', // Removed trailing slash for better compatibility
-    serveClient: true, // Serve the client
+    cors: corsOptions,
+    path: '/socket.io',
+    serveClient: true,
     connectTimeout: 10000,
-    pingTimeout: 60000, // Increased timeout
+    pingTimeout: 60000,
     pingInterval: 25000,
     cookie: false,
     transports: ['websocket', 'polling'],
-    allowEIO3: true, // For Socket.IO v2 client compatibility
-    maxHttpBufferSize: 1e8, // 100MB max payload size
-    cors: {
-        origin: true, // Allow all origins
-        methods: ["GET", "POST", "OPTIONS"],
-        credentials: true
-    }
+    allowEIO3: true,
+    maxHttpBufferSize: 1e8 // 100MB max payload size
 });
 
 // Handle connection errors
@@ -78,7 +77,7 @@ io.engine.on('connection_error', (err) => {
 
 // Basic middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -114,6 +113,15 @@ app.use((req, res, next) => {
     );
     next();
 });
+
+const authRoutes = require('./routes/auth');
+const deployRoutes = require('./routes/deploy');
+const projectRoutes = require('./routes/project');
+
+// Mount routes
+app.use('/api/auth', authRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/deploy', deployRoutes);
 
 // Serve static files from the public directory
 app.use(express.static('public', {

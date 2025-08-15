@@ -24,6 +24,54 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
+  // Move useEffect before any conditional returns
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      try {
+        // Fetch all admin data in parallel using the existing API utility
+        const [statsRes, deploymentsRes, logsRes, workerRes, aiRes] = await Promise.allSettled([
+          api.get('/admin/stats'),
+          api.get('/admin/deployments'),
+          api.get('/admin/logs?limit=50'),
+          api.get('/admin/worker/status'),
+          api.get('/admin/ai-service/status')
+        ]);
+
+        if (statsRes.status === 'fulfilled') {
+          setStats(statsRes.value.data);
+        }
+        
+        if (deploymentsRes.status === 'fulfilled') {
+          setDeployments(deploymentsRes.value.data);
+        }
+        
+        if (logsRes.status === 'fulfilled') {
+          setLogs(logsRes.value.data);
+        }
+        
+        if (workerRes.status === 'fulfilled') {
+          setWorkerStatus(workerRes.value.data);
+        }
+        
+        if (aiRes.status === 'fulfilled') {
+          setAiServiceStatus(aiRes.value.data);
+        }
+
+      } catch (error) {
+        console.error('Error fetching admin data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user?.role === 'admin') {
+      fetchAdminData();
+      // Refresh data every 30 seconds
+      const interval = setInterval(fetchAdminData, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
   // Check if user is admin
   if (!user || user.role !== 'admin') {
     return (
@@ -39,50 +87,7 @@ const Admin = () => {
     );
   }
 
-  useEffect(() => {
-    fetchAdminData();
-    // Refresh data every 30 seconds
-    const interval = setInterval(fetchAdminData, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchAdminData = async () => {
-    try {
-      // Fetch all admin data in parallel using the existing API utility
-      const [statsRes, deploymentsRes, logsRes, workerRes, aiRes] = await Promise.allSettled([
-        api.get('/admin/stats'),
-        api.get('/admin/deployments'),
-        api.get('/admin/logs?limit=50'),
-        api.get('/admin/worker/status'),
-        api.get('/admin/ai-service/status')
-      ]);
-
-      if (statsRes.status === 'fulfilled') {
-        setStats(statsRes.value.data);
-      }
-      
-      if (deploymentsRes.status === 'fulfilled') {
-        setDeployments(deploymentsRes.value.data);
-      }
-      
-      if (logsRes.status === 'fulfilled') {
-        setLogs(logsRes.value.data);
-      }
-      
-      if (workerRes.status === 'fulfilled') {
-        setWorkerStatus(workerRes.value.data);
-      }
-      
-      if (aiRes.status === 'fulfilled') {
-        setAiServiceStatus(aiRes.value.data);
-      }
-
-    } catch (error) {
-      console.error('Error fetching admin data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // fetchAdminData has been moved inside the useEffect hook
 
   const formatBytes = (bytes) => {
     if (bytes === 0) return '0 Bytes';

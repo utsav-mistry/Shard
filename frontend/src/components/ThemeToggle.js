@@ -9,19 +9,19 @@ const ThemeToggle = ({ className }) => {
 
   const handleClick = () => {
     if (isAnimating) return;
-    
+
     setIsAnimating(true);
-    
+
     // Move down
     setTransformY(100);
-    
+
     setTimeout(() => {
       // Change theme while button is down
       toggleDarkMode();
-      
+
       // Move back up
       setTransformY(0);
-      
+
       setTimeout(() => {
         setIsAnimating(false);
       }, 500);
@@ -35,9 +35,13 @@ const ThemeToggle = ({ className }) => {
       aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
       style={{
         transform: `translateY(${transformY}px)`,
+        position: 'fixed',
+        zIndex: 10000,  
+        bottom: '1rem',
+        right: '1rem'
       }}
     >
-      <div className="relative w-5 h-5">
+      <div className="relative w-5 h-5 ">
         <div className={`absolute inset-0 transition-opacity duration-300 ${darkMode ? 'opacity-0' : 'opacity-100'}`}>
           <Sun size={20} className="text-black-900 dark:text-white-100" />
         </div>
