@@ -32,7 +32,7 @@ const User = require('../models/User');
 const LOCK_FILE_PATH = path.join(__dirname, '.admin-created.lock');
 
 // Database connection string - adjust if needed
-const DB_URI = process.env.MONGODB_URI || '[REDACTED]';
+const DB_URI = process.env.MONGODB_URI;
 
 /**
  * Check if admin has already been created
