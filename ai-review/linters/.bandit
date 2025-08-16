@@ -1,0 +1,5 @@
+[bandit]
+exclude_dirs = /tests,/venv,/env,/.venv,/node_modules,/migrations,/.git
+skips = B101,B601
+confidence = medium
+severity = medium

@@ -1,0 +1,15 @@
+[MASTER]
+ignore=migrations,venv,env,.venv,node_modules,.git
+
+[MESSAGES CONTROL]
+disable=C0114,C0115,C0116,R0903,W0613,C0103,R0801
+
+[FORMAT]
+max-line-length=88
+
+[DESIGN]
+max-args=7
+max-locals=15
+max-returns=6
+max-branches=12
+max-statements=50

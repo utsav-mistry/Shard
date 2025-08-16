@@ -1,20 +1,65 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { cloneRepo } from './repoCloner.js';
-import { injectEnv } from './envInjector.js';
-import { buildAndRunContainer } from '../utils/dockerHelpers.js';
-import { sendDeploymentNotification } from './emailNotifier.js';
-import { updateDeploymentStatus } from './statusUpdater.js';
 import axios from 'axios';
-import { promisify } from 'util';
-import { exec } from 'child_process';
+import { fileURLToPath } from 'url';
+import { updateDeploymentStatus } from './statusUpdater.js';
+import logger, { logStep } from '../utils/logger.js';
+import { sendDeploymentNotification } from './emailNotifier.js';
+import { injectEnv, fetchEnvVars } from './envInjector.js';
+import { deployContainer, cleanupExistingContainer } from '../utils/dockerHelpers.js';
 import { analyzeRepo } from './analyzeCode.js';
+import { cloneRepo } from './repoCloner.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const execAsync = promisify(exec);
+// Function to update deployment with AI review results
+const updateDeploymentWithAIResults = async (deploymentId, aiResults, token) => {
+    try {
+        const response = await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deploy/ai-results`, {
+            deploymentId,
+            aiReviewResults: aiResults
+        }, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            timeout: 10000
+        });
+
+        if (response.status === 200) {
+            logger.info(`AI results updated for deployment ${deploymentId}`);
+        }
+    } catch (error) {
+        logger.error(`Failed to update AI results for deployment ${deploymentId}:`, error.message);
+        // Don't throw - this is not critical for deployment success
+    }
+};
+
+// Function to update deployment with commit information
+const updateDeploymentWithCommitInfo = async (deploymentId, commitInfo, token) => {
+    try {
+        const response = await axios.patch(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deploy/${deploymentId}`, {
+            commitHash: commitInfo.commitHash,
+            commitMessage: commitInfo.commitMessage,
+            author: commitInfo.author,
+            commitDate: commitInfo.commitDate
+        }, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            timeout: 10000
+        });
+
+        if (response.status === 200) {
+            logger.info(`Commit info updated for deployment ${deploymentId}`);
+        }
+    } catch (error) {
+        logger.error(`Failed to update commit info for deployment ${deploymentId}:`, error.message);
+        // Don't throw - this is not critical for deployment success
+    }
+};
 
 const CONFIG = {
     DEPLOYMENT_PORT: 4200,
@@ -48,34 +93,55 @@ const processJob = async (job) => {
         await updateDeploymentStatus(deploymentId, "running", token);
         // === Step 1: Clone Repository ===
         await logStep(projectId, deploymentId, "setup", "Cloning repository");
-        const localPath = await cloneRepo(repoUrl, projectId);
-        await logStep(projectId, deploymentId, "setup", "Repository cloned");
+        const repoInfo = await cloneRepo(repoUrl, projectId);
+        const localPath = repoInfo.path;
+
+        // Update deployment with commit information
+        await updateDeploymentWithCommitInfo(deploymentId, {
+            commitHash: repoInfo.commitHash,
+            commitMessage: repoInfo.commitMessage,
+            author: repoInfo.author,
+            commitDate: repoInfo.date
+        }, token);
+
+        await logStep(projectId, deploymentId, "setup", `Repository cloned - ${repoInfo.commitMessage.substring(0, 50)}...`);
 
         // === Step 2: AI Review ===
         await logStep(projectId, deploymentId, "setup", "Starting AI code review");
-        const { verdict, issues, issueCount, error: aiError } = await analyzeRepo(localPath, deploymentId);
+        const aiReviewResult = await analyzeRepo(localPath, deploymentId);
+        const { verdict, issues, issueCount, severity_breakdown, linter_count, ai_count } = aiReviewResult;
+
+        // Store AI review results for frontend display
+        await updateDeploymentWithAIResults(deploymentId, aiReviewResult, token);
 
         if (verdict === "deny") {
-            await logStep(projectId, deploymentId, "error", `AI denied deployment (${issueCount} issues)`);
-            fs.appendFileSync(logPath, `AI_REVIEW_DENIED: ${JSON.stringify(issues, null, 2)}\n`);
+            await logStep(projectId, deploymentId, "error", `AI denied deployment: ${severity_breakdown?.security || 0} security, ${severity_breakdown?.error || 0} errors`);
+            fs.appendFileSync(logPath, `AI_REVIEW_DENIED: ${JSON.stringify(aiReviewResult, null, 2)}\n`);
             await sendDeploymentNotification(userEmail, projectId, "ai_denied");
+            await updateDeploymentStatus(deploymentId, "failed", token);
             return;
         }
 
         if (verdict === "manual_review") {
-            await logStep(projectId, deploymentId, "error", `AI flagged for manual review (${issueCount} issues)`);
-            fs.appendFileSync(logPath, `AI_REVIEW_MANUAL: ${JSON.stringify(issues, null, 2)}\n`);
+            await logStep(projectId, deploymentId, "warning", `AI flagged for manual review: ${issueCount} issues found (${linter_count} linter, ${ai_count} AI)`);
+            fs.appendFileSync(logPath, `AI_REVIEW_MANUAL: ${JSON.stringify(aiReviewResult, null, 2)}\n`);
             await sendDeploymentNotification(userEmail, projectId, "ai_manual_review");
+            await updateDeploymentStatus(deploymentId, "pending_review", token);
             return;
         }
 
-        await logStep(projectId, deploymentId, "setup", "AI review passed");
+        await logStep(projectId, deploymentId, "setup", `AI review passed: ${issueCount} minor issues found`);
 
         // === Step 3: Fetch and Inject Environment Variables ===
         await logStep(projectId, deploymentId, "config", "Fetching environment variables");
         const envVars = await fetchEnvVars(projectId, token, logPath);
-        await injectEnv(localPath, envVars, projectId);
-        await logStep(projectId, deploymentId, "config", "Environment configured");
+        const envResult = await injectEnv(localPath, envVars, projectId);
+
+        if (envResult.skipped) {
+            await logStep(projectId, deploymentId, "config", "No environment variables - proceeding without .env file");
+        } else {
+            await logStep(projectId, deploymentId, "config", `Environment configured: ${envResult.variablesCount} variables`);
+        }
 
         // === Step 4: Build and Run Container ===
         await logStep(projectId, deploymentId, "deploy", "Starting container deployment");
@@ -89,78 +155,12 @@ const processJob = async (job) => {
         // === Step 5: Finalize ===
         await logStep(projectId, deploymentId, "complete", "Deployment successful");
         await updateDeploymentStatus(deploymentId, "success", token);
-        await notifySuccess(userEmail, projectId);
+        await sendDeploymentNotification(userEmail, projectId, "success");
 
     } catch (error) {
         // === Step 6: Handle Any Errors ===
         await handleDeploymentError(error, projectId, deploymentId, userEmail, logPath, token);
         throw error;
-    }
-};
-
-
-const fetchEnvVars = async (projectId, token, logPath) => {
-    try {
-        const { data } = await axios.get(`http://localhost:5000/env/${projectId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: CONFIG.API_TIMEOUT
-        });
-        return data;
-    } catch (err) {
-        const errorDetails = {
-            status: err.response?.status,
-            message: err.response?.data?.message || err.message,
-            timestamp: new Date().toISOString()
-        };
-        fs.appendFileSync(logPath, `ENV_FETCH_ERROR: ${JSON.stringify(errorDetails)}\n`);
-        throw new Error(`Environment fetch failed: ${errorDetails.message}`);
-    }
-};
-
-const cleanupExistingContainer = async (containerName) => {
-    try {
-        await exec(`docker rm -f ${containerName}`, { timeout: CONFIG.DOCKER_TIMEOUT });
-    } catch (err) {
-        if (!err.message.includes("No such container")) {
-            throw err;
-        }
-    }
-};
-
-const deployContainer = async (localPath, stack, subdomain, projectId, deploymentId) => {
-    return await buildAndRunContainer({
-        localPath,
-        stack,
-        subdomain,
-        projectId,
-        deploymentId
-    });
-};
-const logStep = async (projectId, deploymentId, type, content) => {
-    const validTypes = ["setup", "config", "deploy", "runtime", "error", "complete"];
-    const safeType = validTypes.includes(type) ? type : "runtime"; // default fallback
-
-    try {
-        await axios.post("http://localhost:5000/logs", {
-            projectId,
-            deploymentId,
-            type: safeType,
-            content,
-            timestamp: new Date().toISOString()
-        }, {
-            timeout: 5000
-        });
-    } catch (err) {
-        console.error("Logging failed:", err.message);
-    }
-};
-
-
-const notifySuccess = async (userEmail, projectId) => {
-    try {
-        await sendDeploymentNotification(userEmail, projectId, "success");
-    } catch (err) {
-        console.error("Success notification failed:", err.message);
     }
 };
 
@@ -174,7 +174,7 @@ const handleDeploymentError = async (error, projectId, deploymentId, userEmail, 
     fs.appendFileSync(logPath, `DEPLOYMENT_ERROR: ${JSON.stringify(errorDetails)}\n`);
 
     try {
-        await axios.post("http://localhost:5000/logs", {
+        await axios.post("http://localhost:5000/api/logs", {
             projectId,
             deploymentId,
             type: "error",

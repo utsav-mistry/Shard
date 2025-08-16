@@ -332,4 +332,31 @@ router.delete("/:id",
   deleteProject
 );
 
+// Check subdomain availability
+router.get("/check-subdomain/:subdomain", protect, async (req, res) => {
+  try {
+    const { subdomain } = req.params;
+    
+    // Validate subdomain format
+    const subdomainPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+    if (!subdomainPattern.test(subdomain)) {
+      return res.apiValidationError(
+        { subdomain: 'Invalid subdomain format' },
+        'Invalid subdomain format'
+      );
+    }
+    
+    const Project = require('../models/Project');
+    const existingProject = await Project.findOne({ subdomain });
+    
+    return res.apiSuccess({
+      available: !existingProject,
+      subdomain
+    }, existingProject ? 'Subdomain is already taken' : 'Subdomain is available');
+    
+  } catch (error) {
+    return res.apiServerError('Failed to check subdomain availability', error.message);
+  }
+});
+
 module.exports = router;

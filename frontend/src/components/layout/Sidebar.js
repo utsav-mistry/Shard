@@ -47,12 +47,12 @@ const Sidebar = ({ isOpen, onClose }) => {
         },
         {
           name: 'Projects',
-          href: '/dashboard/projects',
+          href: '/projects',
           icon: <Folder className="h-5 w-5" />
         },
         {
           name: 'Deployments',
-          href: '/dashboard/deployments',
+          href: '/deployments',
           icon: <Server className="h-5 w-5" />
         },
 
@@ -65,12 +65,12 @@ const Sidebar = ({ isOpen, onClose }) => {
       items: [
         {
           name: 'Documentation',
-          href: '/dashboard/docs',
+          href: '/docs',
           icon: <HelpCircle className="h-5 w-5" />
         },
-        { name: 'API Reference', href: '/dashboard/api-docs', icon: <Code className="h-4 w-4" /> },
-        { name: 'Support', href: '/dashboard/support', icon: <Bell className="h-4 w-4" /> },
-        { name: 'Changelog', href: '/dashboard/changelog', icon: <Layers className="h-4 w-4" /> },
+        { name: 'API Reference', href: '/api-docs', icon: <Code className="h-4 w-4" /> },
+        { name: 'Support', href: '/support', icon: <Bell className="h-4 w-4" /> },
+        { name: 'Changelog', href: '/changelog', icon: <Layers className="h-4 w-4" /> },
       ]
     },
     {
@@ -78,8 +78,8 @@ const Sidebar = ({ isOpen, onClose }) => {
       category: 'Account',
       icon: <Settings className="h-4 w-4" />,
       items: [
-        { name: 'Profile', href: '/dashboard/profile', icon: <User className="h-4 w-4" /> },
-        { name: 'Settings', href: '/dashboard/settings', icon: <Settings className="h-4 w-4" /> },
+        { name: 'Profile', href: '/profile', icon: <User className="h-4 w-4" /> },
+        { name: 'Settings', href: '/settings', icon: <Settings className="h-4 w-4" /> },
       ]
     }
   ];
@@ -229,14 +229,18 @@ const Sidebar = ({ isOpen, onClose }) => {
               Quick Actions
             </h3>
             <div className="space-y-3">
-              <button className="group relative w-full flex items-center justify-center px-6 py-3 text-base font-medium border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden">
+              <button 
+                onClick={() => navigate('/projects/new')}
+                className="group relative w-full flex items-center justify-center px-6 py-3 text-base font-medium border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden">
                 <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
                 <span className="relative z-10 flex items-center">
                   <Plus className="h-5 w-5 mr-2" />
                   New Project
                 </span>
               </button>
-              <button className="group relative w-full flex items-center justify-center px-6 py-3 text-base font-medium border-2 border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 hover:bg-transparent hover:text-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden">
+              <button 
+                onClick={() => navigate('/deployments/new')}
+                className="group relative w-full flex items-center justify-center px-6 py-3 text-base font-medium border-2 border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 hover:bg-transparent hover:text-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden">
                 <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform translate-x-full group-hover:translate-x-0" />
                 <span className="relative z-10 flex items-center">
                   <Zap className="h-5 w-5 mr-2" />

@@ -27,7 +27,19 @@ export const AuthProvider = ({ children }) => {
             const response = await api.get('/auth/profile');
             
             if (response.data && response.data.data) {
-                setCurrentUser(response.data.data);
+                const userData = response.data.data;
+                const userWithRole = {
+                    ...userData,
+                    role: userData.role || 'user' // Ensure role is set, default to 'user' if not provided
+                };
+                setCurrentUser(userWithRole);
+                
+                // Redirect to admin dashboard if user is admin and not already there
+                if (userWithRole.role === 'admin' && !window.location.pathname.startsWith('/admin')) {
+                    window.location.href = '/admin';
+                }
+                
+                return userWithRole;
             } else {
                 throw new Error('No user data received');
             }
@@ -87,16 +99,24 @@ export const AuthProvider = ({ children }) => {
                 localStorage.setItem('token', token);
                 api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
                 
-                // Update user state
-                setCurrentUser(user);
+                // Update user state with the full user object from response
+                const userWithRole = {
+                    ...user,
+                    role: user.role || 'user' // Ensure role is set, default to 'user' if not provided
+                };
+                setCurrentUser(userWithRole);
                 setError('');
                 
-                // Redirect to dashboard after a short delay
+                // Redirect based on role after a short delay
                 setTimeout(() => {
-                    window.location.href = '/dashboard';
+                    if (userWithRole.role === 'admin') {
+                        window.location.href = '/admin';
+                    } else {
+                        window.location.href = '/dashboard';
+                    }
                 }, 100);
                 
-                return user;
+                return userWithRole;
             } catch (err) {
                 console.error('Login error:', err);
                 const errorMessage = err.response?.data?.message || err.message || 'Failed to login. Please check your credentials.';
@@ -193,6 +213,8 @@ export const AuthProvider = ({ children }) => {
         const logout = () => {
             localStorage.removeItem('token');
             setCurrentUser(null);
+            // Redirect to login page after logout
+            window.location.href = '/auth/login';
         };
 
         const updateProfile = async (userData) => {

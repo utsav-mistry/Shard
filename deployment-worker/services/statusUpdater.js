@@ -8,7 +8,7 @@ import axios from 'axios';
  */
 const updateDeploymentStatus = async (deploymentId, status, token) => {
     try {
-        await axios.post("http://localhost:5000/deploy/update-status", {
+        await axios.post("http://localhost:5000/api/deploy/update-status", {
             deploymentId,
             status
         }, {

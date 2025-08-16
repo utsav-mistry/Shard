@@ -1,17 +1,21 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import axios from 'axios';
+import logger from '../utils/logger.js';
 
 const injectEnv = async (projectPath, envVars, projectId) => {
     const envFilePath = path.join(projectPath, ".env");
 
     try {
-        // Validate input
-        if (!Array.isArray(envVars)) {
-            throw new Error("Environment variables should be an array of { key, value }");
+        // Handle null, undefined, or non-array envVars
+        if (!envVars || !Array.isArray(envVars)) {
+            logger.info(`[Project ${projectId}] No environment variables provided - skipping .env creation`);
+            return {
+                success: true,
+                path: null,
+                variablesCount: 0,
+                skipped: true
+            };
         }
 
         // Filter out invalid entries and prepare .env content
@@ -25,11 +29,12 @@ const injectEnv = async (projectPath, envVars, projectId) => {
         );
 
         if (validEnvVars.length === 0) {
-            console.log(`[Project ${projectId}] No valid environment variables to inject for this project`);
+            logger.info(`[Project ${projectId}] No valid environment variables to inject - skipping .env creation`);
             return {
                 success: true,
-                path: envFilePath,
-                variablesCount: 0
+                path: null,
+                variablesCount: 0,
+                skipped: true
             };
         }
 
@@ -48,9 +53,9 @@ const injectEnv = async (projectPath, envVars, projectId) => {
         // Write .env file for Docker --env-file
         fs.writeFileSync(envFilePath, envContent, { encoding: "utf-8" });
 
-        console.log(`[Project ${projectId}] Environment variables injected: ${validEnvVars.length} variables`);
-        console.log(`[Project ${projectId}] Environment file created at: ${envFilePath}`);
-        console.log(`[Project ${projectId}] Variables: ${validEnvVars.map(env => env.key).join(', ')}`);
+        logger.info(`[Project ${projectId}] Environment variables injected: ${validEnvVars.length} variables`);
+        logger.info(`[Project ${projectId}] Environment file created at: ${envFilePath}`);
+        logger.info(`[Project ${projectId}] Variables: ${validEnvVars.map(env => env.key).join(', ')}`);
 
         return {
             success: true,
@@ -59,9 +64,48 @@ const injectEnv = async (projectPath, envVars, projectId) => {
             variables: validEnvVars.map(env => env.key)
         };
     } catch (error) {
-        console.error(`[Project ${projectId}] Environment injection failed:`, error.message);
+        logger.error(`[Project ${projectId}] Environment injection failed:`, error.message);
         throw new Error(`Failed to inject environment for project ${projectId}: ${error.message}`);
     }
 };
 
-export { injectEnv };
+export { injectEnv, fetchEnvVars };
+
+// Fetch environment variables for a project from backend API
+// Keeps env fetching logic centralized with env injection utilities
+async function fetchEnvVars(projectId, token, logPath) {
+    try {
+        const response = await axios.get(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/env/${projectId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000
+        });
+
+        if (response.data && response.data.success) {
+            return response.data.data || [];
+        } else if (response.data && Array.isArray(response.data)) {
+            return response.data;
+        } else {
+            return [];
+        }
+    } catch (err) {
+        if (err.response?.status === 404) {
+            logger.info(`No environment variables found for project ${projectId}`);
+            return [];
+        }
+
+        const errorDetails = {
+            status: err.response?.status,
+            message: err.response?.data?.message || err.message,
+            timestamp: new Date().toISOString()
+        };
+        try {
+            if (logPath) {
+                fs.appendFileSync(logPath, `ENV_FETCH_WARNING: ${JSON.stringify(errorDetails)}\n`);
+            }
+        } catch (_) {
+            // ignore file write errors
+        }
+        logger.warn(`Environment fetch failed for project ${projectId}: ${errorDetails.message}`);
+        return [];
+    }
+}

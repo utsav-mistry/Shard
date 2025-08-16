@@ -54,10 +54,7 @@ const useDeployments = (projectId = null) => {
 
   const createDeployment = async (deploymentData) => {
     try {
-      const response = await api.post(
-        projectId ? `/api/projects/${projectId}/deployments` : '/api/deployments',
-        deploymentData
-      );
+      const response = await api.post('/api/deploy', deploymentData);
       await fetchDeployments(); // Refresh the deployments list
       return { success: true, data: response.data };
     } catch (err) {

@@ -42,16 +42,40 @@ const DeploymentSchema = new mongoose.Schema(
             type: String,
             default: '',
         },
-        deploymentLogs: {
+        deploymentUrl: {
             type: String,
-            default: '',
         },
-        errorMessage: {
-            type: String,
-            trim: true,
-        },
-        buildTime: {
-            type: Number, // in milliseconds
+        environmentVariables: [{
+            key: String,
+            value: String,
+            secret: {
+                type: Boolean,
+                default: false
+            }
+        }],
+        aiReviewResults: {
+            verdict: String,
+            reason: String,
+            issue_count: Number,
+            severity_breakdown: {
+                security: { type: Number, default: 0 },
+                error: { type: Number, default: 0 },
+                warning: { type: Number, default: 0 },
+                style: { type: Number, default: 0 },
+                info: { type: Number, default: 0 }
+            },
+            issues: [{
+                tool: String,
+                severity: String,
+                file: String,
+                line: Number,
+                column: Number,
+                code: String,
+                message: String,
+                suggestion: String
+            }],
+            linter_count: Number,
+            ai_count: Number
         },
         deploymentTime: {
             type: Number, // in milliseconds

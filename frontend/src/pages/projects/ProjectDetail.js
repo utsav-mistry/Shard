@@ -36,10 +36,10 @@ const ProjectDetail = () => {
         }
         
         if (deploymentsResponse.data.success) {
-          // Filter deployments for this project on the client side if needed
-          const projectDeployments = deploymentsResponse.data.data.filter(
-            deployment => deployment.projectId === id
-          );
+          // Filter deployments for this project and sort by creation date (newest first)
+          const projectDeployments = deploymentsResponse.data.data
+            .filter(deployment => deployment.projectId === id)
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
           setDeployments(projectDeployments);
         } else {
           throw new Error(deploymentsResponse.data.message || 'Failed to load deployments');
@@ -113,20 +113,43 @@ const ProjectDetail = () => {
       // Handle standardized response
       if (response.data && response.data.success) {
         // Redirect to projects list after successful deletion
-        navigate('/projects', { 
-          state: { 
-            message: 'Project deleted successfully',
-            type: 'success'
-          } 
-        });
-      } else {
-        throw new Error(response.data?.message || 'Failed to delete project');
+        navigate('/projects');
       }
     } catch (err) {
       console.error('Error deleting project:', err);
       setError('Failed to delete project');
       setDeleteLoading(false);
+    } finally {
       setDeleteModalOpen(false);
+    }
+  };
+
+  // Trigger new deployment (Vercel-style)
+  const triggerDeployment = async () => {
+    try {
+      setLoading(true);
+      
+      // Create new deployment
+      const response = await api.post('/api/deploy', {
+        projectId: id,
+        repoUrl: project.repoUrl,
+        stack: project.stack,
+        subdomain: project.subdomain,
+        userEmail: 'user@example.com', // Replace with actual user email
+        branch: 'main' // Default branch, could be configurable
+      });
+
+      if (response.data.success) {
+        // Redirect to deployment progress page to show Vercel-style progress
+        navigate(`/deployments/${response.data.data._id}/progress`);
+      } else {
+        setError('Failed to trigger deployment');
+      }
+    } catch (err) {
+      console.error('Error triggering deployment:', err);
+      setError('Failed to trigger deployment');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -329,30 +352,42 @@ const ProjectDetail = () => {
       {/* Recent Deployments */}
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Recent Deployments</h2>
-          <Link
-            to={`/projects/${id}/deployments`}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
-          >
-            View all
-          </Link>
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Deployments</h2>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={triggerDeployment}
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Deploy
+            </button>
+            <Link
+              to={`/projects/${id}/deployments`}
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+            >
+              View all
+            </Link>
+          </div>
         </div>
         {deployments.length === 0 ? (
-          <div className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
-            <Server className="mx-auto h-12 w-12 text-gray-400 mb-2" />
-            <p>No deployments found</p>
-            <Link
-              to={`/projects/${id}/deploy`}
-              className="mt-2 inline-block text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+          <div className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+            <Server className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No deployments yet</h3>
+            <p className="text-sm mb-4">Deploy your project to see it live on the web.</p>
+            <button
+              onClick={triggerDeployment}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
-              Deploy this project
-            </Link>
+              Deploy Now
+            </button>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-750">
                 <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Commit
+                  </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Status
                   </th>
@@ -370,6 +405,21 @@ const ProjectDetail = () => {
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {deployments.slice(0, 5).map((deployment) => (
                   <tr key={deployment._id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          {deployment.commitMessage ? 
+                            deployment.commitMessage.length > 50 ? 
+                              `${deployment.commitMessage.substring(0, 50)}...` : 
+                              deployment.commitMessage 
+                            : 'No commit message'
+                          }
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {deployment.commitHash ? deployment.commitHash.substring(0, 8) : 'No commit hash'}
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(deployment.status)}
                     </td>

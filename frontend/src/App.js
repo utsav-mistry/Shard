@@ -8,7 +8,6 @@ import DashboardRedirect from './components/DashboardRedirect';
 // Layout components
 import MainLayout from './components/layout/MainLayout';
 import AuthLayout from './components/layout/AuthLayout';
-
 // Auth pages
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
@@ -64,7 +63,7 @@ function App() {
           <Router>
             <Routes>
               {/* Public Landing Page */}
-              <Route path="/" element={<LandingPage />} />
+              <Route path="/landing" element={<LandingPage />} />
 
               {/* Auth Routes */}
               <Route path="/auth" element={<AuthLayout />}>
@@ -79,12 +78,13 @@ function App() {
               <Route path="/app" element={<DashboardRedirect />} />
 
               {/* Protected Routes */}
-              <Route path="/dashboard" element={
+              <Route path="/" element={
                 <ProtectedRoute>
                   <MainLayout />
                 </ProtectedRoute>
               }>
-                <Route index element={<Dashboard />} />
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="dashboard" element={<Dashboard />} />
 
                 {/* Projects routes */}
                 <Route path="projects" element={<ProjectsList />} />
@@ -93,6 +93,7 @@ function App() {
 
                 {/* Deployments routes */}
                 <Route path="deployments" element={<DeploymentsList />} />
+                <Route path="deployments/new" element={<NewDeployment />} />
                 <Route path="deployments/new/:projectId" element={<NewDeployment />} />
                 <Route path="deployments/:id" element={<DeploymentDetail />} />
                 <Route path="deployments/:id/logs" element={<DeploymentLogs />} />
@@ -111,9 +112,6 @@ function App() {
                 {/* Profile route */}
                 <Route path="profile" element={<Profile />} />
                 
-                {/* Admin route */}
-                <Route path="admin" element={<Admin />} />
-                
                 {/* Documentation route */}
                 <Route path="docs" element={<Documentation />} />
                 
@@ -125,6 +123,22 @@ function App() {
                 
                 {/* Changelog route */}
                 <Route path="changelog" element={<Changelog />} />
+              </Route>
+
+              {/* Admin Routes - Separate Layout */}
+              <Route path="/admin" element={
+                <ProtectedRoute>
+                  <Admin />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Admin />} />
+                <Route path="users" element={<Admin />} />
+                <Route path="projects" element={<Admin />} />
+                <Route path="deployments" element={<Admin />} />
+                <Route path="services" element={<Admin />} />
+                <Route path="logs" element={<Admin />} />
+                <Route path="settings" element={<Admin />} />
+                <Route path="profile" element={<Admin />} />
               </Route>
             </Routes>
             <ThemeToggle className="fixed bottom-4 right-4" />

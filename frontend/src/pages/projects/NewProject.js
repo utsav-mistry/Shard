@@ -12,6 +12,7 @@ const NewProject = () => {
     repoUrl: '',
     stack: 'mern',
     subdomain: '',
+    envVars: []
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -52,7 +53,7 @@ const NewProject = () => {
       setSubdomainChecking(true);
       
       // Check subdomain availability via backend API
-      const response = await api.get(`/projects/check-subdomain/${formData.subdomain}`);
+      const response = await api.get(`/api/projects/check-subdomain/${formData.subdomain}`);
       setSubdomainAvailable(response.data.available);
       setSubdomainChecking(false);
     } catch (err) {
@@ -92,6 +93,32 @@ const NewProject = () => {
     setShowRepoSelector(false);
   };
 
+  // Add environment variable
+  const addEnvVar = () => {
+    setFormData(prev => ({
+      ...prev,
+      envVars: [...prev.envVars, { key: '', value: '', secret: false }]
+    }));
+  };
+
+  // Remove environment variable
+  const removeEnvVar = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      envVars: prev.envVars.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Update environment variable
+  const updateEnvVar = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      envVars: prev.envVars.map((env, i) => 
+        i === index ? { ...env, [field]: value } : env
+      )
+    }));
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -116,10 +143,37 @@ const NewProject = () => {
 
     try {
       setLoading(true);
-      const response = await api.post('/projects', formData);
+      
+      // Create project first
+      const projectData = {
+        name: formData.name,
+        repoUrl: formData.repoUrl,
+        stack: formData.stack,
+        subdomain: formData.subdomain
+      };
+      
+      const response = await api.post('/api/projects', projectData);
+      const projectId = response.data.data?._id || response.data._id;
+      
+      // Add environment variables if any
+      if (formData.envVars && formData.envVars.length > 0) {
+        const validEnvVars = formData.envVars.filter(env => env.key.trim() && env.value.trim());
+        
+        for (const envVar of validEnvVars) {
+          try {
+            await api.post(`/api/env/${projectId}`, {
+              key: envVar.key.trim(),
+              value: envVar.value.trim(),
+              secret: envVar.secret || false
+            });
+          } catch (envErr) {
+            console.warn('Failed to add environment variable:', envVar.key, envErr);
+          }
+        }
+      }
 
       // Redirect to the new project page
-      navigate(`/projects/${response.data._id}`);
+      navigate(`/projects/${projectId}`);
     } catch (err) {
       console.error('Error creating project:', err);
       setError(err.response?.data?.message || 'Failed to create project');
@@ -292,6 +346,65 @@ const NewProject = () => {
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Your project will be accessible at {formData.subdomain}.shard.dev
               </p>
+            )}
+          </div>
+
+          {/* Environment Variables */}
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Environment Variables (Optional)
+              </label>
+              <button
+                type="button"
+                onClick={addEnvVar}
+                className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 dark:text-indigo-300 dark:bg-indigo-900 dark:hover:bg-indigo-800"
+              >
+                Add Variable
+              </button>
+            </div>
+            
+            {formData.envVars.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                No environment variables added. You can add them later if needed.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {formData.envVars.map((envVar, index) => (
+                  <div key={index} className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      placeholder="KEY"
+                      value={envVar.key}
+                      onChange={(e) => updateEnvVar(index, 'key', e.target.value)}
+                      className="flex-1 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    />
+                    <input
+                      type={envVar.secret ? "password" : "text"}
+                      placeholder="VALUE"
+                      value={envVar.value}
+                      onChange={(e) => updateEnvVar(index, 'value', e.target.value)}
+                      className="flex-1 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    />
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={envVar.secret}
+                        onChange={(e) => updateEnvVar(index, 'secret', e.target.checked)}
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      />
+                      <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">Secret</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => removeEnvVar(index)}
+                      className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

@@ -230,7 +230,7 @@ const DeploymentsList = () => {
               </span>
             </button>
             <Link
-              to="/deploy/new"
+              to="/deployments/new"
               className="group relative inline-flex items-center px-4 py-2 bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 hover:bg-white-100 hover:text-black-900 dark:hover:bg-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-white-100 hover:scale-[1.02] active:scale-95"
             >
               <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform translate-x-full group-hover:translate-x-0"></span>
@@ -284,7 +284,7 @@ const DeploymentsList = () => {
               Get started by creating a new deployment.
             </p>
             <Link
-              to="/deploy/new"
+              to="/deployments/new"
               className="group relative inline-flex items-center px-4 py-2 bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 font-medium hover:bg-white-100 hover:text-black-900 dark:hover:bg-black-900 dark:hover:text-white-100 transition-colors duration-200 overflow-hidden border-2 border-black-900 dark:border-white-100"
             >
               <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>

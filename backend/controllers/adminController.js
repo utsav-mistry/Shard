@@ -174,10 +174,335 @@ const getAIServiceStatus = async (req, res) => {
     }
 };
 
+// CRUD Operations for Users
+const getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find({})
+            .select('-passwordHash')
+            .sort({ createdAt: -1 });
+        
+        return res.apiSuccess(users, 'Users retrieved successfully');
+    } catch (error) {
+        console.error("Error getting users:", error);
+        return res.apiServerError('Failed to get users', error.message);
+    }
+};
+
+const updateUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, email, role } = req.body;
+        
+        const user = await User.findByIdAndUpdate(
+            id,
+            { name, email, role },
+            { new: true, runValidators: true }
+        ).select('-passwordHash');
+        
+        if (!user) {
+            return res.apiNotFound('User not found');
+        }
+        
+        return res.apiSuccess(user, 'User updated successfully');
+    } catch (error) {
+        console.error("Error updating user:", error);
+        return res.apiServerError('Failed to update user', error.message);
+    }
+};
+
+const deleteUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const user = await User.findByIdAndDelete(id);
+        if (!user) {
+            return res.apiNotFound('User not found');
+        }
+        
+        return res.apiSuccess(null, 'User deleted successfully');
+    } catch (error) {
+        console.error("Error deleting user:", error);
+        return res.apiServerError('Failed to delete user', error.message);
+    }
+};
+
+// CRUD Operations for Projects
+const getAllProjects = async (req, res) => {
+    try {
+        const projects = await Project.find({})
+            .populate('ownerId', 'name email')
+            .sort({ createdAt: -1 });
+        
+        return res.apiSuccess(projects, 'Projects retrieved successfully');
+    } catch (error) {
+        console.error("Error getting projects:", error);
+        return res.apiServerError('Failed to get projects', error.message);
+    }
+};
+
+const updateProject = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, repoUrl, stack, subdomain, status } = req.body;
+        
+        const project = await Project.findByIdAndUpdate(
+            id,
+            { name, repoUrl, stack, subdomain, status },
+            { new: true, runValidators: true }
+        ).populate('ownerId', 'name email');
+        
+        if (!project) {
+            return res.apiNotFound('Project not found');
+        }
+        
+        return res.apiSuccess(project, 'Project updated successfully');
+    } catch (error) {
+        console.error("Error updating project:", error);
+        return res.apiServerError('Failed to update project', error.message);
+    }
+};
+
+const deleteProject = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const project = await Project.findByIdAndDelete(id);
+        if (!project) {
+            return res.apiNotFound('Project not found');
+        }
+        
+        return res.apiSuccess(null, 'Project deleted successfully');
+    } catch (error) {
+        console.error("Error deleting project:", error);
+        return res.apiServerError('Failed to delete project', error.message);
+    }
+};
+
+// CRUD Operations for Deployments
+const getAllDeployments = async (req, res) => {
+    try {
+        const deployments = await Deployment.find({})
+            .populate('projectId', 'name subdomain stack')
+            .sort({ createdAt: -1 })
+            .limit(100);
+        
+        return res.apiSuccess(deployments, 'Deployments retrieved successfully');
+    } catch (error) {
+        console.error("Error getting deployments:", error);
+        return res.apiServerError('Failed to get deployments', error.message);
+    }
+};
+
+const updateDeployment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, message } = req.body;
+        
+        const deployment = await Deployment.findByIdAndUpdate(
+            id,
+            { status, message },
+            { new: true, runValidators: true }
+        ).populate('projectId', 'name subdomain stack');
+        
+        if (!deployment) {
+            return res.apiNotFound('Deployment not found');
+        }
+        
+        return res.apiSuccess(deployment, 'Deployment updated successfully');
+    } catch (error) {
+        console.error("Error updating deployment:", error);
+        return res.apiServerError('Failed to update deployment', error.message);
+    }
+};
+
+const deleteDeployment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const deployment = await Deployment.findByIdAndDelete(id);
+        if (!deployment) {
+            return res.apiNotFound('Deployment not found');
+        }
+        
+        return res.apiSuccess(null, 'Deployment deleted successfully');
+    } catch (error) {
+        console.error("Error deleting deployment:", error);
+        return res.apiServerError('Failed to delete deployment', error.message);
+    }
+};
+
+// Generic database CRUD operations
+const getTableData = async (req, res) => {
+    try {
+        const { tableName } = req.params;
+        let data = [];
+        
+        switch (tableName) {
+            case 'users':
+                data = await User.find({}).select('-passwordHash').sort({ createdAt: -1 });
+                break;
+            case 'projects':
+                data = await Project.find({}).populate('ownerId', 'name email').sort({ createdAt: -1 });
+                break;
+            case 'deployments':
+                data = await Deployment.find({}).populate('projectId', 'name subdomain').sort({ createdAt: -1 }).limit(100);
+                break;
+            case 'logs':
+                // For logs, we'll return recent entries
+                data = [];
+                break;
+            default:
+                return res.apiBadRequest('Invalid table name');
+        }
+        
+        return res.apiSuccess(data, `${tableName} data retrieved successfully`);
+    } catch (error) {
+        console.error(`Error getting ${req.params.tableName} data:`, error);
+        return res.apiServerError(`Failed to get ${req.params.tableName} data`, error.message);
+    }
+};
+
+const createRecord = async (req, res) => {
+    try {
+        const { tableName } = req.params;
+        const recordData = req.body;
+        let newRecord;
+        
+        switch (tableName) {
+            case 'users':
+                newRecord = new User(recordData);
+                await newRecord.save();
+                newRecord = await User.findById(newRecord._id).select('-passwordHash');
+                break;
+            case 'projects':
+                newRecord = new Project(recordData);
+                await newRecord.save();
+                newRecord = await Project.findById(newRecord._id).populate('ownerId', 'name email');
+                break;
+            case 'deployments':
+                newRecord = new Deployment(recordData);
+                await newRecord.save();
+                newRecord = await Deployment.findById(newRecord._id).populate('projectId', 'name subdomain');
+                break;
+            default:
+                return res.apiBadRequest('Invalid table name');
+        }
+        
+        return res.apiSuccess(newRecord, `${tableName.slice(0, -1)} created successfully`);
+    } catch (error) {
+        console.error(`Error creating ${req.params.tableName} record:`, error);
+        return res.apiServerError(`Failed to create ${req.params.tableName} record`, error.message);
+    }
+};
+
+const updateRecord = async (req, res) => {
+    try {
+        const { tableName, id } = req.params;
+        const recordData = req.body;
+        let updatedRecord;
+        
+        switch (tableName) {
+            case 'users':
+                updatedRecord = await User.findByIdAndUpdate(
+                    id,
+                    recordData,
+                    { new: true, runValidators: true }
+                ).select('-passwordHash');
+                break;
+            case 'projects':
+                updatedRecord = await Project.findByIdAndUpdate(
+                    id,
+                    recordData,
+                    { new: true, runValidators: true }
+                ).populate('ownerId', 'name email');
+                break;
+            case 'deployments':
+                updatedRecord = await Deployment.findByIdAndUpdate(
+                    id,
+                    recordData,
+                    { new: true, runValidators: true }
+                ).populate('projectId', 'name subdomain');
+                break;
+            default:
+                return res.apiBadRequest('Invalid table name');
+        }
+        
+        if (!updatedRecord) {
+            return res.apiNotFound(`${tableName.slice(0, -1)} not found`);
+        }
+        
+        return res.apiSuccess(updatedRecord, `${tableName.slice(0, -1)} updated successfully`);
+    } catch (error) {
+        console.error(`Error updating ${req.params.tableName} record:`, error);
+        return res.apiServerError(`Failed to update ${req.params.tableName} record`, error.message);
+    }
+};
+
+const deleteRecord = async (req, res) => {
+    try {
+        const { tableName, id } = req.params;
+        let deletedRecord;
+        
+        switch (tableName) {
+            case 'users':
+                deletedRecord = await User.findByIdAndDelete(id);
+                break;
+            case 'projects':
+                deletedRecord = await Project.findByIdAndDelete(id);
+                break;
+            case 'deployments':
+                deletedRecord = await Deployment.findByIdAndDelete(id);
+                break;
+            default:
+                return res.apiBadRequest('Invalid table name');
+        }
+        
+        if (!deletedRecord) {
+            return res.apiNotFound(`${tableName.slice(0, -1)} not found`);
+        }
+        
+        return res.apiSuccess(null, `${tableName.slice(0, -1)} deleted successfully`);
+    } catch (error) {
+        console.error(`Error deleting ${req.params.tableName} record:`, error);
+        return res.apiServerError(`Failed to delete ${req.params.tableName} record`, error.message);
+    }
+};
+
+const getTables = async (req, res) => {
+    try {
+        const tables = [
+            { name: 'users', count: await User.countDocuments() },
+            { name: 'projects', count: await Project.countDocuments() },
+            { name: 'deployments', count: await Deployment.countDocuments() },
+            { name: 'logs', count: 0 }
+        ];
+        
+        return res.apiSuccess(tables, 'Tables retrieved successfully');
+    } catch (error) {
+        console.error("Error getting tables:", error);
+        return res.apiServerError('Failed to get tables', error.message);
+    }
+};
+
 module.exports = {
     getSystemStats,
     getActiveDeployments,
     getSystemLogs,
     getWorkerStatus,
-    getAIServiceStatus
+    getAIServiceStatus,
+    getAllUsers,
+    updateUser,
+    deleteUser,
+    getAllProjects,
+    updateProject,
+    deleteProject,
+    getAllDeployments,
+    updateDeployment,
+    deleteDeployment,
+    // Generic database CRUD
+    getTableData,
+    createRecord,
+    updateRecord,
+    deleteRecord,
+    getTables
 };

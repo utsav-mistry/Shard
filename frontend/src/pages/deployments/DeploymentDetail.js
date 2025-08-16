@@ -13,6 +13,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import PageTemplate from '../../components/layout/PageTemplate';
+import CodeIssuesList from '../../components/CodeIssuesList';
 
 // Helper function to get deployment URL
 const getDeploymentUrl = (subdomain) => {
@@ -153,7 +154,7 @@ const DeploymentDetail = () => {
   if (loading) {
     return (
       <PageTemplate title="Loading Deployment...">
-        <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+        <div className="min-h-screen bg-white dark:bg-black-900 flex items-center justify-center">
           <div className="animate-pulse">
             <div className="h-12 w-12 border-4 border-black-900 dark:border-white-100 border-t-transparent rounded-full animate-spin"></div>
           </div>
@@ -165,23 +166,23 @@ const DeploymentDetail = () => {
   if (error) {
     return (
       <PageTemplate title="Error">
-        <div className="bg-white-100 dark:bg-black-900 p-6 border-2 border-black-900 dark:border-white-100">
+        <div className="bg-red-50 dark:bg-red-900/20 p-4 border-2 border-red-600 dark:border-red-400">
           <div className="flex">
             <div className="flex-shrink-0">
-              <AlertTriangle className="h-5 w-5 text-black-900 dark:text-white-100" />
+              <AlertTriangle className="h-5 w-5 text-red-400" />
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-black-900 dark:text-white-100">
+              <h3 className="text-lg font-bold text-red-800 dark:text-red-200">
                 Error loading deployment
               </h3>
-              <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+              <div className="mt-2 text-sm text-red-700 dark:text-red-300">
                 {error}
               </div>
               <div className="mt-4">
                 <button
                   type="button"
                   onClick={() => window.location.reload()}
-                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-none shadow-sm text-white bg-black-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-900 dark:bg-white-100 dark:text-black-900 dark:hover:bg-gray-200 dark:focus:ring-white-100"
+                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                 >
                   <RefreshCw className="mr-1.5 h-4 w-4" />
                   Try Again
@@ -197,232 +198,178 @@ const DeploymentDetail = () => {
   if (!deployment || !project) {
     return (
       <PageTemplate title="Deployment Not Found">
-        <div className="bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-200 p-4 rounded-md flex items-center">
-          <AlertTriangle className="h-5 w-5 mr-2" />
-          Deployment or project not found
+        <div className="min-h-screen bg-white dark:bg-black-900 flex items-center justify-center">
+          <div className="text-center border-2 border-black-900 dark:border-white-100 p-8">
+            <AlertTriangle className="mx-auto h-12 w-12 text-red-600 dark:text-red-400" />
+            <h3 className="mt-4 text-lg font-bold text-black-900 dark:text-white-100">Deployment not found</h3>
+            <p className="mt-2 text-sm text-black-600 dark:text-white-400">
+              The deployment you're looking for doesn't exist or has been removed.
+            </p>
+          </div>
         </div>
       </PageTemplate>
     );
   }
 
   return (
-    <PageTemplate title={`Deployment for ${project?.name || 'Unknown Project'}`}>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Main content */}
-        <div className="lg:col-span-2">
-          <div className="border-2 border-black-900 dark:border-white-100 mb-6">
-            <div className="px-6 py-4 border-b-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900">
-              <h3 className="text-lg font-medium text-black-900 dark:text-white-100">
-                Deployment Information
-              </h3>
-            </div>
-            <div className="p-6">
-              <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
-                <div>
-                  <dt className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Project
-                  </dt>
-                  <dd className="mt-1 text-sm text-black-900 dark:text-white-100">
-                    {project?.name || 'N/A'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Environment
-                  </dt>
-                  <dd className="mt-1 text-sm text-black-900 dark:text-white-100">
-                    {deployment.environment || 'Production'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Branch
-                  </dt>
-                  <dd className="mt-1 text-sm text-black-900 dark:text-white-100">
-                    {deployment.branch || 'main'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Commit
-                  </dt>
-                  <dd className="mt-1 text-sm">
-                    {deployment.commitHash ? (
-                      <a
-                        href={`https://github.com/${project?.repo}/commit/${deployment.commitHash}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center border-b border-black-900 dark:border-white-100 hover:border-transparent hover:bg-black-900 hover:text-white-100 dark:hover:bg-white-100 dark:hover:text-black-900 px-1 transition-colors duration-200"
-                      >
-                        {deployment.commitHash.substring(0, 7)}
-                        <ExternalLink className="ml-1 h-3 w-3" />
-                      </a>
-                    ) : 'N/A'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Started
-                  </dt>
-                  <dd className="mt-1 text-sm text-black-900 dark:text-white-100">
-                    {new Date(deployment.createdAt).toLocaleString()}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Duration
-                  </dt>
-                  <dd className="mt-1 text-sm text-black-900 dark:text-white-100">
-                    {formatDuration(deployment.createdAt, deployment.finishedAt)}
-                  </dd>
-                </div>
-              </dl>
-            </div>
+    <div className="min-h-screen bg-white dark:bg-black-900">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 border-b-2 border-black-900 dark:border-white-100 pb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-black-900 dark:text-white-100">{deployment.name || 'Deployment Details'}</h1>
+            <p className="mt-2 text-base text-black-600 dark:text-white-400">
+              Deployment for {project?.name || 'Unknown Project'}
+            </p>
           </div>
+          <div className="flex items-center space-x-4">
+            <Link
+              to="/deployments"
+              className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden hover:scale-[1.02] active:scale-95"
+            >
+              <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
+              <span className="relative z-10 flex items-center">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Deployments
+              </span>
+            </Link>
+            {getStatusBadge(deployment.status)}
+          </div>
+        </div>
 
-          {/* Environment variables used */}
-          <div className="border-2 border-black-900 dark:border-white-100 mb-6">
-            <div className="px-6 py-4 border-b-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900">
-              <h3 className="text-lg font-medium text-black-900 dark:text-white-100">
-                Environment Configuration
-              </h3>
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Deployment Information */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="border-2 border-black-900 dark:border-white-100">
+              <div className="px-6 py-4 border-b-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900">
+                <h3 className="text-lg font-bold text-black-900 dark:text-white-100">Deployment Information</h3>
+              </div>
+              <div className="p-6">
+                <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-sm font-medium text-black-500 dark:text-white-400">Project</dt>
+                    <dd className="mt-1 text-sm font-bold text-black-900 dark:text-white-100">{project?.name || 'N/A'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-black-500 dark:text-white-400">Environment</dt>
+                    <dd className="mt-1 text-sm font-bold text-black-900 dark:text-white-100">{deployment.environment || 'Production'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-black-500 dark:text-white-400">Branch</dt>
+                    <dd className="mt-1 text-sm font-bold text-black-900 dark:text-white-100">{deployment.branch || 'main'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-black-500 dark:text-white-400">Commit</dt>
+                    <dd className="mt-1 text-sm">
+                      {deployment.commitHash ? (
+                        <a
+                          href={`https://github.com/${project?.repo}/commit/${deployment.commitHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center border-b-2 border-black-900 dark:border-white-100 hover:border-transparent hover:bg-black-900 hover:text-white-100 dark:hover:bg-white-100 dark:hover:text-black-900 px-1 transition-colors duration-200 font-bold"
+                        >
+                          {deployment.commitHash.substring(0, 7)}
+                          <ExternalLink className="ml-1 h-3 w-3" />
+                        </a>
+                      ) : 'N/A'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-black-500 dark:text-white-400">Started</dt>
+                    <dd className="mt-1 text-sm font-bold text-black-900 dark:text-white-100">
+                      {new Date(deployment.createdAt).toLocaleString()}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-black-500 dark:text-white-400">Duration</dt>
+                    <dd className="mt-1 text-sm font-bold text-black-900 dark:text-white-100">
+                      {formatDuration(deployment.createdAt, deployment.finishedAt)}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
             </div>
-            <div className="p-6">
-              <p className="text-sm text-gray-700 dark:text-gray-300">
-                Environment variables are not shown for security reasons.
-              </p>
-            </div>
-            <div className="p-6">
-              {deployment.environmentVariables && deployment.environmentVariables.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-750">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Key
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Value
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {deployment.environmentVariables.map((env, index) => (
-                        <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-750">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white-100">
-                            {env.key}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                            {env.secret ? '••••••••' : env.value}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No environment variables used for this deployment
-                </p>
+
+            {/* Actions */}
+            <div className="flex flex-wrap gap-4">
+              <Link
+                to={`/deployments/${deployment._id}/logs`}
+                className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden hover:scale-[1.02] active:scale-95"
+              >
+                <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
+                <span className="relative z-10">View Logs</span>
+              </Link>
+              <Link
+                to={`/deployments/${deployment._id}/progress`}
+                className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden hover:scale-[1.02] active:scale-95"
+              >
+                <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
+                <span className="relative z-10">View Progress</span>
+              </Link>
+              {deployment.status === 'failed' && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await api.post(`/api/deploy/retry/${deployment._id}`, {});
+                      navigate('/deployments');
+                    } catch (err) {
+                      console.error('Error retrying deployment:', err);
+                      setError('Failed to retry deployment');
+                    }
+                  }}
+                  className="group relative inline-flex items-center px-4 py-2 bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 hover:bg-white-100 hover:text-black-900 dark:hover:bg-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-white-100 hover:scale-[1.02] active:scale-95"
+                >
+                  <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform translate-x-full group-hover:translate-x-0"></span>
+                  <span className="relative z-10 flex items-center">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Retry Deployment
+                  </span>
+                </button>
               )}
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-between items-center">
-            <Link
-              to={`/deployments/${deployment._id}/logs`}
-              className="inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-sm font-medium rounded-none text-black-900 dark:text-white-100 bg-white-100 dark:bg-black-900 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-900 dark:focus:ring-white-100 transition-all duration-200"
-            >
-              View Logs
-            </Link>
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Deployment URL */}
+            {deployment.status === 'success' && project.subdomain && (
+              <div className="border-2 border-black-900 dark:border-white-100">
+                <div className="px-6 py-4 border-b-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900">
+                  <h3 className="text-lg font-bold text-black-900 dark:text-white-100">Live Site</h3>
+                </div>
+                <div className="p-6">
+                  <a
+                    href={getDeploymentUrl(project.subdomain)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center border-b-2 border-black-900 dark:border-white-100 hover:border-transparent hover:bg-black-900 hover:text-white-100 dark:hover:bg-white-100 dark:hover:text-black-900 px-1 transition-colors duration-200 font-bold"
+                  >
+                    {getDeploymentUrl(project.subdomain)}
+                    <ExternalLink className="ml-1 h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+            )}
 
-            {deployment.status === 'failed' && (
-              <button
-                onClick={async () => {
-                  try {
-                    await api.post(
-                      `/api/deploy/retry/${deployment._id}`,
-                      {},
-                      {
-                        headers: {
-                          Authorization: `Bearer ${localStorage.getItem('token')}`,
-                        },
-                      }
-                    );
-                    navigate('/deployments');
-                  } catch (err) {
-                    console.error('Error retrying deployment:', err);
-                    setError('Failed to retry deployment');
-                  }
-                }}
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry Deployment
-              </button>
+            {/* AI Code Review Results */}
+            {deployment.aiReviewResults && (
+              <div className="border-2 border-black-900 dark:border-white-100">
+                <div className="px-6 py-4 border-b-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900">
+                  <h3 className="text-lg font-bold text-black-900 dark:text-white-100">Code Review Results</h3>
+                </div>
+                <div className="p-6">
+                  <CodeIssuesList 
+                    issues={deployment.aiReviewResults.issues || []}
+                    title="AI Analysis & Linter Results"
+                  />
+                </div>
+              </div>
             )}
           </div>
         </div>
       </div>
-
-      {deployment.status === 'success' && project.subdomain && (
-        <div className="mt-6">
-          <dl>
-            <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-              Deployment URL
-            </dt>
-            <dd className="mt-1 text-sm text-gray-900 dark:text-white">
-              <a
-                href={getDeploymentUrl(project.subdomain)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline dark:text-blue-400"
-              >
-                {getDeploymentUrl(project.subdomain)}
-                <ExternalLink className="ml-1 h-3 w-3 inline-block" />
-              </a>
-            </dd>
-          </dl>
-        </div>
-      )}
-
-      <div className="mt-6">
-        <div className="flex justify-between items-center">
-          <Link
-            to={`/deployments/${deployment._id}/logs`}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-none text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-650 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-900 dark:focus:ring-offset-gray-800"
-          >
-            View Logs
-          </Link>
-
-          {deployment.status === 'failed' && (
-            <button
-              onClick={async () => {
-                try {
-                  await api.post(
-                    `/api/deploy/retry/${deployment._id}`,
-                    {},
-                    {
-                      headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`,
-                      },
-                    }
-                  );
-                  navigate('/deployments');
-                } catch (err) {
-                  console.error('Error retrying deployment:', err);
-                  setError('Failed to retry deployment');
-                }
-              }}
-              className="inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-sm font-medium text-black-900 dark:text-white-100 bg-white-100 dark:bg-black-900 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-900 dark:focus:ring-white-100 transition-all duration-200"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry Deployment
-            </button>
-          )}
-        </div>
-      </div>
-    </PageTemplate>
+    </div>
   );
 };
 

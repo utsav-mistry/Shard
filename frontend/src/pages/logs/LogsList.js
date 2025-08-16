@@ -161,86 +161,84 @@ const LogsList = () => {
 
     if (loading) {
         return (
-            <PageTemplate title="Loading Logs...">
-                <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-                </div>
-            </PageTemplate>
+            <div className="min-h-screen bg-white dark:bg-black-900 flex items-center justify-center">
+                <div className="animate-spin h-12 w-12 border-t-2 border-b-2 border-black-900 dark:border-white-100"></div>
+            </div>
         );
     }
 
     if (error) {
         return (
-            <PageTemplate title="Error">
-                <div className="bg-red-100 dark:bg-red-900/30 border-l-4 border-red-500 dark:border-red-400 p-4 rounded-md flex items-start">
-                    <AlertTriangle className="h-5 w-5 text-red-700 dark:text-red-400 mr-3 mt-0.5 flex-shrink-0" />
-                    <div>
-                        <h3 className="text-sm font-medium text-red-800 dark:text-red-200">Error loading logs</h3>
-                        <div className="mt-1 text-sm text-red-700 dark:text-red-300">
-                            {error}
+            <div className="min-h-screen bg-white dark:bg-black-900 flex items-center justify-center">
+                <div className="bg-red-50 dark:bg-red-900/20 p-4 border-2 border-red-600 dark:border-red-400">
+                    <div className="flex">
+                        <div className="flex-shrink-0">
+                            <AlertTriangle className="h-5 w-5 text-red-400" />
                         </div>
-                        <div className="mt-3">
-                            <button
-                                onClick={() => window.location.reload()}
-                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                            >
-                                <RefreshCw className="mr-1.5 h-3 w-3" />
-                                Try Again
-                            </button>
+                        <div className="ml-3">
+                            <h3 className="text-lg font-bold text-red-800 dark:text-red-200">Error loading logs</h3>
+                            <div className="mt-2 text-sm text-red-700 dark:text-red-300">
+                                {error}
+                            </div>
+                            <div className="mt-4">
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                >
+                                    <RefreshCw className="mr-1.5 h-4 w-4" />
+                                    Try Again
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </PageTemplate>
+            </div>
         );
     }
 
     return (
-        <PageTemplate title="Logs">
-            <div className="relative mx-auto px-4 sm:px-6 lg:px-8 py-8 text-black-900 dark:text-white-100">
+        <div className="min-h-screen bg-white dark:bg-black-900">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Subtle grid background */}
                 <div className="absolute inset-0 -z-10 overflow-hidden opacity-10 dark:opacity-5">
                     <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxwYXRoIGQ9Ik0zMCAxMGMxMS4wNDYgMCAyMCA4Ljk1NCAyMCAyMHMtOC45NTQgMjAtMjAgMjBzLTIwLTguOTU0LTIwLTIwIDguOTU0LTIwIDIwLTIweiIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEiIGZpbGw9Im5vbmUiIC8+Cjwvc3ZnPg==')] dark:invert"></div>
                 </div>
 
                 {/* Header */}
-                <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8"
-                >
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 border-b-2 border-black-900 dark:border-white-100 pb-6">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Logs</h1>
-                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        <h1 className="text-3xl font-bold text-black-900 dark:text-white-100">Logs</h1>
+                        <p className="mt-2 text-base text-black-600 dark:text-white-400">
                             View and manage your application logs
                         </p>
                     </div>
                     <div className="mt-4 sm:mt-0 flex space-x-3">
                         <button
                             onClick={() => setShowFilters(!showFilters)}
-                            className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                            className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden hover:scale-[1.02] active:scale-95"
                         >
-                            <Filter className="h-4 w-4 mr-2" />
-                            {showFilters ? 'Hide Filters' : 'Show Filters'}
+                            <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
+                            <span className="relative z-10 flex items-center">
+                                <Filter className="h-4 w-4 mr-2" />
+                                {showFilters ? 'Hide Filters' : 'Show Filters'}
+                            </span>
                         </button>
                         <button
                             onClick={downloadLogs}
                             disabled={filteredLogs.length === 0}
-                            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="group relative inline-flex items-center px-4 py-2 bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 hover:bg-white-100 hover:text-black-900 dark:hover:bg-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-white-100 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                         >
-                            <Download className="h-4 w-4 mr-2" />
-                            Download Logs
+                            <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform translate-x-full group-hover:translate-x-0"></span>
+                            <span className="relative z-10 flex items-center">
+                                <Download className="h-4 w-4 mr-2" />
+                                Download Logs
+                            </span>
                         </button>
                     </div>
-                </motion.div>
+                </div>
 
                 {/* Search and filters */}
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.1 }}
-                    className="bg-white dark:bg-black-800/50 shadow-sm rounded-xl p-6 mb-8 border-2 border-black-900/10 dark:border-white/10 backdrop-blur-sm"
-                >
+                <div className="bg-white dark:bg-black-900 border-2 border-black-900 dark:border-white-100 p-6 mb-8">
                     <div className="flex flex-col space-y-6">
                         {/* Search */}
                         <div className="relative w-full">
@@ -249,7 +247,7 @@ const LogsList = () => {
                             </div>
                             <input
                                 type="text"
-                                className="block w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-700 focus:border-transparent rounded-xl text-sm transition-all duration-200"
+                                className="block w-full pl-10 pr-3 py-2.5 border-2 border-black-900 dark:border-white-100 bg-white dark:bg-black-900 text-black-900 dark:text-white-100 placeholder-black-500 dark:placeholder-white-400 focus:outline-none focus:ring-0 focus:border-black-900 dark:focus:border-white-100 text-sm transition-all duration-200"
                                 placeholder="Search logs..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -258,13 +256,7 @@ const LogsList = () => {
 
                         {/* Advanced filters */}
                         {showFilters && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.3 }}
-                                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 pt-6 border-t border-gray-200 dark:border-gray-700"
-                            >
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 pt-6 border-t-2 border-black-900 dark:border-white-100">
                                 {/* Project filter */}
                                 <div>
                                     <label htmlFor="project-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -275,17 +267,11 @@ const LogsList = () => {
                                             id="project-filter"
                                             value={projectFilter}
                                             onChange={(e) => setProjectFilter(e.target.value)}
-                                            className="block w-full pl-3 pr-10 py-2.5 border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-700 focus:border-transparent rounded-xl text-sm transition-all duration-200 cursor-pointer appearance-none"
-                                            style={{
-                                                WebkitAppearance: 'none',
-                                                MozAppearance: 'none',
-                                                textIndent: '1px',
-                                                textOverflow: ''
-                                            }}
+                                            className="block w-full pl-3 pr-10 py-2.5 border-2 border-black-900 dark:border-white-100 bg-white dark:bg-black-900 text-black-900 dark:text-white-100 focus:outline-none focus:ring-0 focus:border-black-900 dark:focus:border-white-100 text-sm transition-all duration-200 cursor-pointer appearance-none"
                                         >
-                                            <option value="all" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">All Projects</option>
+                                            <option value="all" className="bg-white dark:bg-black-900 text-black-900 dark:text-white-100">All Projects</option>
                                             {projects.map(project => (
-                                                <option key={project._id} value={project._id} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                                                <option key={project._id} value={project._id} className="bg-white dark:bg-black-900 text-black-900 dark:text-white-100">
                                                     {project.name}
                                                 </option>
                                             ))}
@@ -388,25 +374,18 @@ const LogsList = () => {
                                         </div>
                                     </div>
                                 </div>
-                            </motion.div>
+                            </div>
                         )}
                     </div>
-                </motion.div>
+                </div>
 
                 {/* Logs list */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.2 }}
-                    className="bg-white dark:bg-gray-800 shadow-sm rounded-xl overflow-hidden"
-                >
+                <div className="bg-white dark:bg-black-900 border-2 border-black-900 dark:border-white-100 overflow-hidden">
                     {filteredLogs.length === 0 ? (
                         <div className="text-center py-12">
-                            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
-                                <AlertTriangle className="h-6 w-6 text-gray-600 dark:text-gray-400" />
-                            </div>
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">No logs found</h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            <AlertTriangle className="mx-auto h-12 w-12 text-black-600 dark:text-white-400 mb-4" />
+                            <h3 className="text-lg font-bold text-black-900 dark:text-white-100 mb-2">No logs found</h3>
+                            <p className="text-sm text-black-600 dark:text-white-400">
                                 {searchTerm || projectFilter !== 'all' || deploymentFilter !== 'all' || typeFilter !== 'all' || dateFilter !== 'all'
                                     ? 'Try adjusting your search or filter criteria'
                                     : 'No logs have been recorded yet'}
@@ -414,37 +393,37 @@ const LogsList = () => {
                         </div>
                     ) : (
                         <div className="overflow-auto max-h-[600px]">
-                            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                <thead className="bg-gray-50 dark:bg-gray-750">
+                            <table className="min-w-full divide-y divide-black-900 dark:divide-white-100">
+                                <thead className="bg-white-100 dark:bg-black-800 border-b-2 border-black-900 dark:border-white-100">
                                     <tr>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
                                             Timestamp
                                         </th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
                                             Project
                                         </th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
                                             Type
                                         </th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
                                             Message
                                         </th>
-                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        <th scope="col" className="px-6 py-3 text-right text-xs font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
                                             Actions
                                         </th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                <tbody className="bg-white dark:bg-black-900 divide-y divide-black-900 dark:divide-white-100">
                                     {filteredLogs.map((log) => (
-                                        <tr key={log._id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                        <tr key={log._id} className="hover:bg-black-50 dark:hover:bg-white-50 transition-colors duration-200">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-black-600 dark:text-white-400">
                                                 {new Date(log.createdAt).toLocaleString()}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                <div className="text-sm font-bold text-black-900 dark:text-white-100">
                                                     <Link
                                                         to={`/projects/${log.projectId}`}
-                                                        className="hover:text-indigo-600 dark:hover:text-indigo-400"
+                                                        className="border-b-2 border-transparent hover:border-black-900 dark:hover:border-white-100 transition-all duration-200"
                                                     >
                                                         {getProjectName(log.projectId)}
                                                     </Link>
@@ -453,10 +432,10 @@ const LogsList = () => {
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 {getLogTypeBadge(log.type)}
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">
+                                            <td className="px-6 py-4 text-sm font-mono text-black-900 dark:text-white-100 max-w-xs truncate">
                                                 {log.content}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 dark:text-gray-400">
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-black-600 dark:text-white-400">
                                                 {/* Actions */}
                                             </td>
                                         </tr>
@@ -465,9 +444,9 @@ const LogsList = () => {
                             </table>
                         </div>
                     )}
-                </motion.div>
+                </div>
             </div>
-        </PageTemplate>
+        </div>
     );
 };
 

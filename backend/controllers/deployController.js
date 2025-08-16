@@ -138,6 +138,35 @@ const getDeployments = async (req, res) => {
     }
 };
 
+const updateDeploymentStep = async (req, res) => {
+    const { deploymentId, step, message } = req.body;
+
+    try {
+        const deployment = await Deployment.findById(deploymentId);
+        if (!deployment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Deployment not found'
+            });
+        }
+
+        // Log the step update
+        await logService.addLog(deployment.projectId, deploymentId, step, message);
+
+        return res.json({
+            success: true,
+            message: 'Deployment step updated successfully'
+        });
+    } catch (err) {
+        console.error('Error updating deployment step:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to update deployment step',
+            error: err.message
+        });
+    }
+};
+
 const updateDeploymentStatus = async (req, res) => {
     const { deploymentId, status } = req.body;
 
@@ -164,4 +193,4 @@ const updateDeploymentStatus = async (req, res) => {
     }
 };
 
-module.exports = { createDeployment, getDeployments, updateDeploymentStatus };
+module.exports = { createDeployment, getDeployments, updateDeploymentStatus, updateDeploymentStep };

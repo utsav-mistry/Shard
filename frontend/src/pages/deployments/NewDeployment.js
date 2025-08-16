@@ -23,7 +23,12 @@ const NewDeployment = () => {
   const [loadingCommits, setLoadingCommits] = useState(false);
 
   useEffect(() => {
-    const fetchProjectDetails = async () => {
+    const fetchData = async () => {
+      // If no projectId in params, we're in general new deployment mode
+      if (!projectId) {
+        setLoading(false);
+        return;
+      }  
       try {
         setLoading(true);
         
@@ -63,7 +68,7 @@ const NewDeployment = () => {
       }
     };
 
-    fetchProjectDetails();
+    fetchData();
   }, [projectId, fetchBranches]);
 
   const fetchBranches = async (repoUrl) => {
@@ -346,7 +351,7 @@ const NewDeployment = () => {
                 No environment variables defined for this project. 
                 <button 
                   type="button"
-                  onClick={() => navigate(`/dashboard/environment/${projectId}/new`)}
+                  onClick={() => navigate(`/environment/${projectId}/new`)}
                   className="ml-1 text-black-600 hover:text-black-900 dark:text-white-400 dark:hover:text-white-100 border-b-2 border-transparent hover:border-black-900 dark:hover:border-white-100 transition-all duration-200"
                 >
                   Add environment variables

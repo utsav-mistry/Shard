@@ -4,6 +4,7 @@ import 'winston-daily-rotate-file';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import axios from 'axios';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -76,6 +77,25 @@ logger.stream = {
   write: (message) => {
     logger.info(message.trim());
   },
+};
+
+// Helper function to log deployment steps
+export const logStep = async (projectId, deploymentId, step, message) => {
+  const logMessage = `[Project: ${projectId}] [Deployment: ${deploymentId}] ${step.toUpperCase()}: ${message}`;
+  logger.info(logMessage);
+  
+  // If we have a deployment ID, update the deployment status in the database
+  if (deploymentId) {
+    try {
+      await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deploy/update-step`, {
+        deploymentId,
+        step,
+        message
+      });
+    } catch (error) {
+      logger.error(`Failed to update deployment step: ${error.message}`);
+    }
+  }
 };
 
 export default logger;

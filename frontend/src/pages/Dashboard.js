@@ -72,14 +72,14 @@ const Dashboard = () => {
       name: 'Total Projects',
       value: projects?.length || 0,
       icon: Box,
-      action: () => navigate('/dashboard/projects')
+      action: () => navigate('/projects')
     },
     {
       id: 'active-deployments',
       name: 'Active Deployments',
       value: deployments?.filter(d => d.status === 'active' || d.status === 'deploying').length || 0,
       icon: Zap,
-      action: () => navigate('/dashboard/deployments?status=active')
+      action: () => navigate('/deployments')
     },
     {
       id: 'this-month',
@@ -91,7 +91,7 @@ const Dashboard = () => {
           deployDate.getFullYear() === now.getFullYear();
       }).length || 0}`,
       icon: Activity,
-      action: () => navigate('/dashboard/deployments')
+      action: () => navigate('/deployments')
     }
   ];
 
@@ -102,7 +102,7 @@ const Dashboard = () => {
       name: 'New Project',
       description: 'Create a new project from scratch',
       icon: Plus,
-      action: () => navigate('/dashboard/projects/new'),
+      action: () => navigate('/projects/new'),
       buttonText: 'Create Project',
       className: "group relative flex flex-col items-start p-6 h-full w-full text-left border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200",
       iconClassName: 'mb-4 p-2 border-2 border-black-900 dark:border-white-100 rounded-none group-hover:bg-white-100 dark:group-hover:bg-black-900 transition-colors duration-200',
@@ -112,7 +112,7 @@ const Dashboard = () => {
       name: 'New Deployment',
       description: 'Deploy a project',
       icon: Zap,
-      action: () => navigate('/dashboard/deploy/new'),
+      action: () => navigate('/deployments/new'),
       buttonText: 'Deploy Now',
       className: "group relative flex flex-col items-start p-6 h-full w-full text-left border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200",
       iconClassName: 'mb-4 p-2 border-2 border-black-900 dark:border-white-100 rounded-none group-hover:bg-white-100 dark:group-hover:bg-black-900 transition-colors duration-200',
@@ -235,7 +235,7 @@ const Dashboard = () => {
           </div>
           <div className="mt-4 md:mt-0 flex space-x-3">
             <button
-              onClick={() => navigate('/dashboard/settings')}
+              onClick={() => navigate('/settings')}
               className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden hover:scale-[1.02] active:scale-95"
             >
               <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
@@ -245,7 +245,7 @@ const Dashboard = () => {
               </span>
             </button>
             <button
-              onClick={() => navigate('/dashboard/profile')}
+              onClick={() => navigate('/profile')}
               className="group relative inline-flex items-center px-4 py-2 bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 hover:bg-white-100 hover:text-black-900 dark:hover:bg-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-white-100 hover:scale-[1.02] active:scale-95"
             >
               <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform translate-x-full group-hover:translate-x-0"></span>
@@ -326,7 +326,7 @@ const Dashboard = () => {
               Recent Deployments
             </h2>
             <button
-              onClick={() => navigate('/dashboard/deployments')}
+              onClick={() => navigate('/deployments')}
               className="group relative inline-flex items-center text-sm font-medium text-black-900 dark:text-white-100 hover:opacity-80 transition-opacity"
             >
               View all
@@ -354,63 +354,6 @@ const Dashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-black-900 divide-y divide-black-900/10 dark:divide-white-100/10">
-                  {deployments.slice(0, 5).map((deployment) => (
-                    <tr
-                      key={deployment._id}
-                      className="group hover:bg-black-900/5 dark:hover:bg-white-100/5 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/dashboard/projects/${deployment.project}/deployments/${deployment._id}`)}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center border-2 border-black-900 dark:border-white-100">
-                            <Server className="h-5 w-5" />
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-bold text-black-900 dark:text-white-100">
-                              {deployment.projectName || 'Unknown Project'}
-                            </div>
-                            <div className="text-sm text-black-500 dark:text-white-500">
-                              {deployment.branch || 'main'}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${deployment.status === 'success'
-                            ? 'bg-black-900/10 text-black-900 dark:bg-white-100/10 dark:text-white-100'
-                            : deployment.status === 'failed'
-                              ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                            }`}
-                        >
-                          {deployment.status === 'success' ? (
-                            <CheckCircle className="mr-1 h-3.5 w-3.5" />
-                          ) : deployment.status === 'failed' ? (
-                            <XCircle className="mr-1 h-3.5 w-3.5" />
-                          ) : (
-                            <Clock className="mr-1 h-3.5 w-3.5" />
-                          )}
-                          {deployment.status.charAt(0).toUpperCase() + deployment.status.slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black-500 dark:text-white-500">
-                        {formatDate(deployment.updatedAt || deployment.createdAt)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/dashboard/projects/${deployment.project}/deployments/${deployment._id}`);
-                          }}
-                          className="group relative inline-flex items-center text-black-900 dark:text-white-100 hover:opacity-80 transition-opacity"
-                        >
-                          View details
-                          <ArrowRight className="ml-1 w-4 h-4 transition-transform group-hover:translate-x-1" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
                   {deployments.length === 0 ? (
                     <tr>
                       <td colSpan="4" className="px-6 py-8 text-center">
@@ -423,7 +366,7 @@ const Dashboard = () => {
                             Create your first project and deploy it to see it here.
                           </p>
                           <button
-                            onClick={() => navigate('/dashboard/deploy/new')}
+                            onClick={() => navigate('/deployments/new')}
                             className="group relative inline-flex items-center px-4 py-2 bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 font-medium hover:bg-white-100 hover:text-black-900 dark:hover:bg-black-900 dark:hover:text-white-100 transition-colors duration-200 overflow-hidden border-2 border-black-900 dark:border-white-100"
                           >
                             <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
@@ -440,7 +383,7 @@ const Dashboard = () => {
                       <tr
                         key={deployment._id}
                         className="group hover:bg-black-900/5 dark:hover:bg-white-100/5 transition-colors cursor-pointer"
-                        onClick={() => navigate(`/dashboard/projects/${deployment.project}/deployments/${deployment._id}`)}
+                        onClick={() => navigate(`/deployments/${deployment._id}`)}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -483,7 +426,7 @@ const Dashboard = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(`/dashboard/projects/${deployment.project}/deployments/${deployment._id}`);
+                              navigate(`/deployments/${deployment._id}`);
                             }}
                             className="group relative inline-flex items-center text-black-900 dark:text-white-100 hover:opacity-80 transition-opacity"
                           >
@@ -500,7 +443,7 @@ const Dashboard = () => {
               {deployments.length > 0 && (
                 <div className="mt-4 text-right p-4">
                   <button
-                    onClick={() => navigate('/dashboard/deployments')}
+                    onClick={() => navigate('/deployments')}
                     className="text-sm font-medium hover:underline text-black-900 dark:text-white-100"
                   >
                     View all deployments →
