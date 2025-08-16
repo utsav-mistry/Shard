@@ -49,6 +49,11 @@ import Profile from './pages/Profile';
 // Admin page
 import Admin from './pages/Admin';
 
+// Sidebar pages
+import Documentation from './pages/Documentation';
+import ApiReference from './pages/ApiReference';
+import Support from './pages/Support';
+import Changelog from './pages/Changelog';
 import ThemeToggle from './components/ThemeToggle';
 
 function App() {
@@ -108,6 +113,18 @@ function App() {
                 
                 {/* Admin route */}
                 <Route path="admin" element={<Admin />} />
+                
+                {/* Documentation route */}
+                <Route path="docs" element={<Documentation />} />
+                
+                {/* API Reference route */}
+                <Route path="api-docs" element={<ApiReference />} />
+                
+                {/* Support route */}
+                <Route path="support" element={<Support />} />
+                
+                {/* Changelog route */}
+                <Route path="changelog" element={<Changelog />} />
               </Route>
             </Routes>
             <ThemeToggle className="fixed bottom-4 right-4" />

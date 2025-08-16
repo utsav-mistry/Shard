@@ -1,7 +1,7 @@
 // services/analyzeCode.js
-const axios = require('axios');
+import axios from 'axios';
 
-async function analyzeRepo(repoPath, projectId) {
+export async function analyzeRepo(repoPath, projectId) {
     try {
         const response = await axios.post('http://localhost:10000/review/', {
             repoPath,
@@ -25,5 +25,3 @@ async function analyzeRepo(repoPath, projectId) {
         };
     }
 }
-
-module.exports = analyzeRepo;

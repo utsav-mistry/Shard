@@ -82,13 +82,6 @@ const Dashboard = () => {
       action: () => navigate('/dashboard/deployments?status=active')
     },
     {
-      id: 'team-members',
-      name: 'Team Members',
-      value: currentUser?.team?.length || 1,
-      icon: Users,
-      action: () => navigate('/dashboard/team')
-    },
-    {
       id: 'this-month',
       name: 'This Month',
       value: `${deployments?.filter(d => {
@@ -235,7 +228,10 @@ const Dashboard = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
           <div>
-            <p className="text-black-700 dark:text-white-300">Welcome back, {currentUser?.name || 'User'}</p>
+            <p className="text-black-700 dark:text-white-300">
+              Welcome back, {currentUser?.name || currentUser?.email?.split('@')[0] || 'User'}
+              {currentUser?.name && currentUser?.email && ` (${currentUser.email.split('@')[0]})`}
+            </p>
           </div>
           <div className="mt-4 md:mt-0 flex space-x-3">
             <button

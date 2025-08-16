@@ -1,12 +1,16 @@
 const express = require("express");
-const { 
-    getSystemStats, 
-    getActiveDeployments, 
-    getSystemLogs, 
+const {
+    getSystemStats,
+    getActiveDeployments,
+    getSystemLogs,
     getWorkerStatus,
-    getAIServiceStatus 
+    getAIServiceStatus
 } = require("../controllers/adminController");
-const { protect, adminOnly } = require("../utils/authMiddleware");
+const { authenticate, isAdmin } = require("../middleware/auth");
+
+// Use authenticate as protect for consistency
+const protect = authenticate;
+const adminOnly = isAdmin;
 const { sanitizeBody } = require("../utils/validation");
 
 const router = express.Router();

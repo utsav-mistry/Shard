@@ -29,18 +29,28 @@ const NewDeployment = () => {
         
         // Fetch project details and environment variables in parallel
         const [projectResponse, envResponse] = await Promise.all([
-          api.get(`/projects/${projectId}`),
-          api.get(`/env/${projectId}`)
+          api.get(`/api/projects/${projectId}`),
+          api.get(`/api/env/${projectId}`)
         ]);
         
-        setProject(projectResponse.data);
-        
-        setEnvVars(envResponse.data);
-        
-        // Set default selected env vars (all non-secret vars)
-        setSelectedEnvVars(envResponse.data
-          .filter(env => !env.secret)
-          .map(env => env._id));
+        // Handle standardized responses
+        if (projectResponse.data.success && envResponse.data.success) {
+          setProject(projectResponse.data.data);
+          
+          // Set environment variables
+          const envVarsData = envResponse.data.data || [];
+          setEnvVars(envVarsData);
+          
+          // Set default selected env vars (all non-secret vars)
+          setSelectedEnvVars(
+            envVarsData
+              .filter(env => !env.secret)
+              .map(env => env._id)
+          );
+        } else {
+          const errorMessage = projectResponse.data?.message || envResponse.data?.message || 'Failed to load project data';
+          throw new Error(errorMessage);
+        }
         
         setLoading(false);
         
@@ -62,13 +72,19 @@ const NewDeployment = () => {
       
       // Fetch branches from GitHub API via backend
       try {
-        const branchesResponse = await api.get(`/github/branches?repo=${encodeURIComponent(repoUrl)}`);
-        setBranches(branchesResponse.data);
-        setSelectedBranch(branchesResponse.data[0] || 'main'); // Default to first branch or main
+        const branchesResponse = await api.get(`/api/github/branches?repo=${encodeURIComponent(repoUrl)}`);
         
-        // Fetch commits for the default branch
-        if (branchesResponse.data.length > 0) {
-          fetchCommits(branchesResponse.data[0] || 'main');
+        // Handle standardized response
+        if (branchesResponse.data.success) {
+          const branchesData = branchesResponse.data.data || [];
+          setBranches(branchesData);
+          const defaultBranch = branchesData[0] || 'main';
+          setSelectedBranch(defaultBranch);
+          
+          // Fetch commits for the default branch
+          fetchCommits(defaultBranch);
+        } else {
+          throw new Error(branchesResponse.data.message || 'Failed to fetch branches');
         }
       } catch (apiError) {
         console.warn('GitHub branches API not available, using fallback:', apiError);
@@ -91,9 +107,14 @@ const NewDeployment = () => {
       
       // Fetch commits from GitHub API via backend
       try {
-        const commitsResponse = await api.get(`/github/commits?repo=${encodeURIComponent(project.repoUrl)}&branch=${branch}`);
-        setCommits(commitsResponse.data);
-        setSelectedCommit(commitsResponse.data[0]?.hash || 'latest'); // Default to latest commit
+        const commitsResponse = await api.get(`/api/github/commits?repo=${encodeURIComponent(project.repoUrl)}&branch=${branch}`);
+        if (commitsResponse.data.success) {
+          const commitsData = commitsResponse.data.data || [];
+          setCommits(commitsData);
+          setSelectedCommit(commitsData[0]?.hash || 'latest'); // Default to latest commit
+        } else {
+          throw new Error(commitsResponse.data.message || 'Failed to fetch commits');
+        }
       } catch (apiError) {
         console.warn('GitHub commits API not available, using fallback:', apiError);
         // Fallback to generic commit if GitHub API is not implemented
@@ -136,7 +157,7 @@ const NewDeployment = () => {
         }));
       
       // Create deployment
-      const response = await api.post(`/deploy`, {
+      const response = await api.post(`/api/deploy`, {
         projectId,
         branch: selectedBranch,
         commitHash: selectedCommit,
@@ -144,8 +165,18 @@ const NewDeployment = () => {
         environmentVariables: deploymentEnvVars
       });
       
-      // Navigate to deployment details page
-      navigate(`/deployments/${response.data._id}`);
+      // Handle standardized response
+      if (response.data && response.data.success) {
+        // Navigate to deployment details page
+        navigate(`/deployments/${response.data.data._id}`, {
+          state: {
+            message: 'Deployment started successfully',
+            type: 'success'
+          }
+        });
+      } else {
+        throw new Error(response.data?.message || 'Failed to start deployment');
+      }
     } catch (err) {
       console.error('Error creating deployment:', err);
       setError('Failed to create deployment');
@@ -226,14 +257,14 @@ const NewDeployment = () => {
                   value={selectedBranch}
                   onChange={handleBranchChange}
                   disabled={loadingBranches}
-                  className="block w-full pl-10 pr-10 py-2 text-base border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-indigo-500 dark:focus:border-indigo-400 sm:text-sm rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  className="block w-full pl-10 pr-10 py-2 text-base border-2 border-black-900 dark:border-white-100 focus:outline-none focus:ring-0 focus:border-black-900 dark:focus:border-white-100 sm:text-sm appearance-none bg-white dark:bg-black-900 text-black-900 dark:text-white-100"
                   required
                 >
                   {loadingBranches ? (
-                    <option value="">Loading branches...</option>
+                    <option value="" className="bg-white dark:bg-black-900 text-black-900 dark:text-white-100">Loading branches...</option>
                   ) : (
                     branches.map(branch => (
-                      <option key={branch} value={branch}>{branch}</option>
+                      <option key={branch} value={branch} className="bg-white dark:bg-black-900 text-black-900 dark:text-white-100">{branch}</option>
                     ))
                   )}
                 </select>
@@ -255,7 +286,7 @@ const NewDeployment = () => {
                   value={selectedCommit}
                   onChange={(e) => setSelectedCommit(e.target.value)}
                   disabled={loadingCommits}
-                  className="block w-full pl-10 pr-10 py-2 text-base border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-indigo-500 dark:focus:border-indigo-400 sm:text-sm rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  className="block w-full pl-10 pr-10 py-2 text-base border-2 border-black-900 dark:border-white-100 focus:outline-none focus:ring-0 focus:border-black-900 dark:focus:border-white-100 sm:text-sm appearance-none bg-white dark:bg-black-900 text-black-900 dark:text-white-100"
                   required
                 >
                   {loadingCommits ? (

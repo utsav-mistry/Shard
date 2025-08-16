@@ -10,23 +10,30 @@ const useDeployments = (projectId = null) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Make sure we have a valid API URL
       if (!process.env.REACT_APP_API_URL) {
         throw new Error('API URL is not configured. Please set REACT_APP_API_URL in your .env file');
       }
-      
-      const url = projectId 
-        ? `/api/projects/${projectId}/deployments`
-        : '/api/deploy';
-      
+
+      // Use the correct backend endpoint
+      const url = '/api/deploy';
+
       const response = await api.get(url);
-      
-      if (!response.data || !Array.isArray(response.data)) {
-        throw new Error('Invalid response format from server');
+
+      // Handle the standardized API response format
+      if (!response.data || !response.data.success) {
+        throw new Error(response.data?.message || 'Invalid response format from server');
       }
-      
-      setDeployments(response.data);
+
+      const deploymentsData = response.data.data || [];
+
+      // Filter by projectId if specified (client-side filtering)
+      const filteredDeployments = projectId
+        ? deploymentsData.filter(deployment => deployment.projectId?._id === projectId)
+        : deploymentsData;
+
+      setDeployments(filteredDeployments);
     } catch (err) {
       console.error('Failed to fetch deployments:', err);
       setError(err.response?.data?.message || err.message || 'Failed to load deployments');
@@ -38,10 +45,10 @@ const useDeployments = (projectId = null) => {
 
   useEffect(() => {
     fetchDeployments();
-    
+
     // Set up polling every 30 seconds for real-time updates
     const interval = setInterval(fetchDeployments, 30000);
-    
+
     return () => clearInterval(interval);
   }, [fetchDeployments]);
 
@@ -55,17 +62,17 @@ const useDeployments = (projectId = null) => {
       return { success: true, data: response.data };
     } catch (err) {
       console.error('Failed to create deployment:', err);
-      return { 
-        success: false, 
-        error: err.response?.data?.message || err.message || 'Failed to create deployment' 
+      return {
+        success: false,
+        error: err.response?.data?.message || err.message || 'Failed to create deployment'
       };
     }
   };
 
-  return { 
-    deployments, 
-    loading, 
-    error, 
+  return {
+    deployments,
+    loading,
+    error,
     refresh: fetchDeployments,
     createDeployment
   };

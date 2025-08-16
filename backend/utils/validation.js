@@ -20,10 +20,11 @@ const deploymentSchema = Joi.object({
 const validateProject = (req, res, next) => {
     const { error } = projectSchema.validate(req.body);
     if (error) {
-        return res.status(400).json({
-            message: "Validation error",
-            details: error.details.map(detail => detail.message)
+        const errors = {};
+        error.details.forEach(detail => {
+            errors[detail.path[0]] = detail.message;
         });
+        return res.apiValidationError(errors, 'Project validation failed');
     }
     next();
 };
@@ -31,10 +32,11 @@ const validateProject = (req, res, next) => {
 const validateEnvVar = (req, res, next) => {
     const { error } = envVarSchema.validate(req.body);
     if (error) {
-        return res.status(400).json({
-            message: "Validation error",
-            details: error.details.map(detail => detail.message)
+        const errors = {};
+        error.details.forEach(detail => {
+            errors[detail.path[0]] = detail.message;
         });
+        return res.apiValidationError(errors, 'Environment variable validation failed');
     }
     next();
 };
@@ -42,10 +44,11 @@ const validateEnvVar = (req, res, next) => {
 const validateDeployment = (req, res, next) => {
     const { error } = deploymentSchema.validate(req.body);
     if (error) {
-        return res.status(400).json({
-            message: "Validation error",
-            details: error.details.map(detail => detail.message)
+        const errors = {};
+        error.details.forEach(detail => {
+            errors[detail.path[0]] = detail.message;
         });
+        return res.apiValidationError(errors, 'Deployment validation failed');
     }
     next();
 };

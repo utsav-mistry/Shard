@@ -75,7 +75,7 @@ const logger = require('../utils/logger');
 // Create New Project
 const createProject = async (req, res) => {
     const { name, repoUrl, framework, branch = 'main', description } = req.body;
-    
+
     const logContext = {
         userId: req.user._id,
         projectName: name,
@@ -85,7 +85,7 @@ const createProject = async (req, res) => {
 
     try {
         logger.info('Creating new project', logContext);
-        
+
         // Generate unique subdomain
         const subdomain = generateSubdomain(name);
         logContext.subdomain = subdomain;
@@ -101,39 +101,30 @@ const createProject = async (req, res) => {
             subdomain,
         });
 
-        logger.info('Project created successfully', { 
-            ...logContext, 
-            projectId: project._id 
+        logger.info('Project created successfully', {
+            ...logContext,
+            projectId: project._id
         });
 
-        res.status(201).json({
-            success: true,
-            data: project
-        });
+        return res.apiCreated(project, 'Project created successfully');
     } catch (err) {
-        logger.error('Failed to create project', { 
-            ...logContext, 
+        logger.error('Failed to create project', {
+            ...logContext,
             error: err.message,
-            stack: err.stack 
+            stack: err.stack
         });
-        
+
         // Handle duplicate key errors
         if (err.code === 11000) {
             const field = Object.keys(err.keyPattern)[0];
-            return res.status(400).json({
-                success: false,
-                error: 'Validation Error',
-                message: `${field} already exists`,
-                details: { [field]: `${field} must be unique` }
-            });
+            const fieldName = field === 'subdomain' ? 'Project name' : field;
+            return res.apiValidationError(
+                { [field]: `${fieldName} already exists` },
+                `${fieldName} already exists`
+            );
         }
 
-        res.status(500).json({
-            success: false,
-            error: 'Server Error',
-            message: 'Failed to create project',
-            requestId: req.id
-        });
+        return res.apiServerError('Failed to create project', err.message);
     }
 };
 
@@ -141,7 +132,7 @@ const createProject = async (req, res) => {
 const getProjects = async (req, res) => {
     const { page = 1, limit = 10, sort = 'createdAt:desc' } = req.query;
     const skip = (page - 1) * limit;
-    
+
     const logContext = {
         userId: req.user._id,
         page,
@@ -151,94 +142,85 @@ const getProjects = async (req, res) => {
 
     try {
         logger.debug('Fetching projects', logContext);
-        
+
         const [sortField, sortOrder] = sort.split(':');
         const sortOptions = { [sortField]: sortOrder === 'desc' ? -1 : 1 };
-        
+
         // Validate user ID
         if (!req.user || !req.user._id) {
             logger.error('Invalid user in request', { userId: req.user?._id });
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid user information',
-                message: 'User information is missing or invalid'
-            });
+            return res.apiError('User information is missing or invalid', 400);
         }
 
         // Validate pagination parameters
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
-        
+
         if (isNaN(pageNum) || pageNum < 1 || isNaN(limitNum) || limitNum < 1) {
             logger.error('Invalid pagination parameters', { page, limit });
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid pagination parameters',
-                message: 'Page and limit must be positive numbers'
-            });
+            return res.apiValidationError(
+                { page: 'Page must be a positive number', limit: 'Limit must be a positive number' },
+                'Invalid pagination parameters'
+            );
         }
+
+        // Build query - admin can see all projects, users only see their own
+        const query = req.user.role === 'admin' ? {} : { ownerId: req.user._id };
 
         // Build query with error handling
         let projects, total;
         try {
             [projects, total] = await Promise.all([
-                Project.find({ ownerId: req.user._id })
+                Project.find(query)
                     .sort(sortOptions)
                     .skip(skip)
                     .limit(limitNum)
+                    .populate('ownerId', 'name email')
                     .lean(),
-                Project.countDocuments({ ownerId: req.user._id })
+                Project.countDocuments(query)
             ]);
         } catch (dbError) {
-            logger.error('Database error when fetching projects', { 
+            logger.error('Database error when fetching projects', {
                 error: dbError.message,
                 stack: dbError.stack,
                 userId: req.user._id
             });
-            
-            return res.status(500).json({
-                success: false,
-                error: 'Database Error',
-                message: 'Failed to fetch projects from database',
-                details: process.env.NODE_ENV === 'development' ? dbError.message : undefined
-            });
+
+            return res.apiServerError('Failed to fetch projects from database', dbError.message);
         }
 
-        logger.info(`Fetched ${projects.length} projects`, { 
+        logger.info(`Fetched ${projects.length} projects`, {
             ...logContext,
             total,
-            count: projects.length 
+            count: projects.length,
+            isAdmin: req.user.role === 'admin'
         });
 
-        res.json({
-            success: true,
-            data: projects,
-            pagination: {
-                total,
-                page: parseInt(page),
-                totalPages: Math.ceil(total / limit)
-            }
-        });
+        const pagination = {
+            page: pageNum,
+            limit: limitNum,
+            total,
+            totalPages: Math.ceil(total / limitNum),
+            hasNext: pageNum * limitNum < total,
+            hasPrev: pageNum > 1
+        };
+
+        return res.apiPaginated(projects, pagination, 'Projects fetched successfully');
     } catch (err) {
-        logger.error('Failed to fetch projects', { 
-            ...logContext, 
+        logger.error('Failed to fetch projects', {
+            ...logContext,
             error: err.message,
-            stack: err.stack 
+            stack: err.stack
         });
-        
-        res.status(500).json({
-            success: false,
-            error: 'Server Error',
-            message: 'Failed to fetch projects',
-            requestId: req.id
-        });
+
+        return res.apiServerError('Failed to fetch projects', err.message);
     }
 };
 
 // Get project by ID
 const getProjectById = async (req, res) => {
     const { id } = req.params;
-    
+
     const logContext = {
         userId: req.user._id,
         projectId: id
@@ -246,36 +228,29 @@ const getProjectById = async (req, res) => {
 
     try {
         logger.debug('Fetching project', logContext);
-        
-        const project = await Project.findOne({ 
-            _id: id, 
-            ownerId: req.user._id 
-        });
+
+        // Admin can access any project, users only their own
+        const query = req.user.role === 'admin'
+            ? { _id: id }
+            : { _id: id, ownerId: req.user._id };
+
+        const project = await Project.findOne(query).populate('ownerId', 'name email');
 
         if (!project) {
             logger.warn('Project not found', logContext);
-            return res.status(404).json({
-                success: false,
-                error: 'Not Found',
-                message: 'Project not found'
-            });
+            return res.apiNotFound('Project');
         }
 
         logger.info('Project fetched successfully', logContext);
-        res.json({ success: true, data: project });
+        return res.apiSuccess(project, 'Project fetched successfully');
     } catch (err) {
-        logger.error('Failed to fetch project', { 
-            ...logContext, 
+        logger.error('Failed to fetch project', {
+            ...logContext,
             error: err.message,
-            stack: err.stack 
+            stack: err.stack
         });
-        
-        res.status(500).json({
-            success: false,
-            error: 'Server Error',
-            message: 'Failed to fetch project',
-            requestId: req.id
-        });
+
+        return res.apiServerError('Failed to fetch project', err.message);
     }
 };
 
@@ -283,7 +258,7 @@ const getProjectById = async (req, res) => {
 const updateProject = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
-    
+
     const logContext = {
         userId: req.user._id,
         projectId: id,
@@ -292,59 +267,50 @@ const updateProject = async (req, res) => {
 
     try {
         logger.info('Updating project', logContext);
-        
+
+        // Admin can update any project, users only their own
+        const query = req.user.role === 'admin'
+            ? { _id: id }
+            : { _id: id, ownerId: req.user._id };
+
         const project = await Project.findOneAndUpdate(
-            { _id: id, ownerId: req.user._id },
+            query,
             updateData,
             { new: true, runValidators: true }
-        );
+        ).populate('ownerId', 'name email');
 
         if (!project) {
             logger.warn('Project not found for update', logContext);
-            return res.status(404).json({
-                success: false,
-                error: 'Not Found',
-                message: 'Project not found'
-            });
+            return res.apiNotFound('Project');
         }
 
         logger.info('Project updated successfully', logContext);
-        res.json({ success: true, data: project });
+        return res.apiSuccess(project, 'Project updated successfully');
     } catch (err) {
-        logger.error('Failed to update project', { 
-            ...logContext, 
+        logger.error('Failed to update project', {
+            ...logContext,
             error: err.message,
-            stack: err.stack 
+            stack: err.stack
         });
-        
+
         // Handle validation errors
         if (err.name === 'ValidationError') {
             const errors = {};
             Object.keys(err.errors).forEach(key => {
                 errors[key] = err.errors[key].message;
             });
-            
-            return res.status(400).json({
-                success: false,
-                error: 'Validation Error',
-                message: 'Invalid input data',
-                details: errors
-            });
+
+            return res.apiValidationError(errors, 'Invalid input data');
         }
 
-        res.status(500).json({
-            success: false,
-            error: 'Server Error',
-            message: 'Failed to update project',
-            requestId: req.id
-        });
+        return res.apiServerError('Failed to update project', err.message);
     }
 };
 
 // Delete project
 const deleteProject = async (req, res) => {
     const { id } = req.params;
-    
+
     const logContext = {
         userId: req.user._id,
         projectId: id
@@ -352,48 +318,36 @@ const deleteProject = async (req, res) => {
 
     try {
         logger.info('Deleting project', logContext);
-        
-        const project = await Project.findOneAndDelete({ 
-            _id: id, 
-            ownerId: req.user._id 
-        });
+
+        // Admin can delete any project, users only their own
+        const query = req.user.role === 'admin'
+            ? { _id: id }
+            : { _id: id, ownerId: req.user._id };
+
+        const project = await Project.findOneAndDelete(query);
 
         if (!project) {
             logger.warn('Project not found for deletion', logContext);
-            return res.status(404).json({
-                success: false,
-                error: 'Not Found',
-                message: 'Project not found'
-            });
+            return res.apiNotFound('Project');
         }
 
         logger.info('Project deleted successfully', logContext);
-        res.json({ 
-            success: true, 
-            data: { 
-                message: 'Project deleted successfully' 
-            } 
-        });
+        return res.apiSuccess(null, 'Project deleted successfully');
     } catch (err) {
-        logger.error('Failed to delete project', { 
-            ...logContext, 
+        logger.error('Failed to delete project', {
+            ...logContext,
             error: err.message,
-            stack: err.stack 
+            stack: err.stack
         });
-        
-        res.status(500).json({
-            success: false,
-            error: 'Server Error',
-            message: 'Failed to delete project',
-            requestId: req.id
-        });
+
+        return res.apiServerError('Failed to delete project', err.message);
     }
 };
 
-module.exports = { 
-    createProject, 
-    getProjects, 
-    getProjectById, 
-    updateProject, 
-    deleteProject 
+module.exports = {
+    createProject,
+    getProjects,
+    getProjectById,
+    updateProject,
+    deleteProject
 };

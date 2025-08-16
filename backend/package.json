@@ -6,7 +6,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix",
+    "audit:security": "npm audit --audit-level=moderate",
+    "audit:fix": "npm audit fix"
   },
   "keywords": [],
   "author": "",
@@ -39,6 +43,7 @@
     "winston-daily-rotate-file": "^4.7.1"
   },
   "devDependencies": {
+    "eslint": "^9.33.0",
     "nodemon": "^3.0.2"
   }
 }

@@ -1,17 +1,21 @@
 const axios = require("axios");
 const Deployment = require("../models/Deployment");
 const Project = require("../models/Project");
-const logService = require("../services/logService"); 
-const envService = require("../services/envService"); 
+const logService = require("../services/logService");
+const envService = require("../services/envService");
 
 const createDeployment = async (req, res) => {
     const { projectId } = req.body;
 
     try {
-        // Find project
-        const project = await Project.findById(projectId);
-        if (!project || project.ownerId.toString() !== req.user._id.toString()) {
-            return res.status(404).json({ message: "Project not found" });
+        // Find project - admin can deploy any project, users only their own
+        const query = req.user.role === 'admin'
+            ? { _id: projectId }
+            : { _id: projectId, ownerId: req.user._id };
+
+        const project = await Project.findOne(query);
+        if (!project) {
+            return res.apiNotFound('Project');
         }
 
         // Create Deployment record
@@ -43,7 +47,7 @@ const createDeployment = async (req, res) => {
 
         // Step 1: AI Review Process
         await logService.addLog(projectId, deployment._id, "ai-review", "Starting AI code review");
-        
+
         try {
             const aiReviewResponse = await axios.post(
                 `${process.env.AI_SERVICE_URL || 'http://localhost:8000'}/review/`,
@@ -52,9 +56,9 @@ const createDeployment = async (req, res) => {
             );
 
             const { verdict, issueCount, issues } = aiReviewResponse.data;
-            
+
             // Log AI review results
-            await logService.addLog(projectId, deployment._id, "ai-review", 
+            await logService.addLog(projectId, deployment._id, "ai-review",
                 `AI review completed: ${verdict} (${issueCount} issues found)`);
 
             // Handle AI review verdict
@@ -62,64 +66,75 @@ const createDeployment = async (req, res) => {
                 deployment.status = "failed";
                 deployment.finishedAt = new Date();
                 await deployment.save();
-                
-                await logService.addLog(projectId, deployment._id, "ai-review", 
+
+                await logService.addLog(projectId, deployment._id, "ai-review",
                     "Deployment blocked by AI review due to critical issues");
-                
-                return res.status(400).json({ 
-                    message: "Deployment blocked by AI review",
+
+                return res.apiError("Deployment blocked by AI review", 400, {
                     verdict,
                     issueCount,
-                    issues: issues.slice(0, 5) // Return first 5 issues
-                });
+                    issues: issues.slice(0, 5)
+                }, 'AI_REVIEW_BLOCKED');
             }
 
             if (verdict === "manual_review") {
                 deployment.status = "pending_review";
                 await deployment.save();
-                
-                await logService.addLog(projectId, deployment._id, "ai-review", 
+
+                await logService.addLog(projectId, deployment._id, "ai-review",
                     "Deployment requires manual review");
-                
-                return res.status(202).json({ 
-                    message: "Deployment requires manual review",
+
+                return res.apiSuccess({
                     verdict,
                     issueCount,
                     issues: issues.slice(0, 5),
                     deploymentId: deployment._id
-                });
+                }, "Deployment requires manual review", 202);
             }
 
             // If verdict is "allow", proceed with deployment
-            await logService.addLog(projectId, deployment._id, "ai-review", 
+            await logService.addLog(projectId, deployment._id, "ai-review",
                 "AI review passed, proceeding with deployment");
 
         } catch (aiError) {
             console.error("AI review failed:", aiError);
-            await logService.addLog(projectId, deployment._id, "ai-review", 
+            await logService.addLog(projectId, deployment._id, "ai-review",
                 `AI review failed: ${aiError.message}`);
-            
+
             // Continue with deployment even if AI review fails (fallback)
-            await logService.addLog(projectId, deployment._id, "ai-review", 
+            await logService.addLog(projectId, deployment._id, "ai-review",
                 "Proceeding with deployment despite AI review failure");
         }
 
         // Step 2: Add job to worker queue (only if AI review passed or failed)
         await axios.post(`${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/jobs`, job);
 
-        res.status(201).json({ deploymentId: deployment._id });
+        return res.apiCreated({ deploymentId: deployment._id }, "Deployment started successfully");
     } catch (err) {
         console.error("Deployment error:", err);
-        res.status(500).json({ message: "Deployment failed" });
+        return res.apiServerError("Deployment failed", err.message);
     }
 };
 
 const getDeployments = async (req, res) => {
     try {
-        const deployments = await Deployment.find().populate("projectId");
-        res.json(deployments);
+        // Admin can see all deployments, users only their own
+        let query = {};
+        if (req.user.role !== 'admin') {
+            // Get user's projects first
+            const userProjects = await Project.find({ ownerId: req.user._id }).select('_id');
+            const projectIds = userProjects.map(p => p._id);
+            query = { projectId: { $in: projectIds } };
+        }
+
+        const deployments = await Deployment.find(query)
+            .populate("projectId", "name subdomain")
+            .sort({ createdAt: -1 });
+
+        return res.apiSuccess(deployments, "Deployments fetched successfully");
     } catch (err) {
-        res.status(500).json({ message: "Error fetching deployments" });
+        console.error("Error fetching deployments:", err);
+        return res.apiServerError("Error fetching deployments", err.message);
     }
 };
 
@@ -129,7 +144,7 @@ const updateDeploymentStatus = async (req, res) => {
     try {
         const deployment = await Deployment.findById(deploymentId);
         if (!deployment) {
-            return res.status(404).json({ message: "Deployment not found" });
+            return res.apiNotFound("Deployment");
         }
 
         deployment.status = status;
@@ -142,10 +157,10 @@ const updateDeploymentStatus = async (req, res) => {
         // Log deployment completion status
         await logService.addLog(deployment.projectId, deploymentId, "build", `Deployment ${status}`);
 
-        res.status(200).json({ message: "Deployment status updated" });
+        return res.apiSuccess({ deployment }, "Deployment status updated successfully");
     } catch (err) {
         console.error("Deployment status update failed:", err);
-        res.status(500).json({ message: "Failed to update deployment status" });
+        return res.apiServerError("Failed to update deployment status", err.message);
     }
 };
 

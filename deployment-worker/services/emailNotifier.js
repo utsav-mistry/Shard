@@ -1,4 +1,4 @@
-const axios = require("axios");
+import axios from 'axios';
 
 const sendDeploymentNotification = async (email, projectId, status) => {
     try {
@@ -13,4 +13,4 @@ const sendDeploymentNotification = async (email, projectId, status) => {
     }
 };
 
-module.exports = { sendDeploymentNotification };
+export { sendDeploymentNotification };

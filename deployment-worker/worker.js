@@ -78,6 +78,10 @@ const limiter = rateLimit({
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for health checks
+    return req.path === '/health' || req.path === '/health/';
+  }
 });
 
 app.use(limiter);
@@ -107,8 +111,18 @@ app.set('queue', deploymentQueue);
 // Import routes
 import healthRoutes from './routes/health.js';
 
+// Health check route
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'deployment-worker',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 // API Routes
-app.use('/health', healthRoutes);
+app.use('/health', healthRoutes); // Handle /health endpoint
 
 // Job submission endpoint
 app.post('/api/jobs', async (req, res) => {
@@ -179,8 +193,18 @@ app.get('/api/jobs/:jobId', (req, res) => {
   });
 });
 
-// Track if we're in the process of shutting down
-let isShuttingDown = false;
+// Track shutdown state and cleanup
+const shutdownState = {
+    isShuttingDown: false,
+    shutdownPromise: null,
+    cleanupCallbacks: new Set()
+};
+
+// Register cleanup callbacks
+const registerCleanup = (callback) => {
+    shutdownState.cleanupCallbacks.add(callback);
+    return () => shutdownState.cleanupCallbacks.delete(callback);
+};
 
 // Enhanced console logging for shutdown with colors and timestamps
 const shutdownLog = (message, type = 'info') => {
@@ -189,27 +213,27 @@ const shutdownLog = (message, type = 'info') => {
 
   switch (type) {
     case 'start':
-      console.log(`${formattedTime} ${chalk.white.bgRed.bold('🚦 DEPLOYMENT WORKER SHUTDOWN INITIATED')}`);
-      console.log(`${formattedTime} ${chalk.black.bgCyan(` ⚡ ${message} `)}`);
+      console.log(`${formattedTime} ${chalk.white.bgRed.bold('DEPLOYMENT WORKER SHUTDOWN INITIATED')}`);
+      console.log(`${formattedTime} ${chalk.black.bgCyan(`${message}`)}`);
       break;
     case 'step':
-      console.log(`${formattedTime} ${chalk.black.bgCyan(` ⚡ ${message} `)}`);
+      console.log(`${formattedTime} ${chalk.black.bgCyan(`${message}`)}`);
       break;
     case 'success':
-      console.log(`${formattedTime} ${chalk.green(`✅ ${message}`)}`);
+      console.log(`${formattedTime} ${chalk.green(`${message}`)}`);
       break;
     case 'error':
-      console.log(`${formattedTime} ${chalk.red.bold(`❌ ${message}`)}`);
+      console.log(`${formattedTime} ${chalk.red.bold(`${message}`)}`);
       break;
     case 'warn':
-      console.log(`${formattedTime} ${chalk.yellow(`⚠️  ${message}`)}`);
+      console.log(`${formattedTime} ${chalk.yellow(`${message}`)}`);
       break;
     case 'complete':
-      console.log(`${formattedTime} ${chalk.green.bold('👋 DEPLOYMENT WORKER SHUTDOWN COMPLETE')}`);
+      console.log(`${formattedTime} ${chalk.green.bold('DEPLOYMENT WORKER SHUTDOWN COMPLETE')}`);
       console.log(`${formattedTime} ${chalk.green(`${message}`)}`);
       break;
     case 'queue':
-      console.log(`${formattedTime} ${chalk.blue(`🔄 ${message}`)}`);
+      console.log(`${formattedTime} ${chalk.blue(`${message}`)}`);
       break;
     default:
       console.log(`${formattedTime} ${chalk.cyan(message)}`);
@@ -223,56 +247,97 @@ const shutdownLog = (message, type = 'info') => {
  * Graceful shutdown handler
  * @param {Object} [options] - Shutdown options
  * @param {number} [options.timeout=30000] - Time to wait for active jobs to complete
+ * @param {boolean} [options.force=false] - Force shutdown immediately
  * @returns {Promise<{success: boolean, message: string}>} Shutdown result
  */
 const gracefulShutdown = async (options = {}) => {
-  if (isShuttingDown) {
-    return { success: false, message: 'Shutdown already in progress' };
+  // If already shutting down, return the existing promise
+  if (shutdownState.isShuttingDown) {
+    return shutdownState.shutdownPromise || 
+      Promise.resolve({ success: false, message: 'Shutdown already in progress' });
   }
 
-  isShuttingDown = true;
-  const { timeout = 30000 } = options;
+  shutdownState.isShuttingDown = true;
+  const { timeout = 30000, force = false } = options;
   const shutdownStartTime = new Date();
+  let shutdownTimedOut = false;
 
-  shutdownLog('Starting graceful shutdown...', 'start');
+  // Create a promise that will be resolved when shutdown is complete
+  shutdownState.shutdownPromise = (async () => {
+    shutdownLog('Starting graceful shutdown...', 'start');
+    
+    // Set up shutdown timeout
+    const shutdownTimer = setTimeout(() => {
+      shutdownTimedOut = true;
+      shutdownLog('Shutdown timeout reached, forcing cleanup', 'warn');
+    }, timeout);
 
-  try {
-    // Check active jobs before shutdown
-    const activeJobs = deploymentQueue.activeJobs.size;
-    const queuedJobs = deploymentQueue.queue.length;
+    try {
+      // 1. Stop accepting new connections
+      shutdownLog('Closing HTTP server...', 'step');
+      await new Promise((resolve) => {
+        server.close(() => {
+          if (!shutdownTimedOut) {
+            shutdownLog('HTTP server closed - no new connections accepted', 'success');
+          }
+          resolve();
+        });
 
-    if (activeJobs > 0 || queuedJobs > 0) {
-      shutdownLog(`Found ${activeJobs} active jobs and ${queuedJobs} queued jobs`, 'queue');
-      shutdownLog('Waiting for active jobs to complete...', 'step');
-    }
-
-    // Stop accepting new connections
-    await new Promise((resolve) => {
-      server.close(() => {
-        shutdownLog('HTTP server closed - no new connections accepted', 'step');
-        resolve();
+        // Force close if needed
+        if (force) {
+          server.closeAllConnections();
+        }
       });
 
-      // Force close server after timeout
-      setTimeout(() => {
-        shutdownLog('Server close timeout, forcing shutdown', 'warn');
-        resolve();
-      }, timeout);
-    });
+      // 2. Run registered cleanup callbacks
+      if (shutdownState.cleanupCallbacks.size > 0) {
+        shutdownLog(`Running ${shutdownState.cleanupCallbacks.size} cleanup tasks...`, 'step');
+        await Promise.all(
+          Array.from(shutdownState.cleanupCallbacks).map(callback => 
+            Promise.resolve(callback()).catch(err => 
+              shutdownLog(`Cleanup error: ${err.message}`, 'error')
+            )
+          )
+        );
+      }
 
-    // Shutdown the queue (will wait for active jobs to complete)
-    shutdownLog('Shutting down job queue...', 'step');
-    await deploymentQueue.shutdown({ timeout });
-    shutdownLog('Job queue shutdown complete', 'success');
+      // 3. Shutdown the queue (wait for active jobs to complete)
+      if (!shutdownTimedOut) {
+        const activeJobs = deploymentQueue.activeJobs.size;
+        const queuedJobs = deploymentQueue.queue.length;
+        
+        if (activeJobs > 0 || queuedJobs > 0) {
+          shutdownLog(`Found ${activeJobs} active jobs and ${queuedJobs} queued jobs`, 'queue');
+          if (!force) {
+            shutdownLog('Waiting for active jobs to complete...', 'step');
+          }
+        }
 
-    const shutdownDuration = new Date() - shutdownStartTime;
-    shutdownLog(`Shutdown completed in ${shutdownDuration}ms`, 'complete');
-    return { success: true, message: 'Shutdown completed successfully' };
-  } catch (error) {
-    const errorMsg = `Error during shutdown: ${error.message}`;
-    shutdownLog(errorMsg, 'error');
-    return { success: false, message: errorMsg };
-  }
+        await deploymentQueue.shutdown({ 
+          timeout: force ? 0 : timeout,
+          force: force
+        });
+        shutdownLog('Job queue shutdown complete', 'success');
+      }
+
+      // 4. Calculate and log shutdown duration
+      const shutdownDuration = new Date() - shutdownStartTime;
+      shutdownLog(`Shutdown completed in ${shutdownDuration}ms`, 'complete');
+      
+      return { 
+        success: !shutdownTimedOut, 
+        message: shutdownTimedOut ? 'Shutdown completed with timeout' : 'Shutdown completed successfully' 
+      };
+    } catch (error) {
+      const errorMsg = `Error during shutdown: ${error.message}`;
+      shutdownLog(errorMsg, 'error');
+      return { success: false, message: errorMsg };
+    } finally {
+      clearTimeout(shutdownTimer);
+    }
+  })();
+
+  return shutdownState.shutdownPromise;
 };
 
 // Add shutdown endpoint
@@ -281,28 +346,80 @@ app.post('/api/shutdown', async (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const result = await gracefulShutdown({ timeout: 15000 });
+  try {
+    const force = req.query.force === 'true';
+    const timeout = parseInt(req.query.timeout) || 15000;
+    
+    // Respond immediately and continue shutdown in background
+    res.json({ 
+      message: 'Shutdown initiated',
+      shutdownInProgress: true
+    });
 
-  if (result.success) {
-    res.json({ message: result.message });
-    // Give time for the response to be sent
-    setTimeout(() => process.exit(0), 100);
-  } else {
-    res.status(500).json({ error: result.message });
+    // Perform shutdown with a small delay to ensure response is sent
+    setTimeout(async () => {
+      const result = await gracefulShutdown({ 
+        timeout,
+        force 
+      });
+      
+      if (result.success) {
+        process.exit(0);
+      } else {
+        process.exit(1);
+      }
+    }, 100);
+  } catch (error) {
+    logger.error('Error in shutdown endpoint:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to initiate shutdown' });
+    }
   }
 });
 
-// Handle process signals for local development
+// Handle process signals
 if (process.env.NODE_ENV !== 'test') {
-  const handleSignal = (signal) => {
-    logger.info(`Received ${signal}, starting graceful shutdown...`);
-    gracefulShutdown()
-      .then(() => process.exit(0))
-      .catch(() => process.exit(1));
+  // Track if we've already received a signal
+  let receivedSignal = false;
+  
+  const handleSignal = async (signal) => {
+    if (receivedSignal) {
+      shutdownLog(`Received additional ${signal} signal, forcing immediate shutdown`, 'warn');
+      process.exit(1);
+    }
+    
+    receivedSignal = true;
+    shutdownLog(`Received ${signal} signal, initiating graceful shutdown...`, 'start');
+    
+    try {
+      const result = await gracefulShutdown({ 
+        timeout: 10000, // Shorter timeout for signals
+        force: signal === 'SIGKILL' || signal === 'SIGTERM' // Force on SIGKILL/SIGTERM
+      });
+      
+      process.exit(result.success ? 0 : 1);
+    } catch (error) {
+      shutdownLog(`Error during shutdown: ${error.message}`, 'error');
+      process.exit(1);
+    }
   };
 
-  process.on('SIGTERM', handleSignal);
+  // Register signal handlers
   process.on('SIGINT', handleSignal);
+  process.on('SIGTERM', handleSignal);
+  
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (error) => {
+    shutdownLog(`Uncaught exception: ${error.message}`, 'error');
+    gracefulShutdown({ force: true })
+      .then(() => process.exit(1))
+      .catch(() => process.exit(1));
+  });
+  
+  // Handle unhandled rejections
+  process.on('unhandledRejection', (reason) => {
+    shutdownLog(`Unhandled rejection: ${reason}`, 'error');
+  });
 }
 
 // Error handling

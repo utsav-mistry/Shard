@@ -1,9 +1,12 @@
 const express = require("express");
 const { createDeployment, getDeployments, updateDeploymentStatus } = require("../controllers/deployController");
-const { protect } = require("../utils/authMiddleware");
+const { authenticate } = require("../middleware/auth");
 const { validateDeployment, sanitizeBody } = require("../utils/validation");
 
 const router = express.Router();
+
+// Use authenticate as protect for consistency
+const protect = authenticate;
 
 router.post("/", protect, sanitizeBody, validateDeployment, createDeployment);
 

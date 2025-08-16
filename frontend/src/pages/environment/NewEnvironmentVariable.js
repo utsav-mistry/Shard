@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../utils/axiosConfig';
 import { AlertTriangle, ArrowLeft, Save, Eye, EyeOff } from 'lucide-react';
 
 const NewEnvironmentVariable = () => {
@@ -56,30 +56,38 @@ const NewEnvironmentVariable = () => {
       setLoading(true);
       setError(null);
       
-      await axios.post(
-          `${process.env.REACT_APP_API_URL}/env`,
-          {
-            projectId,
-            key: key.trim(),
-            value: value.trim(),
-            secret: isSecret
-          },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      const response = await api.post('/api/env', {
+        projectId,
+        key: key.trim(),
+        value: value.trim(),
+        secret: isSecret
+      });
       
-      // Navigate back to environment variables list
-      navigate(`/projects/${projectId}/env`);
+      // Handle standardized response
+      if (response.data && response.data.success) {
+        // Navigate back to environment variables list with success message
+        navigate(`/projects/${projectId}/env`, {
+          state: {
+            message: 'Environment variable created successfully',
+            type: 'success'
+          }
+        });
+      } else {
+        throw new Error(response.data?.message || 'Failed to create environment variable');
+      }
     } catch (err) {
       console.error('Error creating environment variable:', err);
       
-      if (err.response && err.response.status === 409) {
-        setKeyError('An environment variable with this key already exists');
+      if (err.response) {
+        if (err.response.status === 409) {
+          setKeyError('An environment variable with this key already exists');
+        } else if (err.response.data?.message) {
+          setError(err.response.data.message);
+        } else {
+          setError('Failed to create environment variable');
+        }
       } else {
-        setError('Failed to create environment variable');
+        setError('Failed to connect to the server. Please check your connection.');
       }
       
       setLoading(false);

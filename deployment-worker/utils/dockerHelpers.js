@@ -1,7 +1,11 @@
-const { exec } = require("child_process");
-const path = require("path");
-const axios = require("axios");
-const fs = require("fs");
+import { exec } from 'child_process';
+import path from 'path';
+import axios from 'axios';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Fixed port allocation
 const PORT_CONFIG = {
@@ -105,4 +109,4 @@ const execPromise = (cmd) => {
     });
 };
 
-module.exports = { buildAndRunContainer };
+export { buildAndRunContainer };

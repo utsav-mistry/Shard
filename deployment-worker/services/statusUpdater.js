@@ -1,4 +1,4 @@
-const axios = require("axios");
+import axios from 'axios';
 
 /**
  * Updates the deployment status in the backend database
@@ -23,4 +23,4 @@ const updateDeploymentStatus = async (deploymentId, status, token) => {
     }
 };
 
-module.exports = { updateDeploymentStatus };
+export { updateDeploymentStatus };

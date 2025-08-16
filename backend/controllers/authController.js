@@ -3,40 +3,43 @@ const { generateToken } = require("../config/jwt");
 const githubService = require("../services/githubService");
 const googleService = require("../services/googleService");
 
-// -------------------- Manual Signup --------------------
+// Manual User Registration
 const registerUser = async (req, res) => {
     const { email, password, name } = req.body;
-    
+
     // Input validation
     if (!email || !password) {
-        return res.status(400).json({ 
-            success: false,
-            message: "Email and password are required" 
-        });
+        return res.apiValidationError(
+            {
+                email: !email ? 'Email is required' : null,
+                password: !password ? 'Password is required' : null
+            },
+            'Email and password are required'
+        );
     }
 
     try {
         // Check if user exists
-        let user = await User.findOne({ email });
+        let user = await User.findOne({ email: email.toLowerCase().trim() });
         if (user) {
-            return res.status(400).json({ 
-                success: false,
-                message: "User already exists with this email" 
-            });
+            return res.apiValidationError(
+                { email: 'User already exists with this email' },
+                'User already exists with this email'
+            );
         }
 
         // Create new user - password will be hashed by pre-save hook
-        user = new User({ 
+        user = new User({
             email: email.toLowerCase().trim(),
             passwordHash: password, // Will be hashed by pre-save hook
             name: (name || email.split('@')[0]).trim()
         });
-        
+
         await user.save();
 
         // Generate JWT token
         const token = generateToken(user);
-        
+
         // Prepare user data to return (exclude sensitive info)
         const userResponse = {
             id: user._id,
@@ -46,57 +49,46 @@ const registerUser = async (req, res) => {
             role: user.role
         };
 
-        res.status(201).json({ 
-            success: true,
-            message: "Registration successful",
-            token,
-            user: userResponse
-        });
+        return res.apiCreated({ token, user: userResponse }, 'Registration successful');
     } catch (err) {
         console.error('Register error:', err);
-        res.status(500).json({ 
-            success: false,
-            message: "Server error during registration" 
-        });
+        return res.apiServerError('Server error during registration', err.message);
     }
 };
 
-// -------------------- Manual Login --------------------
+// Manual User Login
 const loginUser = async (req, res) => {
     const { email, password } = req.body;
-    
+
     // Input validation
     if (!email || !password) {
-        return res.status(400).json({ 
-            success: false,
-            message: "Email and password are required" 
-        });
+        return res.apiValidationError(
+            {
+                email: !email ? 'Email is required' : null,
+                password: !password ? 'Password is required' : null
+            },
+            'Email and password are required'
+        );
     }
 
     try {
         // Find user by email (case insensitive)
         const user = await User.findOne({ email: email.toLowerCase().trim() });
-        
+
         // Check if user exists and has a password set
         if (!user || !user.passwordHash) {
-            return res.status(401).json({ 
-                success: false,
-                message: "Invalid email or password" 
-            });
+            return res.apiUnauthorized('Invalid email or password');
         }
 
         // Verify password
         const isMatch = await user.matchPassword(password);
         if (!isMatch) {
-            return res.status(401).json({ 
-                success: false,
-                message: "Invalid email or password" 
-            });
+            return res.apiUnauthorized('Invalid email or password');
         }
 
         // Generate JWT token
         const token = generateToken(user);
-        
+
         // Prepare user data to return (exclude sensitive info)
         const userResponse = {
             id: user._id,
@@ -108,24 +100,20 @@ const loginUser = async (req, res) => {
             googleId: user.googleId
         };
 
-        res.json({ 
-            success: true,
-            message: "Login successful",
-            token,
-            user: userResponse
-        });
+        return res.apiSuccess({ token, user: userResponse }, 'Login successful');
     } catch (err) {
         console.error('Login error:', err);
-        res.status(500).json({ 
-            success: false,
-            message: "Server error during login" 
-        });
+        return res.apiServerError('Server error during login', err.message);
     }
 };
 
-// -------------------- GitHub OAuth Callback --------------------
+// GitHub OAuth Callback
 const githubOAuthCallback = async (req, res) => {
     const { code } = req.body;
+
+    if (!code) {
+        return res.apiValidationError({ code: 'Authorization code is required' }, 'Authorization code is required');
+    }
 
     try {
         const accessToken = await githubService.getAccessToken(code);
@@ -143,15 +131,29 @@ const githubOAuthCallback = async (req, res) => {
         }
 
         const token = generateToken(user);
-        res.json({ token, user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar, githubId: user.githubId } });
+        const userResponse = {
+            id: user._id,
+            email: user.email,
+            name: user.name,
+            avatar: user.avatar,
+            role: user.role,
+            githubId: user.githubId
+        };
+
+        return res.apiSuccess({ token, user: userResponse }, 'GitHub authentication successful');
     } catch (err) {
-        res.status(500).json({ message: "GitHub OAuth failed" });
+        console.error('GitHub OAuth error:', err);
+        return res.apiServerError('GitHub OAuth failed', err.message);
     }
 };
 
-// -------------------- Google OAuth Callback --------------------
+// Google OAuth Callback
 const googleOAuthCallback = async (req, res) => {
     const { code } = req.body;
+
+    if (!code) {
+        return res.apiValidationError({ code: 'Authorization code is required' }, 'Authorization code is required');
+    }
 
     try {
         const accessToken = await googleService.getAccessToken(code);
@@ -169,63 +171,80 @@ const googleOAuthCallback = async (req, res) => {
         }
 
         const token = generateToken(user);
-        res.json({ token, user: { id: user._id, email: user.email, name: user.name, avatar: user.avatar, googleId: user.googleId } });
+        const userResponse = {
+            id: user._id,
+            email: user.email,
+            name: user.name,
+            avatar: user.avatar,
+            role: user.role,
+            googleId: user.googleId
+        };
+
+        return res.apiSuccess({ token, user: userResponse }, 'Google authentication successful');
     } catch (err) {
-        res.status(500).json({ message: "Google OAuth failed" });
+        console.error('Google OAuth error:', err);
+        return res.apiServerError('Google OAuth failed', err.message);
     }
 };
 
-// -------------------- Get User Profile --------------------
+// Get User Profile
 const getUserProfile = async (req, res) => {
     try {
         // req.user is set by the auth middleware
         const user = req.user;
         if (!user) {
-            return res.status(404).json({ message: "User not found" });
+            return res.apiNotFound('User');
         }
 
-        res.json({
+        const userResponse = {
             id: user._id,
             email: user.email,
             name: user.name,
             avatar: user.avatar,
+            role: user.role,
             githubId: user.githubId,
-            googleId: user.googleId
-        });
+            googleId: user.googleId,
+            createdAt: user.createdAt
+        };
+
+        return res.apiSuccess(userResponse, 'Profile retrieved successfully');
     } catch (err) {
         console.error('Get profile error:', err);
-        res.status(500).json({ message: "Server error" });
+        return res.apiServerError('Failed to retrieve profile', err.message);
     }
 };
 
-// -------------------- Update User Profile --------------------
+// Update User Profile
 const updateUserProfile = async (req, res) => {
     try {
         // req.user is set by the auth middleware
         const user = req.user;
         if (!user) {
-            return res.status(404).json({ message: "User not found" });
+            return res.apiNotFound('User');
         }
 
         const { name, avatar } = req.body;
-        
+
         // Update only the fields that were provided
-        if (name) user.name = name;
-        if (avatar) user.avatar = avatar;
-        
+        if (name !== undefined) user.name = name.trim();
+        if (avatar !== undefined) user.avatar = avatar.trim();
+
         await user.save();
 
-        res.json({
+        const userResponse = {
             id: user._id,
             email: user.email,
             name: user.name,
             avatar: user.avatar,
+            role: user.role,
             githubId: user.githubId,
             googleId: user.googleId
-        });
+        };
+
+        return res.apiSuccess(userResponse, 'Profile updated successfully');
     } catch (err) {
         console.error('Update profile error:', err);
-        res.status(500).json({ message: "Server error" });
+        return res.apiServerError('Failed to update profile', err.message);
     }
 };
 

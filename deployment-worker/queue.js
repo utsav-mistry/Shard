@@ -36,4 +36,4 @@ const getQueueStatus = () => {
     };
 };
 
-module.exports = { addJob, getNextJob, getQueueStatus };
+export { addJob, getNextJob, getQueueStatus };

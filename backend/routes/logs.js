@@ -2,7 +2,10 @@ const path = require("path");
 const fs = require("fs");
 const express = require("express");
 const { createLog, getLogs } = require("../controllers/logController");
-const { protect } = require("../utils/authMiddleware");
+const { authenticate } = require("../middleware/auth");
+
+// Use authenticate as protect for consistency
+const protect = authenticate;
 
 const router = express.Router();
 
@@ -21,7 +24,7 @@ router.get("/download/:deploymentId", protect, (req, res) => {
     const logPath = path.join(LOG_DIR, `${deploymentId}.log`);
 
     if (!fs.existsSync(logPath)) {
-        return res.status(404).json({ message: "Log not found." });
+        return res.apiNotFound("Log file");
     }
 
     res.download(logPath, `${deploymentId}.log`);

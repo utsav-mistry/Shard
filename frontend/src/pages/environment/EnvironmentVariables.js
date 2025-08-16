@@ -21,14 +21,21 @@ const EnvironmentVariables = () => {
         
         // Fetch project details and environment variables in parallel
         const [projectResponse, envResponse] = await Promise.all([
-          api.get(`/projects/${projectId}`),
-          api.get(`/env/${projectId}`)
+          api.get(`/api/projects/${projectId}`),
+          api.get(`/api/env/${projectId}`)
         ]);
         
-        setProject(projectResponse.data);
-        
-        setEnvVars(envResponse.data);
-        setLoading(false);
+        // Handle standardized responses
+        if (projectResponse.data.success && envResponse.data.success) {
+          setProject(projectResponse.data.data);
+          setEnvVars(envResponse.data.data || []);
+          setLoading(false);
+        } else {
+          const errorMessage = projectResponse.data?.message || 
+                             envResponse.data?.message || 
+                             'Failed to load environment data';
+          throw new Error(errorMessage);
+        }
       } catch (err) {
         console.error('Error fetching environment variables:', err);
         setError('Failed to load environment variables');
@@ -55,12 +62,17 @@ const EnvironmentVariables = () => {
     if (!envToDelete) return;
     
     try {
-      await api.delete(`/env/${envToDelete._id}`);
+      const response = await api.delete(`/api/env/${envToDelete._id}`);
       
-      // Remove deleted env var from state
-      setEnvVars(envVars.filter(env => env._id !== envToDelete._id));
-      setDeleteModalOpen(false);
-      setEnvToDelete(null);
+      // Handle standardized response
+      if (response.data && response.data.success) {
+        // Remove deleted env var from state
+        setEnvVars(envVars.filter(env => env._id !== envToDelete._id));
+        setDeleteModalOpen(false);
+        setEnvToDelete(null);
+      } else {
+        throw new Error(response.data?.message || 'Failed to delete environment variable');
+      }
     } catch (err) {
       console.error('Error deleting environment variable:', err);
       setError('Failed to delete environment variable');

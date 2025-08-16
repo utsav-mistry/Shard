@@ -1,4 +1,14 @@
 require('dotenv').config();
+
+// Validate environment variables before starting
+const { validateEnvironment, getEnvironmentSummary } = require('./utils/envValidator');
+try {
+    validateEnvironment();
+} catch (error) {
+    console.error('Environment validation failed:', error.message);
+    process.exit(1);
+}
+
 const express = require('express');
 const colors = require('colors');
 const { createServer } = require('http');
@@ -93,8 +103,11 @@ app.use(apiLimiter);
 // Request ID middleware
 app.use((req, res, next) => {
     req.id = uuidv4();
+    res.locals.requestId = req.id;
     next();
 });
+
+// API response helpers will be added after import
 
 // Set Content Security Policy headers
 app.use((req, res, next) => {
@@ -114,14 +127,28 @@ app.use((req, res, next) => {
     next();
 });
 
+// Import API response helpers
+const { addResponseHelpers } = require('./utils/apiResponse');
+
+// Add API response helpers middleware
+app.use(addResponseHelpers);
+
 const authRoutes = require('./routes/auth');
 const deployRoutes = require('./routes/deploy');
 const projectRoutes = require('./routes/project');
+const healthRoutes = require('./routes/health');
+const adminRoutes = require('./routes/admin');
+const envRoutes = require('./routes/env');
+const logsRoutes = require('./routes/logs');
 
 // Mount routes
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/deploy', deployRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/env', envRoutes);
+app.use('/api/logs', logsRoutes);
+app.use('/health', healthRoutes);
 
 // Serve static files from the public directory
 app.use(express.static('public', {
@@ -243,23 +270,7 @@ const getHealthMetrics = async () => {
     return healthData;
 };
 
-// Health check endpoint with realtime data
-app.get('/health', async (req, res) => {
-    try {
-        const healthData = await getHealthMetrics();
-        res.json(healthData);
-    } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            error: error.message,
-            timestamp: new Date().toISOString(),
-            services: {
-                'deployment-worker': { status: 'error', error: 'Health check failed' },
-                'ai-review': { status: 'error', error: 'Health check failed' }
-            }
-        });
-    }
-});
+// Health metrics are now handled by the dedicated health route
 
 // Socket.IO connection for realtime health updates
 io.on('connection', (socket) => {
@@ -369,9 +380,10 @@ const connectWithRetry = async (maxRetries = 3, retryDelay = 3000) => {
             log.info('Checking dependent services...');
 
             // Check deployment worker
+            const deploymentWorkerUrl = process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000';
             const deploymentWorkerCheck = await checkService(
                 'Deployment Worker',
-                process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000/health'
+                deploymentWorkerUrl.endsWith('/health') ? deploymentWorkerUrl : `${deploymentWorkerUrl}/`
             );
 
             // Check AI service

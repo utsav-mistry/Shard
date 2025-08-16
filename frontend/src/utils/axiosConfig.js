@@ -38,13 +38,13 @@ api.interceptors.request.use(
       url = `/api/${url}`;
       config.url = url;
     }
-    
+
     // Add auth token if it exists
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     console.log('API Request:', config.method?.toUpperCase(), config.url);
     return config;
   },
@@ -61,7 +61,7 @@ api.interceptors.response.use(
   },
   (error) => {
     console.error('Response error:', error);
-    
+
     // Handle network errors
     if (error.code === 'ERR_NETWORK') {
       console.error('Network error - is the backend server running?');
@@ -76,7 +76,7 @@ api.interceptors.response.use(
         window.location.href = '/login?session=expired';
       }
     }
-    
+
     // For other errors, just pass them through
     return Promise.reject(error);
   }

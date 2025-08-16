@@ -33,8 +33,18 @@ const UserSchema = new mongoose.Schema(
             default: Date.now,
         },
     },
-    { collection: "users" }
+    {
+        collection: "users",
+        timestamps: true // Add automatic createdAt and updatedAt
+    }
 );
+
+// Indexes for better query performance
+UserSchema.index({ email: 1 }, { unique: true }); // Email uniqueness and login lookup
+UserSchema.index({ role: 1 }); // For admin queries
+UserSchema.index({ githubId: 1 }, { sparse: true }); // For GitHub OAuth
+UserSchema.index({ googleId: 1 }, { sparse: true }); // For Google OAuth
+UserSchema.index({ createdAt: -1 }); // For user registration analytics
 
 // Hash password before saving (only for manual signup)
 UserSchema.pre("save", async function (next) {

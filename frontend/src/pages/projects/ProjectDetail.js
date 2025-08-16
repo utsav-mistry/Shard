@@ -19,30 +19,37 @@ const ProjectDetail = () => {
       try {
         setLoading(true);
         
-        // Fetch project details
-        const projectResponse = await api.get(`/projects/${id}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
+        // Fetch project details using the correct /api/ prefixed endpoint
+        const projectResponse = await api.get(`/api/projects/${id}`);
         
-        // Fetch project deployments
-        const deploymentsResponse = await api.get(`/deploy?projectId=${id}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
+        // Fetch project deployments using the correct endpoint
+        const deploymentsResponse = await api.get('/api/deploy');
         
-        // Fetch project environment variables
-        const envVarsResponse = await api.get(`/env/${id}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
+        // Fetch project environment variables using the correct endpoint
+        const envVarsResponse = await api.get(`/api/env/${id}`);
         
-        setProject(projectResponse.data);
-        setDeployments(deploymentsResponse.data);
-        setEnvVars(envVarsResponse.data);
+        // Handle standardized response format
+        if (projectResponse.data.success) {
+          setProject(projectResponse.data.data);
+        } else {
+          throw new Error(projectResponse.data.message || 'Failed to load project');
+        }
+        
+        if (deploymentsResponse.data.success) {
+          // Filter deployments for this project on the client side if needed
+          const projectDeployments = deploymentsResponse.data.data.filter(
+            deployment => deployment.projectId === id
+          );
+          setDeployments(projectDeployments);
+        } else {
+          throw new Error(deploymentsResponse.data.message || 'Failed to load deployments');
+        }
+        
+        if (envVarsResponse.data.success) {
+          setEnvVars(envVarsResponse.data.data || []);
+        } else {
+          throw new Error(envVarsResponse.data.message || 'Failed to load environment variables');
+        }
         setLoading(false);
       } catch (err) {
         console.error('Error fetching project data:', err);
@@ -95,15 +102,26 @@ const ProjectDetail = () => {
   };
 
   // Handle project deletion
+  // Handle project deletion
   const handleDeleteProject = async () => {
     try {
       setDeleteLoading(true);
-      await api.delete(`/projects/${id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      navigate('/projects');
+      
+      // Use the correct API endpoint with DELETE method
+      const response = await api.delete(`/api/projects/${id}`);
+      
+      // Handle standardized response
+      if (response.data && response.data.success) {
+        // Redirect to projects list after successful deletion
+        navigate('/projects', { 
+          state: { 
+            message: 'Project deleted successfully',
+            type: 'success'
+          } 
+        });
+      } else {
+        throw new Error(response.data?.message || 'Failed to delete project');
+      }
     } catch (err) {
       console.error('Error deleting project:', err);
       setError('Failed to delete project');

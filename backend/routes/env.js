@@ -1,6 +1,9 @@
 const express = require("express");
 const { addEnvVar, getEnvVars, deleteEnvVar } = require("../controllers/envController");
-const { protect } = require("../utils/authMiddleware");
+const { authenticate } = require("../middleware/auth");
+
+// Use authenticate as protect for consistency
+const protect = authenticate;
 const { validateEnvVar, sanitizeBody } = require("../utils/validation");
 
 const router = express.Router();

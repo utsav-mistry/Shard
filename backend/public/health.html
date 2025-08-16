@@ -158,6 +158,7 @@
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 16px;
             margin-bottom: 24px;
+            align-items: start;
         }
 
         .metric-card {
@@ -167,6 +168,78 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
             color: var(--text-primary);
             border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            min-height: 200px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .metric-card .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .metric-item {
+            margin-bottom: 8px;
+            line-height: 1.4;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            min-width: 100px;
+        }
+
+        .metric-value {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.9rem;
+            text-align: right;
+            flex: 1;
+            margin-left: 10px;
+            word-break: break-word;
+        }
+
+        .metric-section {
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .metric-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .metric-section h4 {
+            margin: 0 0 10px 0;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Masonry layout for better card arrangement */
+        @media (min-width: 992px) {
+            .metrics-grid {
+                grid-auto-rows: auto;
+            }
+
+            .metric-card.tall {
+                grid-row: span 2;
+            }
         }
 
         .card-header {
@@ -502,22 +575,48 @@
             </div>
 
             <!-- Deployment Worker Card -->
-            <div class="metric-card">
-                <div class="service-header">
-                    <h3>Deployment Worker <span class="status-indicator" id="workerStatus"></span></h3>
-                    <small class="language-tag">Node.js</small>
+            <div class="metric-card tall" id="deploymentWorkerCard">
+                <div class="card-header">
+                    <h3>Deployment Worker</h3>
+                    <span class="status-indicator" id="workerStatus"></span>
                 </div>
-                <div class="metric-item">
-                    <span class="metric-label">Status:</span>
-                    <span class="metric-value" id="workerStatusText">Checking...</span>
+                
+                <div class="metric-section">
+                    <h4>Status</h4>
+                    <div class="metric-item">
+                        <span class="metric-label">Service:</span>
+                        <span class="metric-value" id="workerStatusText">Checking...</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Response Time:</span>
+                        <span class="metric-value" id="workerResponseTime">-</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Uptime:</span>
+                        <span class="metric-value" id="workerUptime">-</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Version:</span>
+                        <span class="metric-value" id="workerVersion">-</span>
+                    </div>
                 </div>
-                <div class="metric-item">
-                    <span class="metric-label">Response Time:</span>
-                    <span class="metric-value" id="workerResponseTime">-</span>
+                
+                <div class="metric-section">
+                    <h4>Queue</h4>
+                    <div class="metric-item">
+                        <span class="metric-label">Status:</span>
+                        <span class="metric-value" id="workerQueue">-</span>
+                    </div>
+                </div>
+                
+                <div class="metric-section">
+                    <h4>Memory Usage</h4>
+                    <div class="metric-item">
+                        <span class="metric-label">Heap:</span>
+                        <span class="metric-value" id="workerMemory">-</span>
+                    </div>
                 </div>
             </div>
-
-
 
             <!-- AI Review Service -->
             <div class="metric-card" style="grid-column: span 2;">

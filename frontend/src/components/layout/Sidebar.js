@@ -1,8 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  X, Menu, Home, Folder, Settings, HelpCircle, LogOut, ChevronRight,
-  ChevronDown, Plus, Zap, Server, Users, Activity, Box, CreditCard,
-  FileText, BarChart2, Layers, Code, Database, Lock, Bell, Search, Sun, Moon
+  Menu, Home, Folder, Settings, HelpCircle, LogOut, ChevronRight,
+  ChevronDown, Zap, Server, FileText, Layers, Code, Bell, User, Plus
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -21,7 +20,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  
+
   const activeClass = "bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900";
   const hoverClass = "hover:bg-black-100 hover:text-black-900 dark:hover:bg-white-900 dark:hover:text-white-100";
   const textClass = "text-black-900 dark:text-white-100";
@@ -41,26 +40,22 @@ const Sidebar = ({ isOpen, onClose }) => {
       category: 'Navigation',
       icon: <Menu className="h-5 w-5" />,
       items: [
-        { 
-          name: 'Dashboard', 
-          href: '/dashboard', 
-          icon: <Home className="h-5 w-5" /> 
+        {
+          name: 'Dashboard',
+          href: '/dashboard',
+          icon: <Home className="h-5 w-5" />
         },
-        { 
-          name: 'Projects', 
-          href: '/dashboard/projects', 
-          icon: <Folder className="h-5 w-5" /> 
+        {
+          name: 'Projects',
+          href: '/dashboard/projects',
+          icon: <Folder className="h-5 w-5" />
         },
-        { 
-          name: 'Deployments', 
-          href: '/dashboard/deployments', 
-          icon: <Server className="h-5 w-5" /> 
+        {
+          name: 'Deployments',
+          href: '/dashboard/deployments',
+          icon: <Server className="h-5 w-5" />
         },
-        { 
-          name: 'Activity', 
-          href: '/dashboard/activity', 
-          icon: <Activity className="h-5 w-5" /> 
-        },
+
       ]
     },
     {
@@ -68,14 +63,14 @@ const Sidebar = ({ isOpen, onClose }) => {
       category: 'Resources',
       icon: <FileText className="h-5 w-5" />,
       items: [
-        { 
-          name: 'Documentation', 
-          href: '/docs', 
-          icon: <HelpCircle className="h-5 w-5" /> 
+        {
+          name: 'Documentation',
+          href: '/dashboard/docs',
+          icon: <HelpCircle className="h-5 w-5" />
         },
-        { name: 'API Reference', href: '/api-docs', icon: <Code className="h-4 w-4" /> },
-        { name: 'Support', href: '/support', icon: <Bell className="h-4 w-4" /> },
-        { name: 'Changelog', href: '/changelog', icon: <Layers className="h-4 w-4" /> },
+        { name: 'API Reference', href: '/dashboard/api-docs', icon: <Code className="h-4 w-4" /> },
+        { name: 'Support', href: '/dashboard/support', icon: <Bell className="h-4 w-4" /> },
+        { name: 'Changelog', href: '/dashboard/changelog', icon: <Layers className="h-4 w-4" /> },
       ]
     },
     {
@@ -83,9 +78,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       category: 'Account',
       icon: <Settings className="h-4 w-4" />,
       items: [
-        { name: 'Profile', href: '/dashboard/profile', icon: <Users className="h-4 w-4" /> },
-        { name: 'Billing', href: '/dashboard/billing', icon: <CreditCard className="h-4 w-4" /> },
-        { name: 'Team', href: '/dashboard/team', icon: <Users className="h-4 w-4" /> },
+        { name: 'Profile', href: '/dashboard/profile', icon: <User className="h-4 w-4" /> },
         { name: 'Settings', href: '/dashboard/settings', icon: <Settings className="h-4 w-4" /> },
       ]
     }

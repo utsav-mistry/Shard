@@ -23,11 +23,11 @@ export const AuthProvider = ({ children }) => {
             // Set the authorization header
             api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             
-            // Fetch user profile - ensure this matches your backend route
+            // Fetch user profile - the response has the user data nested in response.data.data
             const response = await api.get('/auth/profile');
             
-            if (response.data) {
-                setCurrentUser(response.data);
+            if (response.data && response.data.data) {
+                setCurrentUser(response.data.data);
             } else {
                 throw new Error('No user data received');
             }
@@ -72,11 +72,12 @@ export const AuthProvider = ({ children }) => {
                     password: password.trim()
                 });
 
-                if (!response.data) {
+                if (!response.data || !response.data.data) {
                     throw new Error('No response data from server');
                 }
 
-                const { token, user } = response.data;
+                // Extract token and user from the response data structure
+                const { token, user } = response.data.data;
                 
                 if (!token) {
                     throw new Error('No authentication token received');
@@ -120,17 +121,18 @@ export const AuthProvider = ({ children }) => {
                     throw new Error('Password must be at least 6 characters long');
                 }
 
-                const response = await api.post('api/auth/register', {
+                const response = await api.post('/auth/register', {
                     email: email.trim(),
                     password: password.trim(),
                     name: name ? name.trim() : ''
                 });
 
-                if (!response.data.success) {
-                    throw new Error(response.data.message || 'Registration failed');
+                if (!response.data || !response.data.success) {
+                    throw new Error(response.data?.message || 'Registration failed');
                 }
 
-                const { token, user } = response.data;
+                // Extract token and user from the response data structure
+                const { token, user } = response.data.data || {};
                 localStorage.setItem('token', token);
                 setCurrentUser(user);
                 setError('');

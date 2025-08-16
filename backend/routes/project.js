@@ -21,17 +21,17 @@ const validate = (schema) => {
     console.warn('project.js: validate middleware not found — using NOOP validate');
     return (req, res, next) => next();
   }
-  
+
   // If validate is a function (direct export), use it directly
   if (typeof validateMw === 'function') {
     return validateMw(schema);
   }
-  
+
   // If it's an object with a validate method, use that
   if (typeof validateMw.validate === 'function') {
     return validateMw.validate(schema);
   }
-  
+
   // Handle default exports (ES modules)
   if (validateMw.default) {
     if (typeof validateMw.default === 'function') {
@@ -41,7 +41,7 @@ const validate = (schema) => {
       return validateMw.default.validate(schema);
     }
   }
-  
+
   console.warn('project.js: validate middleware export shape unexpected — using NOOP validate');
   return (req, res, next) => next();
 };

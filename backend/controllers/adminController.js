@@ -30,8 +30,8 @@ const getSystemStats = async (req, res) => {
                 totalUsers: await User.countDocuments(),
                 totalProjects: await Project.countDocuments(),
                 totalDeployments: await Deployment.countDocuments(),
-                activeDeployments: await Deployment.countDocuments({ 
-                    status: { $in: ['pending', 'building', 'deploying'] } 
+                activeDeployments: await Deployment.countDocuments({
+                    status: { $in: ['pending', 'building', 'deploying'] }
                 })
             },
             services: {
@@ -43,10 +43,10 @@ const getSystemStats = async (req, res) => {
             }
         };
 
-        res.json(stats);
+        return res.apiSuccess(stats, 'System statistics retrieved successfully');
     } catch (error) {
         console.error("Error getting system stats:", error);
-        res.status(500).json({ message: "Failed to get system statistics" });
+        return res.apiServerError('Failed to get system statistics', error.message);
     }
 };
 
@@ -56,9 +56,9 @@ const getActiveDeployments = async (req, res) => {
         const deployments = await Deployment.find({
             status: { $in: ['pending', 'building', 'deploying', 'pending_review'] }
         })
-        .populate('projectId', 'name subdomain stack')
-        .sort({ createdAt: -1 })
-        .limit(50);
+            .populate('projectId', 'name subdomain stack')
+            .sort({ createdAt: -1 })
+            .limit(50);
 
         const deploymentsWithDetails = deployments.map(deployment => ({
             id: deployment._id,
@@ -68,14 +68,14 @@ const getActiveDeployments = async (req, res) => {
             status: deployment.status,
             createdAt: deployment.createdAt,
             startedAt: deployment.startedAt,
-            duration: deployment.startedAt ? 
+            duration: deployment.startedAt ?
                 Math.floor((new Date() - deployment.startedAt) / 1000) : null
         }));
 
-        res.json(deploymentsWithDetails);
+        return res.apiSuccess(deploymentsWithDetails, 'Active deployments retrieved successfully');
     } catch (error) {
         console.error("Error getting active deployments:", error);
-        res.status(500).json({ message: "Failed to get active deployments" });
+        return res.apiServerError('Failed to get active deployments', error.message);
     }
 };
 
@@ -83,7 +83,7 @@ const getActiveDeployments = async (req, res) => {
 const getSystemLogs = async (req, res) => {
     try {
         const { level = 'all', limit = 100 } = req.query;
-        
+
         // Try to read from log files
         const logDir = path.join(process.cwd(), 'logs');
         const logFiles = ['combined.log', 'error.log'];
@@ -103,7 +103,7 @@ const getSystemLogs = async (req, res) => {
                             return { message: line, timestamp: new Date().toISOString() };
                         }
                     });
-                
+
                 logs.push(...logLines);
             } catch (fileError) {
                 // Log file doesn't exist or can't be read
@@ -117,10 +117,10 @@ const getSystemLogs = async (req, res) => {
             .filter(log => level === 'all' || log.level === level)
             .slice(0, parseInt(limit));
 
-        res.json(filteredLogs);
+        return res.apiSuccess(filteredLogs, 'System logs retrieved successfully');
     } catch (error) {
         console.error("Error getting system logs:", error);
-        res.status(500).json({ message: "Failed to get system logs" });
+        return res.apiServerError('Failed to get system logs', error.message);
     }
 };
 
@@ -128,23 +128,23 @@ const getSystemLogs = async (req, res) => {
 const getWorkerStatus = async (req, res) => {
     try {
         const workerUrl = process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000';
-        
+
         const response = await axios.get(`${workerUrl}/health`, {
             timeout: 5000
         });
 
-        res.json({
+        return res.apiSuccess({
             status: 'running',
             url: workerUrl,
             ...response.data
-        });
+        }, 'Deployment worker status retrieved successfully');
     } catch (error) {
-        res.json({
+        return res.apiSuccess({
             status: 'error',
             url: process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000',
             error: error.message,
             timestamp: new Date().toISOString()
-        });
+        }, 'Deployment worker status retrieved (with errors)');
     }
 };
 
@@ -152,25 +152,25 @@ const getWorkerStatus = async (req, res) => {
 const getAIServiceStatus = async (req, res) => {
     try {
         const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
-        
+
         // Try to ping the AI service
         const response = await axios.get(`${aiServiceUrl}/`, {
             timeout: 5000
         });
 
-        res.json({
+        return res.apiSuccess({
             status: 'running',
             url: aiServiceUrl,
             responseTime: response.headers['x-response-time'] || 'unknown',
             timestamp: new Date().toISOString()
-        });
+        }, 'AI service status retrieved successfully');
     } catch (error) {
-        res.json({
+        return res.apiSuccess({
             status: 'error',
             url: process.env.AI_SERVICE_URL || 'http://localhost:8000',
             error: error.message,
             timestamp: new Date().toISOString()
-        });
+        }, 'AI service status retrieved (with errors)');
     }
 };
 

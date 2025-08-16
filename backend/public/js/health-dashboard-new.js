@@ -278,15 +278,45 @@ function setupSocketHandlers() {
                 const statusEl = document.getElementById('workerStatus');
                 const statusTextEl = document.getElementById('workerStatusText');
                 const responseTimeEl = document.getElementById('workerResponseTime');
+                const uptimeEl = document.getElementById('workerUptime');
+                const versionEl = document.getElementById('workerVersion');
+                const queueEl = document.getElementById('workerQueue');
+                const memoryEl = document.getElementById('workerMemory');
 
-                if (worker.status === 'ok') {
+                if (worker.status === 'ok' && worker.details) {
+                    const details = worker.details;
                     updateStatusIndicator('workerStatus', 'ok');
                     if (statusTextEl) statusTextEl.textContent = 'Running';
-                    if (responseTimeEl) responseTimeEl.textContent = '< 2s';
+                    if (responseTimeEl) responseTimeEl.textContent = worker.responseTime ? `${worker.responseTime}ms` : 'N/A';
+                    
+                    // Use pre-formatted display strings if available
+                    if (details.display) {
+                        if (uptimeEl) uptimeEl.textContent = details.display.uptime || 'N/A';
+                        if (versionEl) versionEl.textContent = details.version || 'N/A';
+                        if (queueEl) queueEl.textContent = details.display.queue || 'N/A';
+                        if (memoryEl) memoryEl.textContent = details.display.memory || 'N/A';
+                    } else {
+                        // Fallback to manual formatting
+                        if (uptimeEl) uptimeEl.textContent = formatUptime(details.uptime);
+                        if (versionEl) versionEl.textContent = details.version || 'N/A';
+                        if (queueEl) {
+                            const active = details.queue?.active || 0;
+                            const queued = details.queue?.queued || 0;
+                            const concurrency = details.queue?.concurrency?.concurrency || details.queue?.concurrency || 0;
+                            queueEl.textContent = `${active} active, ${queued} queued (${concurrency} max)`;
+                        }
+                        if (memoryEl && details.memory) {
+                            memoryEl.textContent = `${formatBytes(details.memory.heapUsed)} / ${formatBytes(details.memory.heapTotal)}`;
+                        }
+                    }
                 } else {
                     updateStatusIndicator('workerStatus', 'error');
                     if (statusTextEl) statusTextEl.textContent = worker.error || 'Service Unavailable';
                     if (responseTimeEl) responseTimeEl.textContent = 'N/A';
+                    if (uptimeEl) uptimeEl.textContent = 'N/A';
+                    if (versionEl) versionEl.textContent = 'N/A';
+                    if (queueEl) queueEl.textContent = 'N/A';
+                    if (memoryEl) memoryEl.textContent = 'N/A';
                 }
             }
 
