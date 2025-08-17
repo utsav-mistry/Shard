@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import {
-    User, Camera, Loader2, Mail, Lock, Bell, Github, Twitter,
+    User, Camera, Loader2, Mail, Lock, Bell, Github,
     Link as LinkIcon, Edit2, Key
 } from 'lucide-react';
 import api from '../utils/axiosConfig';
@@ -18,8 +18,8 @@ const TabButton = ({ active, onClick, children, icon: Icon }) => (
     <button
         onClick={onClick}
         className={`group relative px-4 py-2 text-sm font-bold transition-all duration-200 overflow-hidden flex items-center rounded-none border-2 ${active
-                ? 'border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900'
-                : 'border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900'
+            ? 'border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900'
+            : 'border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900'
             }`}
     >
         {!active && (
@@ -96,7 +96,6 @@ const Profile = () => {
                         connected: !!userData.githubUsername,
                         email: userData.githubUsername ? `${userData.githubUsername}@github.com` : ''
                     },
-                    { provider: 'twitter', connected: false, email: '' }
                 ]);
             }
         } catch (error) {
@@ -343,8 +342,8 @@ const Profile = () => {
                                                 <button
                                                     type="button"
                                                     className={`group relative inline-flex items-center px-3 py-1.5 border-2 text-xs font-bold rounded-none transition-all duration-200 overflow-hidden ${account.connected
-                                                            ? 'border-red-600 text-red-600 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900'
-                                                            : 'border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900'
+                                                        ? 'border-red-600 text-red-600 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900'
+                                                        : 'border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900'
                                                         }`}
                                                 >
                                                     <span className={`absolute inset-0 w-full h-full transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0 ${account.connected ? 'bg-red-600' : 'bg-black-900 dark:bg-white-100'
@@ -439,64 +438,95 @@ const Profile = () => {
                                         <h4 className="text-lg font-bold text-black-900 dark:text-white-100 mb-4">Email Notifications</h4>
                                         <div className="space-y-4">
                                             {[
-                                                { id: 'deployments', label: 'Deployment Status', description: 'Get notified when deployments succeed or fail' },
-                                                { id: 'security', label: 'Security Alerts', description: 'Important security notifications and login alerts' },
-                                                { id: 'updates', label: 'Product Updates', description: 'New features and platform updates' },
-                                                { id: 'marketing', label: 'Marketing', description: 'Tips, best practices, and promotional content' }
+                                                { id: 'deployments', label: 'Deployment Status', description: 'Get notified when deployments succeed or fail', enabled: true },
+                                                { id: 'security', label: 'Security Alerts', description: 'Important security notifications and login alerts', enabled: true },
+                                                { id: 'updates', label: 'Product Updates', description: 'New features and platform updates', enabled: true },
+                                                { id: 'marketing', label: 'Marketing', description: 'Tips, best practices, and promotional content', enabled: false }
                                             ].map((setting) => (
-                                                <div key={setting.id} className="flex items-center justify-between p-4 bg-white-200 dark:bg-black-800 border-2 border-black-900 dark:border-white-100 rounded-none">
-                                                    <div>
+                                                <div key={setting.id} className="flex items-center justify-between p-4 bg-white-100 dark:bg-black-800 border-2 border-black-900 dark:border-white-100 rounded-none hover:shadow-md transition-shadow">
+                                                    <div className="flex-1">
                                                         <h5 className="font-bold text-black-900 dark:text-white-100">{setting.label}</h5>
                                                         <p className="text-sm text-black-600 dark:text-white-400">{setting.description}</p>
                                                     </div>
-                                                    <label className="relative inline-flex items-center cursor-pointer">
-                                                        <input type="checkbox" className="sr-only peer" defaultChecked={setting.id !== 'marketing'} />
-                                                        <div className="w-11 h-6 bg-black-200 dark:bg-white-700 peer-focus:outline-none rounded-none peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-none after:h-5 after:w-5 after:transition-all peer-checked:bg-black-900 dark:peer-checked:bg-white-100"></div>
+                                                    <label className="relative inline-flex items-center cursor-pointer ml-4">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="sr-only peer"
+                                                            defaultChecked={setting.enabled}
+                                                        />
+                                                        <div className="relative w-12 h-6 bg-black-200 dark:bg-white-700 peer-focus:outline-none rounded-none border-2 border-black-900 dark:border-white-100 transition-colors duration-200 overflow-hidden">
+                                                            <div className={`absolute inset-0 flex items-center justify-center transition-transform duration-300 ${setting.enabled ? 'translate-x-0' : 'translate-x-full'}`}>
+                                                                <div className={`w-1/2 h-full flex items-center justify-center ${setting.enabled ? 'bg-black-900 dark:bg-white-100' : ''}`}>
+                                                                    <div className={`w-3 h-3 border-2 ${setting.enabled ? 'border-white-100 dark:border-black-900' : 'border-black-900 dark:border-white-100'}`}></div>
+                                                                </div>
+                                                                <div className={`w-1/2 h-full flex items-center justify-center ${!setting.enabled ? 'bg-black-900 dark:bg-white-100' : ''}`}></div>
+                                                            </div>
+                                                        </div>
                                                     </label>
                                                 </div>
                                             ))}
                                         </div>
-                                    </div>
 
-                                    {/* Push Notifications */}
-                                    <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none p-6 mb-6">
-                                        <h4 className="text-lg font-bold text-black-900 dark:text-white-100 mb-4">Push Notifications</h4>
-                                        <div className="space-y-4">
-                                            {[
-                                                { id: 'browser', label: 'Browser Notifications', description: 'Show notifications in your browser' },
-                                                { id: 'desktop', label: 'Desktop Notifications', description: 'Show system notifications on your desktop' }
-                                            ].map((setting) => (
-                                                <div key={setting.id} className="flex items-center justify-between p-4 bg-white-200 dark:bg-black-800 border-2 border-black-900 dark:border-white-100 rounded-none">
-                                                    <div>
-                                                        <h5 className="font-bold text-black-900 dark:text-white-100">{setting.label}</h5>
-                                                        <p className="text-sm text-black-600 dark:text-white-400">{setting.description}</p>
+                                        {/* Push Notifications */}
+                                        <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none p-6 mb-6">
+                                            <h4 className="text-lg font-bold text-black-900 dark:text-white-100 mb-4">Push Notifications</h4>
+                                            <div className="space-y-4">
+                                                {[
+                                                    { id: 'browser', label: 'Browser Notifications', description: 'Show notifications in your browser', enabled: false },
+                                                    { id: 'desktop', label: 'Desktop Notifications', description: 'Show system notifications on your desktop', enabled: true }
+                                                ].map((setting) => (
+                                                    <div key={setting.id} className="flex items-center justify-between p-4 bg-white-100 dark:bg-black-800 border-2 border-black-900 dark:border-white-100 rounded-none hover:shadow-md transition-shadow">
+                                                        <div className="flex-1">
+                                                            <h5 className="font-bold text-black-900 dark:text-white-100">{setting.label}</h5>
+                                                            <p className="text-sm text-black-600 dark:text-white-400">{setting.description}</p>
+                                                        </div>
+                                                        <label className="relative inline-flex items-center cursor-pointer ml-4">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="sr-only peer"
+                                                                defaultChecked={setting.enabled}
+                                                            />
+                                                            <div className="relative w-12 h-6 bg-black-200 dark:bg-white-700 peer-focus:outline-none rounded-none border-2 border-black-900 dark:border-white-100 transition-colors duration-200 overflow-hidden">
+                                                                <div className={`absolute inset-0 flex items-center justify-center transition-transform duration-300 ${setting.enabled ? 'translate-x-0' : 'translate-x-full'}`}>
+                                                                    <div className={`w-1/2 h-full flex items-center justify-center ${setting.enabled ? 'bg-black-900 dark:bg-white-100' : ''}`}>
+                                                                        <div className={`w-3 h-3 border-2 ${setting.enabled ? 'border-white-100 dark:border-black-900' : 'border-black-900 dark:border-white-100'}`}></div>
+                                                                    </div>
+                                                                    <div className={`w-1/2 h-full flex items-center justify-center ${!setting.enabled ? 'bg-black-900 dark:bg-white-100' : ''}`}></div>
+                                                                </div>
+                                                            </div>
+                                                        </label>
                                                     </div>
-                                                    <label className="relative inline-flex items-center cursor-pointer">
-                                                        <input type="checkbox" className="sr-only peer" />
-                                                        <div className="w-11 h-6 bg-black-200 dark:bg-white-700 peer-focus:outline-none rounded-none peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-none after:h-5 after:w-5 after:transition-all peer-checked:bg-black-900 dark:peer-checked:bg-white-100"></div>
-                                                    </label>
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    {/* Notification Frequency */}
-                                    <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none p-6">
-                                        <h4 className="text-lg font-bold text-black-900 dark:text-white-100 mb-4">Notification Frequency</h4>
-                                        <div className="space-y-3">
-                                            {[
-                                                { id: 'instant', label: 'Instant', description: 'Get notified immediately' },
-                                                { id: 'daily', label: 'Daily Digest', description: 'Receive a daily summary' },
-                                                { id: 'weekly', label: 'Weekly Summary', description: 'Receive a weekly summary' }
-                                            ].map((option) => (
-                                                <label key={option.id} className="flex items-center p-4 bg-white-200 dark:bg-black-800 border-2 border-black-900 dark:border-white-100 rounded-none cursor-pointer hover:bg-white-300 dark:hover:bg-black-700 transition-colors">
-                                                    <input type="radio" name="frequency" value={option.id} className="w-4 h-4 text-black-900 dark:text-white-100 border-black-300 dark:border-white-700 focus:ring-black-500 dark:focus:ring-white-500" defaultChecked={option.id === 'instant'} />
-                                                    <div className="ml-3">
-                                                        <h5 className="font-bold text-black-900 dark:text-white-100">{option.label}</h5>
-                                                        <p className="text-sm text-black-600 dark:text-white-400">{option.description}</p>
-                                                    </div>
-                                                </label>
-                                            ))}
+                                        {/* Notification Frequency */}
+                                        <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none p-6">
+                                            <h4 className="text-lg font-bold text-black-900 dark:text-white-100 mb-4">Notification Frequency</h4>
+                                            <div className="space-y-3">
+                                                {[
+                                                    { id: 'instant', label: 'Instant', description: 'Get notified immediately' },
+                                                    { id: 'hourly', label: 'Hourly Digest', description: 'Get a summary every hour' },
+                                                    { id: 'daily', label: 'Daily Digest', description: 'Get a daily summary' },
+                                                    { id: 'weekly', label: 'Weekly Summary', description: 'Receive a weekly summary' }
+                                                ].map((option) => (
+                                                    <label key={option.id} className="flex items-center p-4 bg-white-100 dark:bg-black-800 border-2 border-black-900 dark:border-white-100 rounded-none cursor-pointer hover:shadow-md transition-all group">
+                                                        <div className={`relative w-5 h-5 border-2 rounded-none mr-3 flex-shrink-0 ${option.id === 'instant' ? 'border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100' : 'border-black-900 dark:border-white-100'}`}>
+                                                            {option.id === 'instant' && (
+                                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                                    <div className="w-2 h-2 bg-white-100 dark:bg-black-900"></div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <h5 className={`font-bold ${option.id === 'instant' ? 'text-black-900 dark:text-white-100' : 'text-black-900 dark:text-white-100'}`}>
+                                                                {option.label}
+                                                            </h5>
+                                                            <p className="text-sm text-black-600 dark:text-white-400">{option.description}</p>
+                                                        </div>
+                                                    </label>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -507,6 +537,6 @@ const Profile = () => {
             </div>
         </div>
     );
-}
+};
 
 export default Profile;

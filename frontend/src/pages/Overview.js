@@ -130,7 +130,7 @@ const Overview = () => {
         >
           <div className="text-center">
             <div className="mb-4 p-3 border-2 border-dotted border-gray-400 dark:border-gray-600 group-hover:border-black-900 dark:group-hover:border-white-100 rounded-none group-hover:bg-black-900 group-hover:text-white-100 dark:group-hover:bg-white-100 dark:group-hover:text-black-900 transition-all duration-200 shadow-sm">
-              <Plus className="w-8 h-8 text-black-900 dark:text-white-100 group-hover:text-white-100 dark:group-hover:text-black-900" />
+              <Plus className="text-black-900 dark:text-white-100 group-hover:text-white-100 dark:group-hover:text-black-900" />
             </div>
             <h3 className="text-lg font-bold text-black-900 dark:text-white-100 mb-2">New Project</h3>
             <p className="text-sm text-black-600 dark:text-white-400">Create a new project from scratch</p>

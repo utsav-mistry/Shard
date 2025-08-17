@@ -1,13 +1,33 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Server, Shield, Zap, Code, Database, Lock, Github } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 
 const LandingPage = () => {
   const [scrolled, setScrolled] = useState(false);
+  const [displayText, setDisplayText] = useState('');
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [loopNum, setLoopNum] = useState(0);
+  const [typingSpeed, setTypingSpeed] = useState(100);
   const { showToast } = useToast();
   const { currentUser } = useAuth();
+
+  const texts = [
+    'Without Limits',
+    'With Confidence',
+    'At Scale',
+    'With Ease',
+    'In Seconds',
+    'Like Magic',
+    'With Power',
+    'For Everyone',
+    'With Style',
+    'Efficiently'
+  ];
+
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -15,9 +35,37 @@ const LandingPage = () => {
     };
 
     window.addEventListener('scroll', handleScroll);
-    
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [showToast]);
+
+    // Typing effect
+    const handleTyping = () => {
+      const currentText = texts[loopNum % texts.length];
+
+      if (isDeleting) {
+        setDisplayText(currentText.substring(0, currentIndex - 1));
+        setCurrentIndex(prev => prev - 1);
+        setTypingSpeed(40); // Faster erasing
+      } else {
+        setDisplayText(currentText.substring(0, currentIndex + 1));
+        setCurrentIndex(prev => prev + 1);
+        setTypingSpeed(100); // Slower typing
+      }
+
+      if (!isDeleting && currentIndex === currentText.length) {
+        setTimeout(() => setIsDeleting(true), 2000); // Longer pause at full text
+      } else if (isDeleting && currentIndex === 0) {
+        setIsDeleting(false);
+        setLoopNum(loopNum + 1);
+        setTypingSpeed(100); // Reset to slower typing speed for next word
+      }
+    };
+
+    timeoutRef.current = setTimeout(handleTyping, typingSpeed);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [currentIndex, isDeleting, loopNum, showToast, typingSpeed, texts]);
 
   const scrollToFeatures = () => {
     document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
@@ -70,12 +118,17 @@ const LandingPage = () => {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
+      <section className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="text-center lg:text-left">
             <h1 className="text-5xl lg:text-7xl font-extrabold text-black-900 dark:text-white-100 mb-6">
               Deploy
-              <span className="block text-black-700 dark:text-white-300 mt-2">Without Limits</span>
+              <span className="block text-black-700 dark:text-white-300 mt-2 h-16 lg:h-20 flex items-center justify-center lg:justify-start w-full max-w-[300px] mx-auto lg:mx-0">
+                <span className="relative inline-flex items-center h-full">
+                  <span className="whitespace-nowrap">{displayText}</span>
+                  <span className="animate-pulse border-r-[2px] border-black-700 dark:border-white-300 h-20 absolute -right-1.5 top-1/2 -translate-y-1/2" style={{ animationDuration: '0.9s' }}></span>
+                </span>
+              </span>
             </h1>
             <p className="text-xl lg:text-2xl text-black-600 dark:text-white-400 mb-8 max-w-2xl mx-auto lg:mx-0">
               The modern deployment platform that scales with your needs. Deploy any stack, any language, anywhere.

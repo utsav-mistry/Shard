@@ -117,16 +117,6 @@ const Dashboard = () => {
       className: "group relative flex flex-col items-start p-6 h-full w-full text-left border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-200 hover:scale-[1.01]",
       iconClassName: 'mb-4 p-2 border-2 border-black-900 dark:border-white-100 rounded-none group-hover:bg-white-100 dark:group-hover:bg-black-900 transition-colors duration-200',
     },
-    {
-      id: 'view-docs',
-      name: 'View Docs',
-      description: 'Read the documentation',
-      icon: FileText,
-      action: () => window.open('https://docs.shard.dev', '_blank', 'noopener,noreferrer'),
-      buttonText: 'Read More',
-      className: "group relative flex flex-col items-start p-6 h-full w-full text-left border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-200 hover:scale-[1.01]",
-      iconClassName: 'mb-4 p-2 border-2 border-black-900 dark:border-white-100 rounded-none group-hover:bg-white-100 dark:group-hover:bg-black-900 transition-colors duration-200',
-    }
   ];
 
   // Helper function to get status badge with black/white theme
