@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Github, ExternalLink, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Github, ExternalLink, Loader2, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
 import api from '../../utils/axiosConfig';
+import { toast } from 'react-hot-toast';
 
 const GitHubIntegration = () => {
     const [searchParams] = useSearchParams();
@@ -59,17 +60,38 @@ const GitHubIntegration = () => {
                 throw new Error('Not authenticated');
             }
             
-            // Get the base URL from environment variables or use the current origin
-            const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+            // Generate a unique state
+            const state = Math.random().toString(36).substring(2, 15) + 
+                         Math.random().toString(36).substring(2, 15);
             
-            // Include the token in the state parameter
-            const state = btoa(JSON.stringify({ 
-                token: token,
-                timestamp: Date.now()
-            }));
-            
-            // Redirect to GitHub OAuth with the correct backend URL and state
-            window.location.href = `${backendUrl}/api/github/auth?state=${encodeURIComponent(state)}`;
+            // Store the token in cache with the state
+            try {
+                // Save state with token for verification
+                await api.post('/api/cache/set', {
+                    key: `github:state:${state}`,
+                    value: JSON.stringify({ 
+                        token,
+                        timestamp: Date.now()
+                    }),
+                    ttl: 600 // 10 minutes
+                });
+                
+                // Get the base URL from environment variables or use the current origin
+                const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+                
+                // Redirect to GitHub OAuth with the correct backend URL and state
+                window.location.href = `${backendUrl}/api/github/auth?state=${encodeURIComponent(state)}`;
+                
+            } catch (cacheError) {
+                console.error('Failed to cache state:', cacheError);
+                // Fallback to simple state parameter with token
+                const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+                const state = btoa(JSON.stringify({ 
+                    token,
+                    timestamp: Date.now()
+                }));
+                window.location.href = `${backendUrl}/api/github/auth?state=${encodeURIComponent(state)}`;
+            }
         } catch (error) {
             console.error('GitHub connection error:', error);
             setError('Failed to initiate GitHub connection: ' + (error.message || 'Unknown error'));

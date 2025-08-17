@@ -380,50 +380,6 @@ const Profile = () => {
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* Login Sessions */}
-                                    <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none p-6">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div>
-                                                <h4 className="text-lg font-bold text-black-900 dark:text-white-100">Active Sessions</h4>
-                                                <p className="text-sm text-black-600 dark:text-white-400">Manage your active login sessions</p>
-                                            </div>
-                                            <button className="group relative px-4 py-2 border-2 border-red-600 bg-red-600 text-white-100 hover:text-red-600 transition-all duration-200 overflow-hidden rounded-none font-bold">
-                                                <span className="absolute inset-0 w-full h-full bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-                                                <span className="relative z-10">Revoke All Sessions</span>
-                                            </button>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 border-2 border-dotted border-gray-300 dark:border-gray-700 rounded-none shadow-sm">
-                                                <div className="flex items-center">
-                                                    <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                                                    <div>
-                                                        <p className="text-sm font-medium text-black-900 dark:text-white-100">Current Session</p>
-                                                        <p className="text-xs text-black-600 dark:text-white-400">Chrome on Windows • {new Date().toLocaleDateString()}</p>
-                                                    </div>
-                                                </div>
-                                                <span className="text-xs font-medium text-green-600 dark:text-green-400">Active</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* API Keys */}
-                                    <div className="bg-white-100 dark:bg-black-700 border-2 border-dashed border-gray-400 dark:border-gray-600 rounded-none p-6 shadow-lg shadow-black/5 dark:shadow-white/5">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div>
-                                                <h4 className="text-lg font-bold text-black-900 dark:text-white-100">API Keys</h4>
-                                                <p className="text-sm text-black-600 dark:text-white-400">Manage your API access keys</p>
-                                            </div>
-                                            <button className="group relative px-4 py-2 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden rounded-none font-bold">
-                                                <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-                                                <span className="relative z-10">Generate New Key</span>
-                                            </button>
-                                        </div>
-                                        <div className="text-center py-8">
-                                            <Key className="h-8 w-8 text-black-400 dark:text-white-600 mx-auto mb-2" />
-                                            <p className="text-sm text-black-600 dark:text-white-400">No API keys created yet</p>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         )}
