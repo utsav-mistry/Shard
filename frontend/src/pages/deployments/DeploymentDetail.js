@@ -156,7 +156,7 @@ const DeploymentDetail = () => {
       <PageTemplate title="Loading Deployment...">
         <div className="min-h-screen bg-white dark:bg-black-900 flex items-center justify-center">
           <div className="animate-pulse">
-            <div className="h-12 w-12 border-4 border-black-900 dark:border-white-100 border-t-transparent rounded-full animate-spin"></div>
+            <div className="bg-white-100 dark:bg-black-900 border-2 border-dashed border-gray-400 dark:border-gray-600 rounded-none p-6 shadow-lg shadow-black/5 dark:shadow-white/5 parent rounded-full animate-spin"></div>
           </div>
         </div>
       </PageTemplate>
@@ -241,11 +241,11 @@ const DeploymentDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Deployment Information */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="border-2 border-black-900 dark:border-white-100">
-              <div className="px-6 py-4 border-b-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900">
+            <div className="border-2 border-black-900 dark:border-white-100 shadow-lg shadow-black/10 dark:shadow-white/10">
+              <div className="px-6 py-4 border-b-2 border-black-900 dark:border-white-100 bg-gray-50 dark:bg-gray-900">
                 <h3 className="text-lg font-bold text-black-900 dark:text-white-100">Deployment Information</h3>
               </div>
-              <div className="p-6">
+              <div className="p-6 bg-white-100 dark:bg-black-900">
                 <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
                   <div>
                     <dt className="text-sm font-medium text-black-500 dark:text-white-400">Project</dt>

@@ -142,7 +142,7 @@ const ProjectDetail = () => {
 
       if (response.data.success) {
         // Redirect to deployment progress page to show Vercel-style progress
-        navigate(`/app/deployments/${response.data.data._id}/progress`);
+        navigate(`/app/projects/${id}/deployments/${response.data.data._id}/progress`);
       } else {
         setError('Failed to trigger deployment');
       }
@@ -187,13 +187,14 @@ const ProjectDetail = () => {
         <div className="flex items-center">
           <button
             onClick={() => navigate('/app/projects')}
-            className="mr-4 p-2 text-black-400 hover:text-black-600 dark:text-white-600 dark:hover:text-white-400 transition-colors rounded-md hover:bg-black-50 dark:hover:bg-white-950"
+            className="group relative mr-4 p-2 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 rounded-none border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:scale-110 overflow-hidden"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+            <ArrowLeft className="h-4 w-4 relative z-10" />
           </button>
           <div>
-            <h1 className="text-2xl font-semibold text-black-900 dark:text-white-100">{project.name}</h1>
-            <p className="text-black-600 dark:text-white-400 text-sm mt-1">
+            <h1 className="text-2xl font-bold text-black-900 dark:text-white-100">{project.name}</h1>
+            <p className="text-black-600 dark:text-white-400 text-sm mt-1 font-medium">
               {project.repoUrl}
             </p>
           </div>
@@ -201,51 +202,68 @@ const ProjectDetail = () => {
         <div className="flex space-x-3">
           <button
             onClick={triggerDeployment}
-            className="inline-flex items-center px-4 py-2 text-sm font-medium bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 rounded-md hover:bg-black-800 dark:hover:bg-white-200 transition-colors"
+            className="group relative inline-flex items-center px-4 py-2 text-sm font-bold bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 hover:text-black-900 dark:hover:text-white-100 rounded-none border-2 border-black-900 dark:border-white-100 hover:scale-105 transition-all duration-200 shadow-sm overflow-hidden"
           >
-            Deploy
+            <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+            <span className="relative z-10 transition-colors duration-200">Deploy</span>
           </button>
           <button
             onClick={() => setDeleteModalOpen(true)}
-            className="inline-flex items-center px-4 py-2 text-sm font-medium border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 rounded-md hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
+            className="group relative inline-flex items-center px-4 py-2 text-sm font-bold border-2 border-red-600 text-red-600 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900 rounded-none transition-all duration-200 overflow-hidden hover:scale-105"
           >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
+            <span className="absolute inset-0 w-full h-full bg-red-600 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+            <span className="relative z-10 flex items-center">
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </span>
           </button>
         </div>
       </div>
 
-      {/* Vercel-style tabs */}
-      <div className="border-b border-black-200 dark:border-white-800 mb-6">
-        <nav className="-mb-px flex space-x-8">
+      {/* Consistent tabs design */}
+      <div className="border-b-2 border-black-900 dark:border-white-100 mb-6">
+        <nav className="-mb-px flex space-x-2">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'overview'
-              ? 'border-black-500 text-black-600 dark:border-white-500 dark:text-white-400'
-              : 'border-transparent text-black-500 hover:text-black-700 hover:border-black-300 dark:text-white-500 dark:hover:text-white-300 dark:hover:border-white-700'
+            className={`group relative px-4 py-2 text-sm font-bold transition-all duration-200 overflow-hidden flex items-center rounded-none border-2 ${activeTab === 'overview'
+              ? 'border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900'
+              : 'border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900'
               }`}
           >
-            Overview
+            {activeTab !== 'overview' && (
+              <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+            )}
+            <span className="relative z-10">Overview</span>
           </button>
           <button
             onClick={() => setActiveTab('deployments')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'deployments'
-              ? 'border-black-500 text-black-600 dark:border-white-500 dark:text-white-400'
-              : 'border-transparent text-black-500 hover:text-black-700 hover:border-black-300 dark:text-white-500 dark:hover:text-white-300 dark:hover:border-white-700'
+            className={`group relative px-4 py-2 text-sm font-bold transition-all duration-200 overflow-hidden flex items-center rounded-none border-2 ${activeTab === 'deployments'
+              ? 'border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900'
+              : 'border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900'
               }`}
           >
-            <Activity className="inline w-4 h-4 mr-1" />
-            Deployments
+            {activeTab !== 'deployments' && (
+              <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+            )}
+            <span className="relative z-10 flex items-center">
+              <Activity className="w-4 h-4 mr-1" />
+              Deployments
+            </span>
           </button>
           <button
             onClick={() => setActiveTab('settings')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'settings'
-              ? 'border-black-500 text-black-600 dark:border-white-500 dark:text-white-400'
-              : 'border-transparent text-black-500 hover:text-black-700 hover:border-black-300 dark:text-white-500 dark:hover:text-white-300 dark:hover:border-white-700'
+            className={`group relative px-4 py-2 text-sm font-bold transition-all duration-200 overflow-hidden flex items-center rounded-none border-2 ${activeTab === 'settings'
+              ? 'border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900'
+              : 'border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900'
               }`}
           >
-            <Settings className="inline w-4 h-4 mr-1" />
-            Settings
+            {activeTab !== 'settings' && (
+              <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+            )}
+            <span className="relative z-10 flex items-center">
+              <Settings className="w-4 h-4 mr-1" />
+              Settings
+            </span>
           </button>
         </nav>
       </div>
@@ -373,13 +391,13 @@ const ProjectDetail = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <Link
-                          to={`/app/deployments/${deployment._id}`}
+                          to={`/app/projects/${id}/deployments/${deployment._id}`}
                           className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all mr-4 font-bold"
                         >
                           View
                         </Link>
                         <Link
-                          to={`/app/deployments/${deployment._id}/logs`}
+                          to={`/app/projects/${id}/deployments/${deployment._id}/logs`}
                           className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all font-bold"
                         >
                           Logs

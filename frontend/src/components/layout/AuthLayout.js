@@ -5,11 +5,11 @@ const AuthLayout = () => {
 
 
   return (
-    <div className="min-h-screen flex flex-col bg-white/80 dark:bg-black/80 backdrop-blur-sm">
+    <div className="min-h-screen flex flex-col bg-white-100 dark:bg-black-900">
 
       {/* Logo */}
-      <div className="flex justify-center mt-8">
-        <div className="text-3xl font-bold text-black-900 dark:text-white-100">
+      <div className="flex justify-center mt-12">
+        <div className="text-4xl font-extrabold text-black-900 dark:text-white-100">
           Shard
         </div>
       </div>
@@ -22,7 +22,7 @@ const AuthLayout = () => {
       </div>
 
       {/* Footer */}
-      <footer className="py-4 text-center text-sm text-black-500 dark:text-white-300">
+      <footer className="py-6 text-center text-sm text-black-600 dark:text-white-400">
         © {new Date().getFullYear()} Shard. All rights reserved.
       </footer>
     </div>

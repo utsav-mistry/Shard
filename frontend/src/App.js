@@ -25,8 +25,6 @@ import Integrations from './pages/Integrations';
 // Landing page
 import LandingPage from './pages/LandingPage';
 
-// Dashboard pages
-import Dashboard from './pages/Dashboard';
 import Overview from './pages/Overview';
 
 // Projects pages
@@ -35,11 +33,9 @@ import ProjectDetail from './pages/projects/ProjectDetail';
 import NewProject from './pages/projects/NewProject';
 
 // Deployments pages
-import DeploymentsList from './pages/deployments/DeploymentsList';
 import DeploymentDetail from './pages/deployments/DeploymentDetail';
 import DeploymentProgress from './pages/deployments/DeploymentProgress';
 import DeploymentLogs from './pages/deployments/DeploymentLogs';
-import NewDeployment from './pages/deployments/NewDeployment';
 
 // Environment pages
 import EnvironmentVariables from './pages/environment/EnvironmentVariables';
@@ -71,7 +67,7 @@ function App() {
       <AuthProvider>
         <ToastProvider>
           <Router>
-            <div className="min-h-screen bg-white/80 dark:bg-black/80 text-black dark:text-white backdrop-blur-sm">
+            <div className="min-h-screen bg-white/80 dark:bg-black/80 text-black dark:text-white">
               <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<LandingPage />} />
@@ -111,15 +107,11 @@ function App() {
                   <Route path="projects" element={<ProjectsList />} />
                   <Route path="projects/new" element={<NewProject />} />
                   <Route path="projects/import" element={<ImportRepository />} />
-                  <Route path="projects/:id" element={<ProjectDetail />} />
-
-                  {/* Deployments routes */}
-                  <Route path="deployments" element={<DeploymentsList />} />
-                  <Route path="deployments/new" element={<NewDeployment />} />
-                  <Route path="deployments/new/:projectId" element={<NewDeployment />} />
-                  <Route path="deployments/:id" element={<DeploymentDetail />} />
-                  <Route path="deployments/:id/progress" element={<DeploymentProgress />} />
-                  <Route path="deployments/:id/logs" element={<DeploymentLogs />} />
+                  <Route path="projects/:id" element={<ProjectDetail />}>
+                    <Route path="deployments/:deploymentId" element={<DeploymentDetail />} />
+                    <Route path="deployments/:deploymentId/progress" element={<DeploymentProgress />} />
+                    <Route path="deployments/:deploymentId/logs" element={<DeploymentLogs />} />
+                  </Route>
 
                   {/* Environment routes */}
                   <Route path="environment/:projectId" element={<EnvironmentVariables />} />
@@ -154,12 +146,12 @@ function App() {
                     <Admin />
                   </ProtectedRoute>
                 } />
-              </Routes>
-              <ThemeToggle className="fixed bottom-4 right-4" />
+                </Routes>
             </div>
           </Router>
         </ToastProvider>
       </AuthProvider>
+      <ThemeToggle className="fixed bottom-4 right-4" />
     </ThemeProvider>
   );
 }

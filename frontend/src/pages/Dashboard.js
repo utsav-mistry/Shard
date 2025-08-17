@@ -258,24 +258,24 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Grid - Matching Landing Page Style */}
-        <div className="mb-10 relative z-0">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 relative z-0">
           {stats.map((stat) => {
             const Icon = stat.icon;
             return (
               <div
                 key={stat.id}
                 onClick={stat.action}
-                className="group relative p-6 border-2 border-black-900 dark:border-white-100 bg-transparent hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-300 cursor-pointer hover:transform hover:-translate-y-0.5 hover:scale-[1.01]"
+                className="group relative p-6 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-95 rounded-none shadow-sm"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium opacity-80">
+                    <p className="text-sm font-medium text-black-600 dark:text-white-400 mb-2">
                       {stat.name}
                     </p>
-                    <p className="text-2xl font-bold mt-1">{stat.value}</p>
+                    <p className="text-3xl font-extrabold text-black-900 dark:text-white-100">{stat.value}</p>
                   </div>
-                  <div className="p-2 border-2 border-black-900 dark:border-white-100 group-hover:bg-white-100 group-hover:text-black-900 dark:group-hover:bg-black-900 dark:group-hover:text-white-100 transition-colors">
-                    <Icon className="w-5 h-5" />
+                  <div className="p-3 border-2 border-black-900 dark:border-white-100 rounded-none group-hover:bg-black-900 group-hover:text-white-100 dark:group-hover:bg-white-100 dark:group-hover:text-black-900 transition-colors duration-200">
+                    <Icon className="w-6 h-6" />
                   </div>
                 </div>
               </div>
@@ -285,31 +285,31 @@ const Dashboard = () => {
 
         {/* Quick Actions - Matching Landing Page Buttons */}
         <div className="mb-10 relative z-0">
-          <h2 className="text-xl font-bold text-black-900 dark:text-white-100 mb-6">
+          <h2 className="text-2xl font-extrabold text-black-900 dark:text-white-100 mb-8">
             Quick Actions
           </h2>
-          <div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {quickActions.map((action) => (
               <div
                 key={action.id}
-                className="group relative p-6 border-2 border-black-900 dark:border-white-100 bg-transparent hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-300 cursor-pointer hover:transform hover:-translate-y-0.5 hover:scale-[1.01]"
+                className="group relative p-8 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-95 rounded-none shadow-sm"
                 onClick={action.action}
               >
-                <div className="flex flex-col h-full">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-2 border-2 border-black-900 dark:border-white-100 group-hover:bg-white-100 group-hover:text-black-900 dark:group-hover:bg-black-900 dark:group-hover:text-white-100 transition-colors">
-                      <action.icon className="w-5 h-5" />
+                <div className="flex flex-col h-full text-center">
+                  <div className="mb-6">
+                    <div className="p-4 border-2 border-black-900 dark:border-white-100 rounded-none group-hover:bg-black-900 group-hover:text-white-100 dark:group-hover:bg-white-100 dark:group-hover:text-black-900 transition-colors duration-200 inline-flex items-center justify-center">
+                      <action.icon className="w-8 h-8" />
                     </div>
                   </div>
-                  <h3 className="text-lg font-bold mb-2">{action.name}</h3>
+                  <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-3">{action.name}</h3>
                   {action.description && (
-                    <p className="text-sm opacity-80 mb-4">
+                    <p className="text-sm text-black-600 dark:text-white-400 mb-6">
                       {action.description}
                     </p>
                   )}
-                  <div className="mt-auto flex items-center text-sm font-medium group-hover:underline">
+                  <div className="mt-auto flex items-center justify-center text-sm font-medium group-hover:underline text-black-900 dark:text-white-100">
                     {action.buttonText || 'Get started'}
-                    <ArrowRight className="ml-1 w-4 h-4 transition-transform group-hover:translate-x-1" />
+                    <ArrowRight className="ml-2 w-4 h-4 transition-transform group-hover:translate-x-1" />
                   </div>
                 </div>
               </div>
@@ -332,26 +332,26 @@ const Dashboard = () => {
             </button>
           </div>
 
-          <div className="overflow-hidden border-2 border-black-100 dark:border-white-100">
+          <div className="overflow-hidden border-2 border-black-900 dark:border-white-100 rounded-none shadow-sm">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-black-900/20 dark:divide-white-100/20">
-                <thead className="bg-black-900/5 dark:bg-white-100/5">
+              <table className="min-w-full divide-y-2 divide-black-900 dark:divide-white-100">
+                <thead className="bg-white-200 dark:bg-black-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-black-500 dark:text-white-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-sm font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
                       Project
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-black-500 dark:text-white-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-sm font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-black-500 dark:text-white-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-sm font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
                       Last Deployed
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-black-500 dark:text-white-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-right text-sm font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white dark:bg-black-900 divide-y divide-black-900/10 dark:divide-white-100/10">
+                <tbody className="bg-white-100 dark:bg-black-900 divide-y-2 divide-black-900 dark:divide-white-100">
                   {deployments.length === 0 ? (
                     <tr>
                       <td colSpan="4" className="px-6 py-8 text-center">

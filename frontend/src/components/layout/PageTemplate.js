@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
 const PageTemplate = ({ title, children, className = '' }) => {
   return (
@@ -15,14 +14,10 @@ const PageTemplate = ({ title, children, className = '' }) => {
           </div>
         )}
 
-        {/* Page content with smooth animation */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
+        {/* Page content with CSS transition animation */}
+        <div className="animate-in fade-in duration-300">
           {children}
-        </motion.div>
+        </div>
       </main>
     </div>
   );

@@ -1,36 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
-import { 
-  User, Camera, Loader2, Mail, Lock, Bell, Github, Twitter, 
-  Link as LinkIcon, Edit2, Key
+import {
+    User, Camera, Loader2, Mail, Lock, Bell, Github, Twitter,
+    Link as LinkIcon, Edit2, Key
 } from 'lucide-react';
 import api from '../utils/axiosConfig';
 
-// Common styles
+// Common styles - Fixed to use consistent design system
 const activeClass = "bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900";
 const hoverClass = "hover:bg-black-100 hover:text-black-900 dark:hover:bg-white-900 dark:hover:text-white-100";
 const textClass = "text-black-900 dark:text-white-100";
 const borderClass = "border-black-900 dark:border-white-100";
-const cardClass = `bg-white-100 dark:bg-black-700 shadow-md border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow p-6`;
+const cardClass = `bg-white-100 dark:bg-black-700 shadow-sm border-2 border-black-900 dark:border-white-100 hover:shadow-lg transition-shadow p-6 rounded-none`;
 
 const TabButton = ({ active, onClick, children, icon: Icon }) => (
-  <button
-    onClick={onClick}
-    className={`group relative px-4 py-2 text-sm font-bold transition-all duration-200 overflow-hidden flex items-center rounded-none border-2 ${
-      active
-        ? 'border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900'
-        : 'border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900'
-    }`}
-  >
-    {!active && (
-      <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-    )}
-    <span className="relative z-10 flex items-center">
-      {Icon && <Icon className="h-4 w-4 mr-2" />}
-      {children}
-    </span>
-  </button>
+    <button
+        onClick={onClick}
+        className={`group relative px-4 py-2 text-sm font-bold transition-all duration-200 overflow-hidden flex items-center rounded-none border-2 ${active
+                ? 'border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900'
+                : 'border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900'
+            }`}
+    >
+        {!active && (
+            <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+        )}
+        <span className="relative z-10 flex items-center">
+            {Icon && <Icon className="h-4 w-4 mr-2" />}
+            {children}
+        </span>
+    </button>
 );
 
 const Profile = () => {
@@ -43,16 +42,13 @@ const Profile = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [userProfile, setUserProfile] = useState(null);
     const [fetchingProfile, setFetchingProfile] = useState(true);
-    
+
     const [connectedAccounts, setConnectedAccounts] = useState([
-      { provider: 'github', connected: false, email: '' },
-      { provider: 'twitter', connected: false, email: '' }
-    ]);
+        { provider: 'github', connected: false, email: '' }]);
 
     const getProviderIcon = (provider) => {
         switch (provider) {
             case 'github': return <Github className="h-5 w-5" />;
-            case 'twitter': return <Twitter className="h-5 w-5 text-blue-400" />;
             default: return <LinkIcon className="h-5 w-5" />;
         }
     };
@@ -148,17 +144,17 @@ const Profile = () => {
 
     if (fetchingProfile) {
         return (
-            <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex items-center justify-center">
+            <div className="min-h-screen bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 flex items-center justify-center">
                 <div className="text-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-4" />
-                    <p>Loading profile...</p>
+                    <Loader2 className="h-8 w-8 animate-spin text-black-900 dark:text-white-100 mx-auto mb-4" />
+                    <p className="text-black-900 dark:text-white-100">Loading profile...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white">
+        <div className="min-h-screen bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100">
             <div className="max-w-4xl mx-auto px-4 py-8">
                 {/* Header */}
                 <div className="mb-8">
@@ -167,28 +163,28 @@ const Profile = () => {
                         Manage your account settings and preferences
                     </p>
                 </div>
-                
+
                 {/* Main Content */}
                 <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none overflow-hidden shadow-md hover:shadow-lg transition-shadow">
                     {/* Tabs */}
                     <div className="border-b-2 border-black-900 dark:border-white-100 px-6 pt-4">
                         <nav className="flex space-x-2 pb-4" aria-label="Tabs">
-                            <TabButton 
-                                active={activeTab === 'profile'} 
+                            <TabButton
+                                active={activeTab === 'profile'}
                                 onClick={() => setActiveTab('profile')}
                                 icon={User}
                             >
                                 Profile
                             </TabButton>
-                            <TabButton 
-                                active={activeTab === 'security'} 
+                            <TabButton
+                                active={activeTab === 'security'}
                                 onClick={() => setActiveTab('security')}
                                 icon={Lock}
                             >
                                 Security
                             </TabButton>
-                            <TabButton 
-                                active={activeTab === 'notifications'} 
+                            <TabButton
+                                active={activeTab === 'notifications'}
                                 onClick={() => setActiveTab('notifications')}
                                 icon={Bell}
                             >
@@ -196,7 +192,7 @@ const Profile = () => {
                             </TabButton>
                         </nav>
                     </div>
-                    
+
                     {/* Tab Content */}
                     <div className="p-6">
                         {activeTab === 'profile' && (
@@ -205,9 +201,9 @@ const Profile = () => {
                                     <div className="flex-shrink-0">
                                         <div className="relative">
                                             {avatar ? (
-                                                <img 
-                                                    src={avatar} 
-                                                    alt="Profile" 
+                                                <img
+                                                    src={avatar}
+                                                    alt="Profile"
                                                     className="w-32 h-32 object-cover border-2 border-black-900 dark:border-white-100 rounded-none"
                                                 />
                                             ) : (
@@ -215,23 +211,23 @@ const Profile = () => {
                                                     <User className="w-16 h-16 text-gray-500 dark:text-gray-400" />
                                                 </div>
                                             )}
-                                            <label 
-                                                htmlFor="avatar-upload" 
+                                            <label
+                                                htmlFor="avatar-upload"
                                                 className="absolute bottom-0 right-0 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 p-2 rounded-none cursor-pointer hover:scale-110 transition-all duration-200 border-2 border-black-900 dark:border-white-100"
                                                 title="Change photo"
                                             >
                                                 <Camera className="h-4 w-4" />
-                                                <input 
-                                                    id="avatar-upload" 
-                                                    type="file" 
-                                                    accept="image/*" 
-                                                    className="hidden" 
+                                                <input
+                                                    id="avatar-upload"
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
                                                     onChange={handleAvatarChange}
                                                 />
                                             </label>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="flex-1 w-full">
                                         <div className="flex justify-between items-center mb-4">
                                             <h2 className="text-2xl font-bold text-black-900 dark:text-white-100">Profile Information</h2>
@@ -249,7 +245,7 @@ const Profile = () => {
                                                 </button>
                                             )}
                                         </div>
-                                        
+
                                         <form onSubmit={handleSubmit} className="space-y-4">
                                             <div>
                                                 <label htmlFor="name" className="block text-sm font-bold text-black-900 dark:text-white-100 mb-2">
@@ -265,7 +261,7 @@ const Profile = () => {
                                                     disabled={!isEditing}
                                                 />
                                             </div>
-                                            
+
                                             <div>
                                                 <label htmlFor="email" className="block text-sm font-bold text-black-900 dark:text-white-100 mb-2">
                                                     Email Address
@@ -285,7 +281,7 @@ const Profile = () => {
                                                     />
                                                 </div>
                                             </div>
-                                            
+
                                             {isEditing && (
                                                 <div className="flex space-x-3 pt-4">
                                                     <button
@@ -322,7 +318,7 @@ const Profile = () => {
                                         </form>
                                     </div>
                                 </div>
-                                
+
                                 {/* Connected Accounts */}
                                 <div className="border-t-2 border-black-900 dark:border-white-100 pt-6">
                                     <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-4">Connected Accounts</h3>
@@ -346,15 +342,13 @@ const Profile = () => {
                                                 </div>
                                                 <button
                                                     type="button"
-                                                    className={`group relative inline-flex items-center px-3 py-1.5 border-2 text-xs font-bold rounded-none transition-all duration-200 overflow-hidden ${
-                                                        account.connected
+                                                    className={`group relative inline-flex items-center px-3 py-1.5 border-2 text-xs font-bold rounded-none transition-all duration-200 overflow-hidden ${account.connected
                                                             ? 'border-red-600 text-red-600 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900'
                                                             : 'border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900'
-                                                    }`}
+                                                        }`}
                                                 >
-                                                    <span className={`absolute inset-0 w-full h-full transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0 ${
-                                                        account.connected ? 'bg-red-600' : 'bg-black-900 dark:bg-white-100'
-                                                    }`} />
+                                                    <span className={`absolute inset-0 w-full h-full transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0 ${account.connected ? 'bg-red-600' : 'bg-black-900 dark:bg-white-100'
+                                                        }`} />
                                                     <span className="relative z-10">
                                                         {account.connected ? 'Disconnect' : 'Connect'}
                                                     </span>
@@ -365,12 +359,12 @@ const Profile = () => {
                                 </div>
                             </div>
                         )}
-                        
+
                         {activeTab === 'security' && (
                             <div className="space-y-6">
                                 <div>
                                     <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-4">Security Settings</h3>
-                                    
+
                                     {/* Two-Factor Authentication */}
                                     <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none p-6">
                                         <div className="flex items-center justify-between mb-4">
@@ -401,7 +395,7 @@ const Profile = () => {
                                             </button>
                                         </div>
                                         <div className="space-y-3">
-                                            <div className="flex items-center justify-between p-3 bg-black-50 dark:bg-white-950 border border-black-200 dark:border-white-800 rounded-none">
+                                            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 border-2 border-dotted border-gray-300 dark:border-gray-700 rounded-none shadow-sm">
                                                 <div className="flex items-center">
                                                     <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
                                                     <div>
@@ -415,7 +409,7 @@ const Profile = () => {
                                     </div>
 
                                     {/* API Keys */}
-                                    <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none p-6">
+                                    <div className="bg-white-100 dark:bg-black-700 border-2 border-dashed border-gray-400 dark:border-gray-600 rounded-none p-6 shadow-lg shadow-black/5 dark:shadow-white/5">
                                         <div className="flex items-center justify-between mb-4">
                                             <div>
                                                 <h4 className="text-lg font-bold text-black-900 dark:text-white-100">API Keys</h4>
@@ -434,12 +428,12 @@ const Profile = () => {
                                 </div>
                             </div>
                         )}
-                        
+
                         {activeTab === 'notifications' && (
                             <div className="space-y-6">
                                 <div>
                                     <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-4">Notification Preferences</h3>
-                                    
+
                                     {/* Email Notifications */}
                                     <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none p-6 mb-6">
                                         <h4 className="text-lg font-bold text-black-900 dark:text-white-100 mb-4">Email Notifications</h4>
@@ -450,7 +444,7 @@ const Profile = () => {
                                                 { id: 'updates', label: 'Product Updates', description: 'New features and platform updates' },
                                                 { id: 'marketing', label: 'Marketing', description: 'Tips, best practices, and promotional content' }
                                             ].map((setting) => (
-                                                <div key={setting.id} className="flex items-center justify-between p-4 bg-black-50 dark:bg-white-950 border border-black-200 dark:border-white-800 rounded-none">
+                                                <div key={setting.id} className="flex items-center justify-between p-4 bg-white-200 dark:bg-black-800 border-2 border-black-900 dark:border-white-100 rounded-none">
                                                     <div>
                                                         <h5 className="font-bold text-black-900 dark:text-white-100">{setting.label}</h5>
                                                         <p className="text-sm text-black-600 dark:text-white-400">{setting.description}</p>
@@ -472,7 +466,7 @@ const Profile = () => {
                                                 { id: 'browser', label: 'Browser Notifications', description: 'Show notifications in your browser' },
                                                 { id: 'desktop', label: 'Desktop Notifications', description: 'Show system notifications on your desktop' }
                                             ].map((setting) => (
-                                                <div key={setting.id} className="flex items-center justify-between p-4 bg-black-50 dark:bg-white-950 border border-black-200 dark:border-white-800 rounded-none">
+                                                <div key={setting.id} className="flex items-center justify-between p-4 bg-white-200 dark:bg-black-800 border-2 border-black-900 dark:border-white-100 rounded-none">
                                                     <div>
                                                         <h5 className="font-bold text-black-900 dark:text-white-100">{setting.label}</h5>
                                                         <p className="text-sm text-black-600 dark:text-white-400">{setting.description}</p>
@@ -495,7 +489,7 @@ const Profile = () => {
                                                 { id: 'daily', label: 'Daily Digest', description: 'Receive a daily summary' },
                                                 { id: 'weekly', label: 'Weekly Summary', description: 'Receive a weekly summary' }
                                             ].map((option) => (
-                                                <label key={option.id} className="flex items-center p-4 bg-black-50 dark:bg-white-950 border border-black-200 dark:border-white-800 rounded-none cursor-pointer hover:bg-black-100 dark:hover:bg-white-900 transition-colors">
+                                                <label key={option.id} className="flex items-center p-4 bg-white-200 dark:bg-black-800 border-2 border-black-900 dark:border-white-100 rounded-none cursor-pointer hover:bg-white-300 dark:hover:bg-black-700 transition-colors">
                                                     <input type="radio" name="frequency" value={option.id} className="w-4 h-4 text-black-900 dark:text-white-100 border-black-300 dark:border-white-700 focus:ring-black-500 dark:focus:ring-white-500" defaultChecked={option.id === 'instant'} />
                                                     <div className="ml-3">
                                                         <h5 className="font-bold text-black-900 dark:text-white-100">{option.label}</h5>

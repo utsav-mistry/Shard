@@ -1,9 +1,9 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Menu, 
-  X, 
-  ChevronRight, 
-  LogOut, 
+import {
+  Menu,
+  X,
+  ChevronRight,
+  LogOut,
   LayoutDashboard,
   Folder,
   Package,
@@ -13,40 +13,47 @@ import {
   FileText,
   Settings,
   ExternalLink,
-  Zap, 
-  Server, 
-  Layers, 
-  Code, 
-  Bell, 
-  User, 
-  Plus, 
-  Github,
+  Zap,
+  Server,
+  Code,
+  User,
   ChevronDown,
   HelpCircle
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const { currentUser, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [expandedSections, setExpandedSections] = useState({});
+  const sidebarRef = useRef(null);
 
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (window.innerWidth < 1024 && isOpen && sidebarRef.current && !sidebarRef.current.contains(event.target)) {
+        onClose();
+      }
+    };
 
-  const activeClass = "bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900";
-  const hoverClass = "hover:bg-black-100 hover:text-black-900 dark:hover:bg-white-900 dark:hover:text-white-100";
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
+  const activeClass = "bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 border-2 border-black-900 dark:border-white-100";
+  const hoverClass = "hover:bg-white-50 dark:hover:bg-black-800 hover:border-black-900 dark:hover:border-white-100";
   const textClass = "text-black-900 dark:text-white-100";
-  const borderClass = "border-black-900 dark:border-white-100";
+  const borderClass = "border-2 border-transparent";
 
-  // Vercel-style navigation - clean and minimal
   const navigation = [
     {
       name: 'Overview',
-      href: '/app/overview',
+      href: '/app',
       icon: <LayoutDashboard className="w-5 h-5" />,
       exact: true
     },
@@ -56,65 +63,25 @@ const Sidebar = ({ isOpen, onClose }) => {
       children: [
         { name: 'All Projects', href: '/app/projects' },
         { name: 'New Project', href: '/app/projects/new' },
-        { name: 'Templates', href: '/app/projects/templates' }
       ]
     },
     {
-      name: 'Deployments',
-      href: '/app/deployments',
-      icon: <Package className="w-5 h-5" />
-    },
-    {
-      name: 'Resources',
-      icon: <Server className="w-5 h-5" />,
-      children: [
-        { name: 'Domains', href: '/app/domains' },
-        { name: 'Environment Variables', href: '/app/env-vars' },
-        { name: 'Integrations', href: '/app/integrations' }
-      ]
-    },
-    {
-      name: 'Analytics',
-      icon: <BarChart3 className="w-5 h-5" />,
-      href: '/app/analytics'
-    },
-    { 
-      name: 'Monitoring', 
-      href: '#', 
-      icon: <Activity className="w-5 h-5" />,
-      children: [
-        { name: 'Metrics', href: '/app/monitoring/metrics' },
-        { name: 'Logs', href: '/app/monitoring/logs' },
-        { name: 'Alerts', href: '/app/monitoring/alerts' },
-      ]
+      name: 'Activity',
+      href: '/app/activity',
+      icon: <Activity className="w-5 h-5" />
     },
   ];
 
   const bottomNavigation = [
-    { 
-      name: 'Documentation', 
-      href: '/app/docs', 
+    {
+      name: 'Documentation',
+      href: '/app/docs',
       icon: <BookOpen className="w-5 h-5" />
     },
-    { 
-      name: 'API Reference', 
-      href: '/app/api-reference', 
-      icon: <Code className="w-5 h-5" /> 
-    },
-    { 
-      name: 'Support', 
-      href: '/app/support', 
-      icon: <HelpCircle className="w-5 h-5" /> 
-    },
-    { 
-      name: 'Changelog', 
-      href: '/app/changelog', 
-      icon: <FileText className="w-5 h-5" /> 
-    },
-    { 
-      name: 'Settings', 
-      href: '/app/settings', 
-      icon: <Settings className="w-5 h-5" /> 
+    {
+      name: 'Settings',
+      href: '/app/settings',
+      icon: <Settings className="w-5 h-5" />
     }
   ];
 
@@ -128,217 +95,124 @@ const Sidebar = ({ isOpen, onClose }) => {
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/login');
+      navigate('/auth/login');
     } catch (error) {
       console.error('Logout failed:', error);
     }
   };
 
-  // Animation variants for sidebar
-  const sidebarVariants = {
-    open: {
-      x: 0,
-      transition: {
-        type: 'spring',
-        stiffness: 400,
-        damping: 30
-      }
-    },
-    closed: {
-      x: '-100%',
-      transition: {
-        type: 'spring',
-        stiffness: 400,
-        damping: 30
-      }
-    }
-  };
+  const renderLink = (item) => {
+    const isExternal = item.external;
+    const content = (
+      <>
+        {item.icon}
+        <span>{item.name}</span>
+        {isExternal && <ExternalLink className="w-3 h-3 ml-auto opacity-50" />}
+      </>
+    );
 
-  const itemVariants = {
-    open: {
-      opacity: 1,
-      y: 0,
-      transition: { type: 'spring', stiffness: 300, damping: 24 }
-    },
-    closed: {
-      opacity: 0,
-      y: 20,
-      transition: { duration: 0.2 }
+    const className = `flex items-center space-x-3 px-3 py-2.5 text-sm font-medium transition-all duration-200 rounded-none ${location.pathname === item.href ? activeClass : `${textClass} ${borderClass} ${hoverClass}`}`;
+
+    if (isExternal) {
+      return (
+        <a href={item.href} target="_blank" rel="noopener noreferrer" className={className}>
+          {content}
+        </a>
+      );
     }
+
+    return (
+      <Link to={item.href} onClick={onClose} className={className}>
+        {content}
+      </Link>
+    );
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-y-auto">
-      {/* Mobile Overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={onClose}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside 
-        className={`
-          fixed lg:static inset-y-0 left-0 z-50 w-64 
-          bg-white dark:bg-black border-r-2 border-black dark:border-white 
-          transform transition-transform duration-300 ease-in-out lg:transform-none
-          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-          flex flex-col h-full
-        `}
-      >
-        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b-2 border-black dark:border-white bg-white dark:bg-black">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-black dark:bg-white border-2 border-black dark:border-white flex items-center justify-center">
-                <Zap className="w-4 h-4 text-white dark:text-black" />
-              </div>
-              <span className="text-xl font-bold text-black dark:text-white">Shard</span>
-            </div>
-            <button
-              onClick={onClose}
-              className="lg:hidden p-1 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              <Menu className="w-5 h-5 text-black dark:text-white" />
-            </button>
+    <div ref={sidebarRef} className="flex flex-col h-full border-r-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 shadow-sm">
+      {/* Header */}
+      <div className="flex items-center justify-between p-6 border-b-2 border-black-900 dark:border-white-100">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-black-900 dark:bg-white-100 border-2 border-black-900 dark:border-white-100 rounded-none flex items-center justify-center">
+            <Zap className="w-5 h-5 text-white-100 dark:text-black-900" />
           </div>
+          <span className="text-2xl font-extrabold text-black-900 dark:text-white-100">Shard</span>
+        </div>
+        <button onClick={onClose} className="lg:hidden p-2 hover:bg-white-50 dark:hover:bg-black-800 transition-colors rounded-none border-2 border-transparent hover:border-black-900 dark:hover:border-white-100">
+          <X className="w-5 h-5 text-black-900 dark:text-white-100" />
+        </button>
+      </div>
 
-          {/* User Info */}
-          <div className="p-4 border-b-2 border-black dark:border-white bg-white dark:bg-black">
-            <div className="flex items-center space-x-3">
-              {currentUser?.avatar ? (
-                <img
-                  src={currentUser.avatar}
-                  alt={currentUser.name}
-                  className="w-8 h-8 border-2 border-black dark:border-white"
-                />
-              ) : (
-                <div className="w-8 h-8 bg-black dark:bg-white border-2 border-black dark:border-white flex items-center justify-center">
-                  <User className="w-4 h-4 text-white dark:text-black" />
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-black dark:text-white truncate">
-                  {currentUser?.name || 'User'}
-                </p>
-                <p className="text-xs text-black-600 dark:text-white-400 truncate">
-                  {currentUser?.email}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-            {navigation.map((item) => (
-              <div key={item.name}>
-                {item.children ? (
-                  <div>
-                    <button
-                      onClick={() => toggleSection(item.name)}
-                      className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-black dark:text-white border-2 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800 hover:border-black dark:hover:border-white transition-colors"
-                    >
-                      <div className="flex items-center space-x-3">
-                        {item.icon}
-                        <span>{item.name}</span>
-                      </div>
-                      <ChevronRight className={`w-4 h-4 transition-transform ${
-                        expandedSections[item.name] ? 'rotate-90' : ''
-                      }`} />
-                    </button>
-                    {expandedSections[item.name] && (
-                      <div className="ml-6 mt-1 space-y-1">
-                        {item.children.map((child) => (
-                          <Link
-                            key={child.name}
-                            to={child.href}
-                            onClick={onClose}
-                            className={`block px-3 py-2 text-sm font-medium transition-colors border-2 ${
-                              location.pathname === child.href
-                                ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white'
-                                : 'text-black dark:text-white border-transparent hover:bg-gray-100 dark:hover:bg-gray-800 hover:border-black dark:hover:border-white'
-                            }`}
-                          >
-                            {child.name}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <Link
-                    to={item.href}
-                    onClick={onClose}
-                    className={`flex items-center space-x-3 px-3 py-2 text-sm font-medium transition-colors border-2 ${
-                      location.pathname === item.href
-                        ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white'
-                        : 'text-black dark:text-white border-transparent hover:bg-gray-100 dark:hover:bg-gray-800 hover:border-black dark:hover:border-white'
-                    }`}
+      {/* Navigation */}
+      <div className="flex-1 flex flex-col overflow-y-auto">
+        <nav className="flex-1 px-4 py-4 space-y-1">
+          {navigation.map((item) => (
+            <div key={item.name}>
+              {item.children ? (
+                <div>
+                  <button
+                    onClick={() => toggleSection(item.name)}
+                    className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-black-900 dark:text-white-100 border-2 border-transparent hover:bg-white-50 dark:hover:bg-black-800 hover:border-black-900 dark:hover:border-white-100 transition-all duration-200 rounded-none"
                   >
-                    {item.icon}
-                    <span>{item.name}</span>
-                  </Link>
-                )}
-              </div>
-            ))}
-          </nav>
-
-          {/* Bottom Navigation */}
-          <div className="p-4 border-t-2 border-black dark:border-white space-y-1 bg-white dark:bg-black">
-            {bottomNavigation.map((item) => {
-              const content = (
-                <>
-                  {item.icon}
-                  <span>{item.name}</span>
-                  {item.external && (
-                    <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
+                    <div className="flex items-center space-x-3">
+                      {item.icon}
+                      <span>{item.name}</span>
+                    </div>
+                    <ChevronRight className={`w-4 h-4 transition-transform ${expandedSections[item.name] ? 'rotate-90' : ''}`} />
+                  </button>
+                  {expandedSections[item.name] && (
+                    <div className="ml-6 mt-1 space-y-1">
+                      {item.children.map((child) => (
+                        <Link
+                          key={child.name}
+                          to={child.href}
+                          onClick={onClose}
+                          className={`block px-3 py-2 text-sm font-medium transition-all duration-200 border-2 rounded-none ${location.pathname === child.href ? 'bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 border-black-900 dark:border-white-100' : 'text-black-900 dark:text-white-100 border-transparent hover:bg-white-50 dark:hover:bg-black-800 hover:border-black-900 dark:hover:border-white-100'}`}
+                        >
+                          {child.name}
+                        </Link>
+                      ))}
+                    </div>
                   )}
-                </>
-              );
-              
-              return item.external ? (
-                <a
-                  key={item.name}
-                  href={item.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center space-x-3 px-3 py-2 text-sm font-medium transition-colors border-2 text-black dark:text-white border-transparent hover:bg-gray-100 dark:hover:bg-gray-800 hover:border-black dark:hover:border-white"
-                >
-                  {content}
-                </a>
+                </div>
               ) : (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  onClick={onClose}
-                  className={`flex items-center space-x-3 px-3 py-2 text-sm font-medium transition-colors border-2 ${
-                    location.pathname === item.href
-                      ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white'
-                      : 'text-black dark:text-white border-transparent hover:bg-gray-100 dark:hover:bg-gray-800 hover:border-black dark:hover:border-white'
-                  }`}
-                >
-                  {content}
-                </Link>
-              );
-            })}
+                renderLink(item)
+              )}
+            </div>
+          ))}
+        </nav>
 
-            {/* Logout Button */}
-            <button
-              onClick={() => {
-                logout();
-                onClose();
-              }}
-              className="w-full flex items-center space-x-3 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 border-2 border-transparent hover:bg-red-50 dark:hover:bg-red-900 hover:border-red-600 dark:hover:border-red-400 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Sign out</span>
-            </button>
+        {/* Bottom Section */}
+        <div className="px-4 py-4 border-t-2 border-black-900 dark:border-white-100 space-y-2">
+          {bottomNavigation.map((item) => renderLink(item))}
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center space-x-3 px-3 py-2.5 text-sm font-medium text-black-900 dark:text-white-100 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-black-900 hover:text-white-100 dark:hover:bg-white-100 dark:hover:text-black-900 transition-all duration-200 rounded-none"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Sign out</span>
+          </button>
+        </div>
+      </div>
+
+      {/* User Profile Footer */}
+      <div className="p-6 border-t-2 border-black-900 dark:border-white-100">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-black-900 dark:bg-white-100 border-2 border-black-900 dark:border-white-100 rounded-none flex items-center justify-center">
+            <User className="w-5 h-5 text-white-100 dark:text-black-900" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-black-900 dark:text-white-100 truncate">
+              {currentUser?.name || 'User'}
+            </p>
+            <p className="text-xs text-black-600 dark:text-white-400 truncate">
+              {currentUser?.email}
+            </p>
           </div>
         </div>
-      </aside>
+      </div>
     </div>
   );
-};
+}
 
 export default Sidebar;
