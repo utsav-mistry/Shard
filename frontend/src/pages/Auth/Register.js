@@ -188,7 +188,7 @@ const Register = () => {
           </div>
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 grid grid-cols-2 gap-3">
           <button
             onClick={handleGithubLogin}
             className="group relative w-full inline-flex justify-center py-2.5 px-4 border border-black-900 rounded-none shadow-lg bg-white-100 text-sm font-medium text-black-900 hover:text-white-100 dark:bg-black-900 dark:border dark:border-white-100 dark:text-white-100 dark:hover:text-black-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-500 dark:focus:ring-white-500 transition-all duration-200 overflow-hidden hover:border-black-900 dark:hover:border-white-100"

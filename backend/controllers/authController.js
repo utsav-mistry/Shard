@@ -325,6 +325,74 @@ const googleOAuthCallback = async (req, res) => {
     }
 };
 
+// Google OAuth Callback (GET) - for redirect_uri pointing to backend
+const googleOAuthCallbackRedirect = async (req, res) => {
+    const code = req.query.code;
+    const error = req.query.error;
+
+    if (error) {
+        const frontendUrl = new URL(process.env.FRONTEND_URL || 'http://localhost:3000');
+        const errorUrl = new URL('/login', frontendUrl);
+        errorUrl.searchParams.set('error', 'google_oauth_denied');
+        return res.redirect(errorUrl.toString());
+    }
+
+    if (!code) {
+        return res.status(400).send('Authorization code is required');
+    }
+
+    try {
+        const accessToken = await googleService.getAccessToken(code);
+        const googleUser = await googleService.getGoogleUser(accessToken);
+
+        let user = await User.findOne({
+            $or: [
+                { googleId: googleUser.id },
+                { email: googleUser.email }
+            ]
+        });
+
+        if (!user) {
+            user = new User({
+                googleId: googleUser.id,
+                email: googleUser.email,
+                name: googleUser.name,
+                avatar: googleUser.picture,
+                isVerified: googleUser.verified_email || false
+            });
+            await user.save();
+        } else if (!user.googleId) {
+            user.googleId = googleUser.id;
+            if (!user.avatar) user.avatar = googleUser.picture;
+            await user.save();
+        }
+
+        user.lastLogin = new Date();
+        await user.save();
+
+        const token = generateToken(user);
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: (process.env.JWT_COOKIE_EXPIRE || 7) * 24 * 60 * 60 * 1000,
+        });
+
+        const frontendBase = new URL(process.env.FRONTEND_URL || 'http://localhost:3000');
+        const redirectUrl = new URL('/auth/callback', frontendBase);
+        redirectUrl.searchParams.set('token', token);
+        redirectUrl.searchParams.set('provider', 'google');
+        return res.redirect(redirectUrl.toString());
+    } catch (err) {
+        console.error('Google OAuth GET callback error:', err);
+        const frontendUrl = new URL(process.env.FRONTEND_URL || 'http://localhost:3000');
+        const errorUrl = new URL('/login', frontendUrl);
+        errorUrl.searchParams.set('error', 'google_oauth_failed');
+        return res.redirect(errorUrl.toString());
+    }
+};
+
 // Get User Profile
 const getUserProfile = async (req, res) => {
     try {
@@ -392,6 +460,7 @@ module.exports = {
     githubOAuthCallback,
     githubOAuthCallbackLogin,
     googleOAuthCallback,
+    googleOAuthCallbackRedirect,
     getUserProfile,
     updateUserProfile
 };

@@ -27,7 +27,7 @@ router.post("/login", authController.loginUser);
 router.get('/google/login', (req, res) => {
   const url = generateOAuthUrl(GOOGLE_AUTH_URL, {
     client_id: process.env.GOOGLE_CLIENT_ID,
-    redirect_uri: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/oauth/callback?provider=google`,
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI,
     response_type: 'code',
     scope: 'profile email',
     access_type: 'offline',
@@ -40,7 +40,6 @@ router.get('/google/login', (req, res) => {
 router.get('/github/login', (req, res) => {
   const url = generateOAuthUrl(GITHUB_AUTH_URL, {
     client_id: process.env.GITHUB_CLIENT_ID,
-    redirect_uri: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/oauth/callback?provider=github`,
     scope: 'user:email',
   });
   res.redirect(url);
@@ -49,6 +48,12 @@ router.get('/github/login', (req, res) => {
 // OAuth Callback handlers for processing codes from frontend
 router.post('/google/callback', authController.googleOAuthCallback);
 router.post('/github/callback', authController.githubOAuthCallbackLogin);
+
+// GitHub OAuth GET callback (matches GitHub app redirect URI)
+router.get('/github/callback', authController.githubOAuthCallback);
+
+// Google OAuth GET callback (matches Google app redirect URI)
+router.get('/google/callback', authController.googleOAuthCallbackRedirect);
 
 // Protected routes - require authentication
 router.get('/profile', authenticate, async (req, res) => {

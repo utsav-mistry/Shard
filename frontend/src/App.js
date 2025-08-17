@@ -13,6 +13,7 @@ import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import OAuthCallback from './pages/Auth/OAuthCallback';
 import AuthRedirect from './components/auth/AuthRedirect';
+import TokenCallback from './pages/Auth/TokenCallback';
 
 // Integration pages
 import GitHubIntegration from './pages/integrations/GitHubIntegration';
@@ -86,6 +87,8 @@ function App() {
                 <Route path="/auth/oauth/callback" element={<OAuthCallback />} />
                 <Route path="/auth/github/callback" element={<OAuthCallback />} />
                 <Route path="/auth/google/callback" element={<OAuthCallback />} />
+                {/* Token-based callback from backend redirects */}
+                <Route path="/auth/callback" element={<TokenCallback />} />
 
                 {/* Integration Callbacks - Outside MainLayout */}
                 <Route path="/integrations/github/callback" element={<ProtectedRoute><GitHubCallbackPage /></ProtectedRoute>} />

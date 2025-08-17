@@ -38,22 +38,16 @@ const Login = () => {
 
   const handleGithubLogin = () => {
     setError('');
-    // GitHub OAuth flow - redirect to GitHub authorization page
-    const githubClientId = process.env.REACT_APP_GITHUB_CLIENT_ID;
-    const redirectUri = `${window.location.origin}/auth/github/callback`;
-    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${githubClientId}&redirect_uri=${redirectUri}&scope=user:email`;
-
-    window.location.href = githubAuthUrl;
+    // Initiate GitHub OAuth via backend so callback hits /api/auth/github/callback
+    const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    window.location.href = `${apiBase}/api/auth/github/login`;
   };
 
   const handleGoogleLogin = () => {
     setError('');
-    // Google OAuth flow - redirect to Google authorization page
-    const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-    const redirectUri = `${window.location.origin}/auth/google/callback`;
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${redirectUri}&response_type=code&scope=profile email`;
-
-    window.location.href = googleAuthUrl;
+    // Initiate Google OAuth via backend so callback hits /api/auth/google/callback
+    const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    window.location.href = `${apiBase}/api/auth/google/login`;
   };
 
   return (
