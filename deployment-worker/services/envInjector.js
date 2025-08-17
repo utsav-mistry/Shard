@@ -1,7 +1,7 @@
-import fs from 'fs';
-import path from 'path';
-import axios from 'axios';
-import logger from '../utils/logger.js';
+const fs = require('fs');
+const path = require('path');
+const axios = require('axios');
+const logger = require('../utils/logger');
 
 const injectEnv = async (projectPath, envVars, projectId) => {
     const envFilePath = path.join(projectPath, ".env");
@@ -69,7 +69,7 @@ const injectEnv = async (projectPath, envVars, projectId) => {
     }
 };
 
-export { injectEnv, fetchEnvVars };
+module.exports = { injectEnv, fetchEnvVars };
 
 // Fetch environment variables for a project from backend API
 // Keeps env fetching logic centralized with env injection utilities

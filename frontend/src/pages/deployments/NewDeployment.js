@@ -172,8 +172,8 @@ const NewDeployment = () => {
       
       // Handle standardized response
       if (response.data && response.data.success) {
-        // Navigate to deployment details page
-        navigate(`/deployments/${response.data.data._id}`, {
+        // Navigate to deployment progress page to show real-time logs
+        navigate(`/deployments/${response.data.data._id}/progress`, {
           state: {
             message: 'Deployment started successfully',
             type: 'success'

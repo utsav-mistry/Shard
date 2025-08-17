@@ -1,23 +1,36 @@
 # ===== FRONTEND =====
 FROM node:18 AS frontend
 WORKDIR /app/frontend
+
+# Install dependencies separately (better cache)
 COPY frontend/package*.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps
+
+# Copy only source code (after deps installed)
 COPY frontend/ ./
+
+# Build
 RUN npm run build || npm run build --if-present
+
 
 # ===== BACKEND =====
 FROM node:18
-WORKDIR /app
-COPY backend/ ./backend/
-COPY --from=frontend /app/frontend/build ./frontend/build
-
 WORKDIR /app/backend
-RUN npm install
 
-# Set the internal port to 12000
+# Install backend deps with cache
+COPY backend/package*.json ./
+RUN npm install --legacy-peer-deps
+
+# Copy backend source
+COPY backend/ ./
+
+# Copy frontend build into backend's public dir
+COPY --from=frontend /app/frontend/build ./public
+
+# Runtime environment
+ENV NODE_ENV=production
 ENV PORT=12000
-# Note: Project-specific environment variables are injected at runtime via --env-file flag
+
 EXPOSE 12000
 
 CMD ["node", "server.js"]

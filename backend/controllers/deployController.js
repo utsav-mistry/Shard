@@ -3,9 +3,18 @@ const Deployment = require("../models/Deployment");
 const Project = require("../models/Project");
 const logService = require("../services/logService");
 const envService = require("../services/envService");
+const logger = require("../utils/logger");
 
 const createDeployment = async (req, res) => {
-    const { projectId } = req.body;
+    const { projectId, branch = 'main', commitHash, message, environmentVariables = [] } = req.body;
+
+    // Input validation
+    if (!projectId) {
+        return res.apiValidationError(
+            { projectId: 'Project ID is required' },
+            'Missing required fields'
+        );
+    }
 
     try {
         // Find project - admin can deploy any project, users only their own
@@ -18,10 +27,15 @@ const createDeployment = async (req, res) => {
             return res.apiNotFound('Project');
         }
 
-        // Create Deployment record
+        // Create Deployment record with additional metadata
         const deployment = await Deployment.create({
             projectId: project._id,
             status: "pending",
+            branch: branch,
+            commitHash: commitHash || 'latest',
+            commitMessage: message || `Deploy ${branch} branch`,
+            userEmail: req.user.email,
+            createdAt: new Date()
         });
 
         // Fetch actual env vars from database
@@ -31,15 +45,28 @@ const createDeployment = async (req, res) => {
             envObject[env.key] = env.value;
         });
 
+        // Merge environment variables from request with stored ones
+        const mergedEnvVars = { ...envObject };
+        if (environmentVariables && environmentVariables.length > 0) {
+            environmentVariables.forEach(env => {
+                if (env.key && env.value) {
+                    mergedEnvVars[env.key] = env.value;
+                }
+            });
+        }
+
         // Prepare job object for worker queue
         const job = {
             projectId: project._id,
+            deploymentId: deployment._id,
             repoUrl: project.repoUrl,
-            stack: project.stack,
+            stack: project.framework,
             subdomain: project.subdomain,
-            envVars: envObject,  // Now using actual env vars
+            branch: branch,
+            commitHash: commitHash || 'latest',
+            envVars: mergedEnvVars,
             userEmail: req.user.email,
-            deploymentId: deployment._id  // Pass deployment ID for logs
+            token: req.headers.authorization?.replace('Bearer ', '')
         };
 
         // Log deployment start
@@ -107,9 +134,34 @@ const createDeployment = async (req, res) => {
         }
 
         // Step 2: Add job to worker queue (only if AI review passed or failed)
-        await axios.post(`${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/jobs`, job);
+        try {
+            await axios.post(`${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/jobs`, job, {
+                timeout: 10000,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            await logService.addLog(projectId, deployment._id, "queue", "Job added to deployment queue");
+        } catch (queueError) {
+            console.error("Failed to queue deployment job:", queueError);
+            
+            // Update deployment status to failed
+            deployment.status = "failed";
+            deployment.finishedAt = new Date();
+            await deployment.save();
+            
+            await logService.addLog(projectId, deployment._id, "error", 
+                `Failed to queue deployment: ${queueError.message}`);
+            
+            return res.apiServerError("Failed to queue deployment", queueError.message);
+        }
 
-        return res.apiCreated({ deploymentId: deployment._id }, "Deployment started successfully");
+        return res.apiCreated({ 
+            deploymentId: deployment._id,
+            status: deployment.status,
+            projectName: project.name
+        }, "Deployment started successfully");
     } catch (err) {
         console.error("Deployment error:", err);
         return res.apiServerError("Deployment failed", err.message);
@@ -139,31 +191,42 @@ const getDeployments = async (req, res) => {
 };
 
 const updateDeploymentStep = async (req, res) => {
-    const { deploymentId, step, message } = req.body;
+    const { deploymentId, step, message, status } = req.body;
+
+    // Input validation
+    if (!deploymentId || !step) {
+        return res.apiValidationError(
+            {
+                deploymentId: !deploymentId ? 'Deployment ID is required' : null,
+                step: !step ? 'Step is required' : null
+            },
+            'Missing required fields'
+        );
+    }
 
     try {
         const deployment = await Deployment.findById(deploymentId);
         if (!deployment) {
-            return res.status(404).json({
-                success: false,
-                message: 'Deployment not found'
-            });
+            return res.apiNotFound('Deployment');
+        }
+
+        // Update deployment status if provided
+        if (status && status !== deployment.status) {
+            deployment.status = status;
+            await deployment.save();
         }
 
         // Log the step update
-        await logService.addLog(deployment.projectId, deploymentId, step, message);
+        await logService.addLog(deployment.projectId, deploymentId, step, message || `Step ${step} completed`);
 
-        return res.json({
-            success: true,
-            message: 'Deployment step updated successfully'
-        });
+        return res.apiSuccess({
+            deploymentId: deployment._id,
+            status: deployment.status,
+            step: step
+        }, 'Deployment step updated successfully');
     } catch (err) {
-        console.error('Error updating deployment step:', err);
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to update deployment step',
-            error: err.message
-        });
+        console.error("Error updating deployment step:", err);
+        return res.apiServerError("Failed to update deployment step", err.message);
     }
 };
 
@@ -193,4 +256,89 @@ const updateDeploymentStatus = async (req, res) => {
     }
 };
 
-module.exports = { createDeployment, getDeployments, updateDeploymentStatus, updateDeploymentStep };
+// New method for creating deployment from GitHub project import
+const createDeploymentFromProject = async ({
+    projectId,
+    userId,
+    branch = 'main',
+    commitHash = 'HEAD',
+    message = 'Deployment from project import',
+    envVars = []
+}) => {
+    try {
+        const project = await Project.findById(projectId);
+        if (!project) {
+            throw new Error('Project not found');
+        }
+
+        // Create deployment record
+        const deployment = new Deployment({
+            projectId,
+            userId,
+            branch,
+            commitHash,
+            message,
+            status: 'pending',
+            userEmail: 'user@example.com', // Should get from user model
+            envVars: envVars.map(({ key, value, isSecret = false }) => ({
+                key,
+                value: isSecret ? Buffer.from(value).toString('base64') : value,
+                isSecret
+            }))
+        });
+
+        await deployment.save();
+
+        // Queue deployment job
+        const jobData = {
+            deploymentId: deployment._id,
+            projectId: project._id,
+            repoUrl: project.repoUrl,
+            branch,
+            stack: project.framework,
+            subdomain: project.subdomain,
+            envVars: [...(project.settings.envVars || []), ...envVars],
+            buildCommand: project.settings.buildCommand,
+            startCommand: project.settings.startCommand,
+            metadata: project.metadata
+        };
+
+        // Send to deployment worker
+        try {
+            const response = await axios.post(
+                `${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/deploy`,
+                jobData,
+                { timeout: 10000 }
+            );
+
+            if (response.data.success) {
+                deployment.status = 'queued';
+                await deployment.save();
+                logger.info(`Deployment ${deployment._id} queued successfully`);
+            }
+        } catch (queueError) {
+            logger.error('Failed to queue deployment job:', queueError.message);
+            deployment.status = 'failed';
+            deployment.error = `Failed to queue deployment: ${queueError.message}`;
+            await deployment.save();
+        }
+
+        return {
+            success: true,
+            deploymentId: deployment._id,
+            status: deployment.status
+        };
+
+    } catch (error) {
+        logger.error('Failed to create deployment from project:', error);
+        throw error;
+    }
+};
+
+module.exports = {
+    createDeployment,
+    createDeploymentFromProject,
+    getDeployments,
+    updateDeploymentStep,
+    updateDeploymentStatus
+};

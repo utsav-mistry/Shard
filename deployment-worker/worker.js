@@ -1,27 +1,36 @@
-import 'dotenv/config';
-import express from 'express';
-import http from 'http';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs-extra';
-import helmet from 'helmet';
-import cors from 'cors';
-import rateLimit from 'express-rate-limit';
-import compression from 'compression';
-import morgan from 'morgan';
-import { v4 as uuidv4 } from 'uuid';
-import chalk from 'chalk';
-import logger from './utils/logger.js';
-import JobQueue from './services/queueService.js';
-import { processJob } from './services/jobProcessor.js';
+require('dotenv').config();
+const express = require('express');
+const http = require('http');
+const path = require('path');
+const fs = require('fs-extra');
+const helmet = require('helmet');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const compression = require('compression');
+const morgan = require('morgan');
+const { v4: uuidv4 } = require('uuid');
+const chalk = require('chalk');
+const logger = require('./utils/logger.js');
+const JobQueue = require('./services/queueService.js');
+const { processJob } = require('./services/jobProcessor.js');
+const { Server } = require('socket.io');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// __filename and __dirname are available in CommonJS
 
 // Initialize Express app
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 9000;
+
+// Initialize Socket.IO for real-time communication
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CORS_ORIGIN || ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
+});
 
 // Configuration
 const config = {
@@ -109,7 +118,8 @@ const deploymentQueue = new JobQueue({
 app.set('queue', deploymentQueue);
 
 // Import routes
-import healthRoutes from './routes/health.js';
+const healthRouter = require('./routes/health.js');
+const deployRouter = require('./routes/deploy.js');
 
 // Health check route
 app.get('/', (req, res) => {
@@ -122,7 +132,8 @@ app.get('/', (req, res) => {
 });
 
 // API Routes
-app.use('/health', healthRoutes); // Handle /health endpoint
+app.use('/health', healthRouter);
+app.use('/api/deploy', deployRouter);
 
 // Job submission endpoint
 app.post('/api/jobs', async (req, res) => {
@@ -472,4 +483,4 @@ if (process.env.NODE_ENV !== 'test') {
   });
 }
 
-export { app, deploymentQueue, startServer, gracefulShutdown };
+module.exports = { app, deploymentQueue, startServer, gracefulShutdown };

@@ -13,13 +13,16 @@ const DeploymentSchema = new mongoose.Schema(
         userId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
-            required: [true, 'User ID is required'],
             index: true,
+        },
+        userEmail: {
+            type: String,
+            trim: true,
         },
         status: {
             type: String,
             enum: {
-                values: ['pending', 'building', 'deploying', 'running', 'success', 'failed', 'cancelled'],
+                values: ['pending', 'building', 'deploying', 'running', 'success', 'failed', 'cancelled', 'pending_review'],
                 message: 'Status {VALUE} is not supported'
             },
             default: 'pending',

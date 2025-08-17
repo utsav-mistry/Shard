@@ -1,23 +1,14 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import PageTemplate from '../components/layout/PageTemplate';
 import { 
-  GitCommit, Tag, Plus, AlertCircle, Code, 
-  Settings, Zap, ChevronDown, ChevronUp, Filter, X, Search, GitBranch, Sparkles, Bug, Wrench
+  GitCommit, Plus, Zap, ChevronDown, ChevronUp, Filter, X, Search, GitBranch, Sparkles, Bug, Wrench
 } from 'lucide-react';
-
-// Common styles
-const activeClass = "bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900";
-const hoverClass = "hover:bg-black-100 hover:text-black-900 dark:hover:bg-white-900 dark:hover:text-white-100";
-const textClass = "text-black-900 dark:text-white-100";
-const borderClass = "border-black-900 dark:border-white-100";
-const cardClass = `bg-white dark:bg-black-800/50 shadow-sm border-2 ${borderClass} p-6`;
 
 const CHANGELOG = [
   {
     version: '1.0.0',
     codename: 'Phoenix',
-    date: 'August 15, 2025',
+    date: 'August 17, 2025',
     highlights: [
       'Initial public release of Shard',
       'Project management dashboard',
@@ -91,39 +82,39 @@ const ChangeTypeBadge = ({ type }) => {
   const typeConfigs = {
     feature: { 
       icon: <Plus className="h-3 w-3" />, 
-      bg: 'bg-green-100 dark:bg-green-900/30', 
+      bg: 'bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800', 
       text: 'text-green-800 dark:text-green-200',
       label: 'New Feature'
     },
     improvement: { 
       icon: <Zap className="h-3 w-3" />, 
-      bg: 'bg-yellow-100 dark:bg-yellow-900/30', 
+      bg: 'bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-200 dark:border-yellow-800', 
       text: 'text-yellow-800 dark:text-yellow-200',
       label: 'Improvement'
     },
     fix: { 
       icon: <Bug className="h-3 w-3" />, 
-      bg: 'bg-red-100 dark:bg-red-900/30', 
+      bg: 'bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800', 
       text: 'text-red-800 dark:text-red-200',
       label: 'Bug Fix'
     },
     chore: { 
       icon: <Wrench className="h-3 w-3" />, 
-      bg: 'bg-gray-100 dark:bg-gray-700/50', 
+      bg: 'bg-gray-50 dark:bg-gray-900/20 border-2 border-gray-200 dark:border-gray-800', 
       text: 'text-gray-700 dark:text-gray-300',
       label: 'Maintenance'
     },
   };
 
   const config = typeConfigs[type] || { 
-    bg: 'bg-gray-100 dark:bg-gray-800', 
+    bg: 'bg-gray-50 dark:bg-gray-900/20 border-2 border-gray-200 dark:border-gray-800', 
     text: 'text-gray-800 dark:text-gray-200',
     label: 'Change',
     icon: <GitCommit className="h-3 w-3" />
   };
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5  text-xs font-medium ${config.bg} ${config.text} mr-2 mb-1`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-none text-xs font-bold ${config.bg} ${config.text} mr-2 mb-1`}>
       {config.icon}
       <span className="ml-1">{config.label}</span>
     </span>
@@ -132,10 +123,10 @@ const ChangeTypeBadge = ({ type }) => {
 
 const VersionBadge = ({ version, isLatest = false }) => (
   <div className="flex items-center">
-    <span className="inline-flex items-center px-3 py-1 text-sm font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
+    <span className="inline-flex items-center px-3 py-1 text-sm font-bold bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200 rounded-none">
       v{version}
       {isLatest && (
-        <span className="ml-2 px-1.5 py-0.5 text-xs bg-blue-500 text-white ">Latest</span>
+        <span className="ml-2 px-1.5 py-0.5 text-xs bg-blue-600 text-white rounded-none font-bold">Latest</span>
       )}
     </span>
   </div>
@@ -152,10 +143,9 @@ const ChangeItem = ({ type, text }) => (
 
 const VersionCard = ({ version, codename, date, changes, isLatest = false, isExpanded = false, onToggle }) => {
   const features = changes.filter(c => c.type === 'feature');
-  const otherChanges = changes.filter(c => c.type !== 'feature');
   
   return (
-    <div className={`${cardClass} overflow-hidden transition-all duration-200`}>
+    <div className="bg-white-100 dark:bg-black-700 p-6 shadow-md border-2 border-black-900 dark:border-white-100 hover:shadow-lg transition-shadow overflow-hidden">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between">
         <div className="flex-1">
           <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
@@ -189,43 +179,34 @@ const VersionCard = ({ version, codename, date, changes, isLatest = false, isExp
         
         <button
           onClick={onToggle}
-          className="mt-4 md:mt-0 inline-flex items-center text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+          className="group relative mt-4 md:mt-0 inline-flex items-center px-4 py-2 text-sm font-bold rounded-none border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden"
         >
-          {isExpanded ? 'Show Less' : 'View Details'}
-          {isExpanded ? (
-            <ChevronUp className="ml-1 h-4 w-4" />
-          ) : (
-            <ChevronDown className="ml-1 h-4 w-4" />
-          )}
+          <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+          <span className="relative z-10 flex items-center">
+            {isExpanded ? 'Show Less' : 'View Details'}
+            <div className="ml-1 transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+              <ChevronDown className="h-4 w-4" />
+            </div>
+          </span>
         </button>
       </div>
       
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                All Changes
-              </h4>
-              <div className="space-y-2">
-                {changes.map((change, i) => (
-                  <ChangeItem key={i} type={change.type} text={change.text} />
-                ))}
-              </div>
-              
-              <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
-                <p>For a complete history of changes, visit our <a href="https://github.com/utsav-mistry/shard/releases" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">GitHub releases page</a>.</p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className="mt-6 pt-6 border-t-2 border-black-900 dark:border-white-100">
+          <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-3">
+            All Changes
+          </h4>
+          <div className="space-y-2">
+            {changes.map((change, i) => (
+              <ChangeItem key={i} type={change.type} text={change.text} />
+            ))}
+          </div>
+          
+          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
+            <p>For a complete history of changes, visit our <a href="https://github.com/utsav-mistry/shard/releases" target="_blank" rel="noopener noreferrer" className="text-black-900 dark:text-white-100 hover:underline font-bold">GitHub releases page</a>.</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -258,20 +239,20 @@ export default function Changelog() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold mb-2">Changelog</h1>
-            <p className="text-gray-600 dark:text-gray-300">
+            <h1 className="text-4xl font-extrabold text-black-900 dark:text-white-100 mb-2">Changelog</h1>
+            <p className="text-xl text-black-600 dark:text-white-400">
               All notable changes to Shard are documented here. Subscribe to our{' '}
-              <a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">RSS feed</a> to stay updated.
+              <a href="#" className="text-black-900 dark:text-white-100 hover:underline font-bold">RSS feed</a> to stay updated.
             </p>
           </div>
           
           <div className="relative w-full md:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-gray-400" />
+              <Search className="h-4 w-4 text-black-900 dark:text-white-100" />
             </div>
             <input
               type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-black-800 text-gray-900 dark:text-white-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="block w-full pl-10 pr-3 py-2 border-2 border-black-900 dark:border-white-100 rounded-none bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-medium"
               placeholder="Search changes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -279,9 +260,9 @@ export default function Changelog() {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center hover:scale-110 transition-transform duration-200"
               >
-                <X className="h-4 w-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" />
+                <X className="h-4 w-4 text-black-900 dark:text-white-100" />
               </button>
             )}
           </div>
@@ -297,14 +278,19 @@ export default function Changelog() {
             <button
               key={filter.id}
               onClick={() => setActiveFilter(filter.id)}
-              className={`inline-flex items-center px-3 py-1 text-xs font-medium transition-colors ${
+              className={`group relative inline-flex items-center px-3 py-1 text-xs font-bold rounded-none border-2 transition-all duration-200 overflow-hidden ${
                 activeFilter === filter.id
-                  ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900'
+                  : 'border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900'
               }`}
             >
-              {filter.icon}
-              <span className="ml-1">{filter.label}</span>
+              {activeFilter !== filter.id && (
+                <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+              )}
+              <span className="relative z-10 flex items-center">
+                {filter.icon}
+                <span className="ml-1">{filter.label}</span>
+              </span>
             </button>
           ))}
         </div>
@@ -325,34 +311,50 @@ export default function Changelog() {
               />
             ))
           ) : (
-            <div className={`${cardClass} text-center py-8`}>
-              <div className="text-gray-400 dark:text-gray-500">
-                <p>No changes match your search criteria.</p>
-                <button 
-                  onClick={() => {
-                    setSearchQuery('');
-                    setActiveFilter('all');
-                  }}
-                  className="mt-2 text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium"
-                >
-                  Clear filters
-                </button>
+            <div className="text-center py-12">
+              <div className="bg-black-900 dark:bg-white-100 p-4 rounded-none mb-4 inline-block">
+                <Search className="h-12 w-12 text-white-100 dark:text-black-900" />
               </div>
+              <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-2">
+                No changes found
+              </h3>
+              <p className="text-lg text-black-600 dark:text-white-400">
+                Try adjusting your search or filter criteria.
+              </p>
+              <button 
+                onClick={() => {
+                  setSearchQuery('');
+                  setActiveFilter('all');
+                }}
+                className="group relative mt-4 inline-flex items-center px-4 py-2 text-sm font-bold rounded-none border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden"
+              >
+                <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+                <span className="relative z-10">Clear filters</span>
+              </button>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+        <div className="mt-8 pt-6 border-t-2 border-black-900 dark:border-white-100 text-center">
+          <p className="text-lg text-black-600 dark:text-white-400">
             Want to see what's coming next? Check out our{' '}
             <a 
               href="https://github.com/utsav-mistry/shard/milestones" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-blue-600 dark:text-blue-400 hover:underline"
+              className="text-black-900 dark:text-white-100 hover:underline font-bold"
             >
-              development roadmap
+              roadmap
+            </a>{' '}
+            or{' '}
+            <a 
+              href="https://github.com/utsav-mistry/shard/issues" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-black-900 dark:text-white-100 hover:underline font-bold"
+            >
+              request a feature
             </a>.
           </p>
         </div>

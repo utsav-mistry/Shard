@@ -11,7 +11,8 @@ import {
   RefreshCw,
   ArrowRight,
   Zap,
-  ExternalLink
+  ExternalLink,
+  Terminal
 } from 'lucide-react';
 import useDeployments from '../../hooks/useDeployments';
 import useProjects from '../../hooks/useProjects';
@@ -375,16 +376,30 @@ const DeploymentsList = () => {
                         {deployment.duration ? `${Math.round(deployment.duration / 1000)}s` : 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/deployments/${deployment._id}`);
-                          }}
-                          className="group relative inline-flex items-center text-black-900 dark:text-white-100 hover:opacity-80 transition-opacity"
-                        >
-                          View details
-                          <ArrowRight className="ml-1 w-4 h-4 transition-transform group-hover:translate-x-1" />
-                        </button>
+                        <div className="flex items-center justify-end space-x-2">
+                          {(deployment.status === 'pending' || deployment.status === 'deploying') && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/deployments/${deployment._id}/progress`);
+                              }}
+                              className="group relative inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                            >
+                              <Terminal className="w-4 h-4 mr-1" />
+                              Progress
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/deployments/${deployment._id}`);
+                            }}
+                            className="group relative inline-flex items-center text-black-900 dark:text-white-100 hover:opacity-80 transition-opacity"
+                          >
+                            Details
+                            <ArrowRight className="ml-1 w-4 h-4 transition-transform group-hover:translate-x-1" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

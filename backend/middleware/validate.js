@@ -24,7 +24,7 @@ const schemas = {
     name: Joi.string().min(3).max(50).required(),
     description: Joi.string().max(500),
     subdomain: patterns.subdomain.required(),
-    repository: patterns.url.required(),
+    repoUrl: patterns.url.required(),
     branch: Joi.string().default('main'),
     framework: Joi.string().valid('mern', 'flask', 'django').required()
       .description('Supported frameworks: mern, flask, django'),
@@ -93,7 +93,6 @@ const validate = (schema, property = 'body') => {
 
     if (error) {
       logger.warn('Validation failed', {
-        schema: schemaName,
         errors: error.details,
         requestId: req.id,
         path: req.path,

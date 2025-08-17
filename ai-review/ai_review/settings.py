@@ -78,10 +78,7 @@ WSGI_APPLICATION = 'ai_review.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': {} # We are not using db here as django is solely used for ai review
 }
 
 

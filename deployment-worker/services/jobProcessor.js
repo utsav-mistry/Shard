@@ -1,17 +1,16 @@
-import fs from 'fs';
-import path from 'path';
-import axios from 'axios';
-import { fileURLToPath } from 'url';
-import { updateDeploymentStatus } from './statusUpdater.js';
-import logger, { logStep } from '../utils/logger.js';
-import { sendDeploymentNotification } from './emailNotifier.js';
-import { injectEnv, fetchEnvVars } from './envInjector.js';
-import { deployContainer, cleanupExistingContainer } from '../utils/dockerHelpers.js';
-import { analyzeRepo } from './analyzeCode.js';
-import { cloneRepo } from './repoCloner.js';
+const fs = require('fs');
+const path = require('path');
+const axios = require('axios');
+const { fileURLToPath } = require('url');
+const { updateDeploymentStatus } = require('./statusUpdater.js');
+const logger = require('../utils/logger.js');
+const { logStep } = require('../utils/logger.js');
+const { sendDeploymentNotification } = require('./emailNotifier.js');
+const { injectEnv, fetchEnvVars } = require('./envInjector.js');
+const { deployContainer, cleanupExistingContainer } = require('../utils/dockerHelpers.js');
+const { analyzeRepo } = require('./analyzeCode.js');
+const { cloneRepo } = require('./repoCloner.js');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Function to update deployment with AI review results
 const updateDeploymentWithAIResults = async (deploymentId, aiResults, token) => {
@@ -91,10 +90,16 @@ const processJob = async (job) => {
     try {
         // Update deployment status to running
         await updateDeploymentStatus(deploymentId, "running", token);
+        
+        // Send deployment started notification
+        await sendDeploymentNotification(userEmail, projectId, deploymentId, "started");
         // === Step 1: Clone Repository ===
         await logStep(projectId, deploymentId, "setup", "Cloning repository");
         const repoInfo = await cloneRepo(repoUrl, projectId);
         const localPath = repoInfo.path;
+        const uniqueRepoId = repoInfo.uniqueId;
+        
+        logger.info(`Repository cloned to: ${localPath} with unique ID: ${uniqueRepoId}`);
 
         // Update deployment with commit information
         await updateDeploymentWithCommitInfo(deploymentId, {
@@ -147,6 +152,23 @@ const processJob = async (job) => {
         await logStep(projectId, deploymentId, "deploy", "Starting container deployment");
         await cleanupExistingContainer(containerName);
         const dockerLog = await deployContainer(localPath, stack, subdomain, projectId, deploymentId);
+        
+        // Log the custom domain URL
+        const PORT_CONFIG = {
+            mern: { backend: 12000, frontend: 12001 },
+            django: { backend: 13000 },
+            flask: { backend: 14000 },
+        };
+        
+        const ports = PORT_CONFIG[stack?.toLowerCase()];
+        if (ports) {
+            const customUrl = stack?.toLowerCase() === 'mern' && ports.frontend 
+                ? `http://localhost:${ports.frontend}`
+                : `http://localhost:${ports.backend}`;
+            
+            await logStep(projectId, deploymentId, "deploy", `Application deployed at: ${customUrl}`);
+            logger.info(`Deployment ${deploymentId} accessible at: ${customUrl}`);
+        }
 
         fs.writeFileSync(logPath, dockerLog?.toString() || "No Docker log output available.", {
             encoding: "utf-8"
@@ -155,11 +177,12 @@ const processJob = async (job) => {
         // === Step 5: Finalize ===
         await logStep(projectId, deploymentId, "complete", "Deployment successful");
         await updateDeploymentStatus(deploymentId, "success", token);
-        await sendDeploymentNotification(userEmail, projectId, "success");
+        await sendDeploymentNotification(userEmail, projectId, deploymentId, "success");
 
     } catch (error) {
         // === Step 6: Handle Any Errors ===
         await handleDeploymentError(error, projectId, deploymentId, userEmail, logPath, token);
+        await sendDeploymentNotification(userEmail, projectId, deploymentId, "failed", error.message);
         throw error;
     }
 };
@@ -189,4 +212,4 @@ const handleDeploymentError = async (error, projectId, deploymentId, userEmail, 
     }
 };
 
-export { processJob };
+module.exports = { processJob };

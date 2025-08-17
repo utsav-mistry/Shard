@@ -178,7 +178,7 @@ const getAIServiceStatus = async (req, res) => {
 const getAllUsers = async (req, res) => {
     try {
         const users = await User.find({})
-            .select('-passwordHash')
+            .select('-passwordHash -githubAccessToken')
             .sort({ createdAt: -1 });
         
         return res.apiSuccess(users, 'Users retrieved successfully');
@@ -191,13 +191,21 @@ const getAllUsers = async (req, res) => {
 const updateUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, role } = req.body;
+        let updateData = { ...req.body };
+        
+        // Remove empty password field
+        if (updateData.passwordHash === '') {
+            delete updateData.passwordHash;
+        }
+        
+        // Remove sensitive fields from update
+        delete updateData.githubAccessToken;
         
         const user = await User.findByIdAndUpdate(
             id,
-            { name, email, role },
+            updateData,
             { new: true, runValidators: true }
-        ).select('-passwordHash');
+        ).select('-passwordHash -githubAccessToken');
         
         if (!user) {
             return res.apiNotFound('User not found');
@@ -206,6 +214,16 @@ const updateUser = async (req, res) => {
         return res.apiSuccess(user, 'User updated successfully');
     } catch (error) {
         console.error("Error updating user:", error);
+        
+        if (error.name === 'ValidationError') {
+            const validationErrors = Object.values(error.errors).map(err => err.message);
+            return res.apiBadRequest(`Validation failed: ${validationErrors.join(', ')}`);
+        }
+        
+        if (error.code === 11000) {
+            return res.apiBadRequest('Email already exists');
+        }
+        
         return res.apiServerError('Failed to update user', error.message);
     }
 };
@@ -243,11 +261,31 @@ const getAllProjects = async (req, res) => {
 const updateProject = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, repoUrl, stack, subdomain, status } = req.body;
+        let updateData = { ...req.body };
+        
+        // Parse envVars if it's a string
+        if (typeof updateData.envVars === 'string') {
+            try {
+                updateData.envVars = JSON.parse(updateData.envVars);
+            } catch (e) {
+                delete updateData.envVars; // Keep existing if parsing fails
+            }
+        }
+        
+        // Convert port to number
+        if (updateData.port) {
+            updateData.port = parseInt(updateData.port);
+        }
+        
+        // Fix field name mapping
+        if (updateData.stack) {
+            updateData.framework = updateData.stack;
+            delete updateData.stack;
+        }
         
         const project = await Project.findByIdAndUpdate(
             id,
-            { name, repoUrl, stack, subdomain, status },
+            updateData,
             { new: true, runValidators: true }
         ).populate('ownerId', 'name email');
         
@@ -258,6 +296,17 @@ const updateProject = async (req, res) => {
         return res.apiSuccess(project, 'Project updated successfully');
     } catch (error) {
         console.error("Error updating project:", error);
+        
+        if (error.name === 'ValidationError') {
+            const validationErrors = Object.values(error.errors).map(err => err.message);
+            return res.apiBadRequest(`Validation failed: ${validationErrors.join(', ')}`);
+        }
+        
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern)[0];
+            return res.apiBadRequest(`${field} already exists`);
+        }
+        
         return res.apiServerError('Failed to update project', error.message);
     }
 };
@@ -282,7 +331,8 @@ const deleteProject = async (req, res) => {
 const getAllDeployments = async (req, res) => {
     try {
         const deployments = await Deployment.find({})
-            .populate('projectId', 'name subdomain stack')
+            .populate('projectId', 'name subdomain framework')
+            .populate('userId', 'name email')
             .sort({ createdAt: -1 })
             .limit(100);
         
@@ -296,13 +346,20 @@ const getAllDeployments = async (req, res) => {
 const updateDeployment = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status, message } = req.body;
+        let updateData = { ...req.body };
+        
+        // Remove empty fields
+        Object.keys(updateData).forEach(key => {
+            if (updateData[key] === '') {
+                delete updateData[key];
+            }
+        });
         
         const deployment = await Deployment.findByIdAndUpdate(
             id,
-            { status, message },
+            updateData,
             { new: true, runValidators: true }
-        ).populate('projectId', 'name subdomain stack');
+        ).populate('projectId', 'name subdomain framework').populate('userId', 'name email');
         
         if (!deployment) {
             return res.apiNotFound('Deployment not found');
@@ -311,6 +368,12 @@ const updateDeployment = async (req, res) => {
         return res.apiSuccess(deployment, 'Deployment updated successfully');
     } catch (error) {
         console.error("Error updating deployment:", error);
+        
+        if (error.name === 'ValidationError') {
+            const validationErrors = Object.values(error.errors).map(err => err.message);
+            return res.apiBadRequest(`Validation failed: ${validationErrors.join(', ')}`);
+        }
+        
         return res.apiServerError('Failed to update deployment', error.message);
     }
 };
@@ -339,17 +402,26 @@ const getTableData = async (req, res) => {
         
         switch (tableName) {
             case 'users':
-                data = await User.find({}).select('-passwordHash').sort({ createdAt: -1 });
+                data = await User.find({}).select('-passwordHash -githubAccessToken').sort({ createdAt: -1 });
                 break;
             case 'projects':
                 data = await Project.find({}).populate('ownerId', 'name email').sort({ createdAt: -1 });
                 break;
             case 'deployments':
-                data = await Deployment.find({}).populate('projectId', 'name subdomain').sort({ createdAt: -1 }).limit(100);
+                data = await Deployment.find({}).populate('projectId', 'name subdomain').populate('userId', 'name email').sort({ createdAt: -1 }).limit(100);
                 break;
             case 'logs':
-                // For logs, we'll return recent entries
-                data = [];
+                // For logs, return a placeholder since there's no dedicated logs collection
+                data = [
+                    {
+                        _id: 'sample-log-1',
+                        projectId: 'N/A',
+                        deploymentId: 'N/A',
+                        type: 'info',
+                        content: 'Logs are managed automatically by the deployment system',
+                        timestamp: new Date().toISOString()
+                    }
+                ];
                 break;
             default:
                 return res.apiBadRequest('Invalid table name');
@@ -365,25 +437,90 @@ const getTableData = async (req, res) => {
 const createRecord = async (req, res) => {
     try {
         const { tableName } = req.params;
-        const recordData = req.body;
+        let recordData = { ...req.body };
         let newRecord;
         
+        // Clean and validate data based on table
         switch (tableName) {
             case 'users':
+                // Remove empty fields
+                Object.keys(recordData).forEach(key => {
+                    if (recordData[key] === '' || recordData[key] === null) {
+                        delete recordData[key];
+                    }
+                });
+                
+                // Ensure required fields
+                if (!recordData.email) {
+                    return res.apiBadRequest('Email is required for users');
+                }
+                
                 newRecord = new User(recordData);
                 await newRecord.save();
                 newRecord = await User.findById(newRecord._id).select('-passwordHash');
                 break;
+                
             case 'projects':
+                // Parse envVars if it's a string
+                if (typeof recordData.envVars === 'string') {
+                    try {
+                        recordData.envVars = JSON.parse(recordData.envVars);
+                    } catch (e) {
+                        recordData.envVars = [];
+                    }
+                }
+                
+                // Convert port to number
+                if (recordData.port) {
+                    recordData.port = parseInt(recordData.port);
+                }
+                
+                // Remove empty fields
+                Object.keys(recordData).forEach(key => {
+                    if (recordData[key] === '' || recordData[key] === null) {
+                        delete recordData[key];
+                    }
+                });
+                
+                // Ensure required fields
+                if (!recordData.name || !recordData.repoUrl || !recordData.framework || !recordData.subdomain || !recordData.ownerId) {
+                    return res.apiBadRequest('Name, repoUrl, framework, subdomain, and ownerId are required for projects');
+                }
+                
                 newRecord = new Project(recordData);
                 await newRecord.save();
                 newRecord = await Project.findById(newRecord._id).populate('ownerId', 'name email');
                 break;
+                
             case 'deployments':
+                // Remove empty fields
+                Object.keys(recordData).forEach(key => {
+                    if (recordData[key] === '' || recordData[key] === null) {
+                        delete recordData[key];
+                    }
+                });
+                
+                // Ensure required fields
+                if (!recordData.projectId) {
+                    return res.apiBadRequest('ProjectId is required for deployments');
+                }
+                
                 newRecord = new Deployment(recordData);
                 await newRecord.save();
                 newRecord = await Deployment.findById(newRecord._id).populate('projectId', 'name subdomain');
                 break;
+                
+            case 'logs':
+                // Remove empty fields except content
+                Object.keys(recordData).forEach(key => {
+                    if (key !== 'content' && (recordData[key] === '' || recordData[key] === null)) {
+                        delete recordData[key];
+                    }
+                });
+                
+                // For logs, we'll create a simple log entry (no specific model exists)
+                return res.apiSuccess({ message: 'Log entries are managed automatically by the system' }, 'Logs are read-only');
+                
             default:
                 return res.apiBadRequest('Invalid table name');
         }
@@ -391,6 +528,19 @@ const createRecord = async (req, res) => {
         return res.apiSuccess(newRecord, `${tableName.slice(0, -1)} created successfully`);
     } catch (error) {
         console.error(`Error creating ${req.params.tableName} record:`, error);
+        
+        // Handle validation errors
+        if (error.name === 'ValidationError') {
+            const validationErrors = Object.values(error.errors).map(err => err.message);
+            return res.apiBadRequest(`Validation failed: ${validationErrors.join(', ')}`);
+        }
+        
+        // Handle duplicate key errors
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern)[0];
+            return res.apiBadRequest(`${field} already exists`);
+        }
+        
         return res.apiServerError(`Failed to create ${req.params.tableName} record`, error.message);
     }
 };
@@ -398,31 +548,79 @@ const createRecord = async (req, res) => {
 const updateRecord = async (req, res) => {
     try {
         const { tableName, id } = req.params;
-        const recordData = req.body;
+        let recordData = { ...req.body };
         let updatedRecord;
         
+        // Clean and validate data based on table
         switch (tableName) {
             case 'users':
+                // Remove empty fields (but keep them if they're being cleared intentionally)
+                Object.keys(recordData).forEach(key => {
+                    if (recordData[key] === null) {
+                        delete recordData[key];
+                    }
+                });
+                
+                // Don't update password if it's empty (keep existing)
+                if (recordData.passwordHash === '') {
+                    delete recordData.passwordHash;
+                }
+                
                 updatedRecord = await User.findByIdAndUpdate(
                     id,
                     recordData,
                     { new: true, runValidators: true }
                 ).select('-passwordHash');
                 break;
+                
             case 'projects':
+                // Parse envVars if it's a string
+                if (typeof recordData.envVars === 'string') {
+                    try {
+                        recordData.envVars = JSON.parse(recordData.envVars);
+                    } catch (e) {
+                        // Keep existing if parsing fails
+                        delete recordData.envVars;
+                    }
+                }
+                
+                // Convert port to number
+                if (recordData.port) {
+                    recordData.port = parseInt(recordData.port);
+                }
+                
+                // Remove empty fields
+                Object.keys(recordData).forEach(key => {
+                    if (recordData[key] === null) {
+                        delete recordData[key];
+                    }
+                });
+                
                 updatedRecord = await Project.findByIdAndUpdate(
                     id,
                     recordData,
                     { new: true, runValidators: true }
                 ).populate('ownerId', 'name email');
                 break;
+                
             case 'deployments':
+                // Remove empty fields
+                Object.keys(recordData).forEach(key => {
+                    if (recordData[key] === null) {
+                        delete recordData[key];
+                    }
+                });
+                
                 updatedRecord = await Deployment.findByIdAndUpdate(
                     id,
                     recordData,
                     { new: true, runValidators: true }
                 ).populate('projectId', 'name subdomain');
                 break;
+                
+            case 'logs':
+                return res.apiSuccess({ message: 'Log entries are managed automatically by the system' }, 'Logs are read-only');
+                
             default:
                 return res.apiBadRequest('Invalid table name');
         }
@@ -434,6 +632,19 @@ const updateRecord = async (req, res) => {
         return res.apiSuccess(updatedRecord, `${tableName.slice(0, -1)} updated successfully`);
     } catch (error) {
         console.error(`Error updating ${req.params.tableName} record:`, error);
+        
+        // Handle validation errors
+        if (error.name === 'ValidationError') {
+            const validationErrors = Object.values(error.errors).map(err => err.message);
+            return res.apiBadRequest(`Validation failed: ${validationErrors.join(', ')}`);
+        }
+        
+        // Handle duplicate key errors
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern)[0];
+            return res.apiBadRequest(`${field} already exists`);
+        }
+        
         return res.apiServerError(`Failed to update ${req.params.tableName} record`, error.message);
     }
 };
@@ -443,16 +654,39 @@ const deleteRecord = async (req, res) => {
         const { tableName, id } = req.params;
         let deletedRecord;
         
+        // Validate ObjectId format
+        if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.apiBadRequest('Invalid ID format');
+        }
+        
         switch (tableName) {
             case 'users':
+                // Check if user has projects before deleting
+                const userProjects = await Project.countDocuments({ ownerId: id });
+                if (userProjects > 0) {
+                    return res.apiBadRequest(`Cannot delete user: ${userProjects} projects are owned by this user`);
+                }
+                
                 deletedRecord = await User.findByIdAndDelete(id);
                 break;
+                
             case 'projects':
+                // Check if project has deployments before deleting
+                const projectDeployments = await Deployment.countDocuments({ projectId: id });
+                if (projectDeployments > 0) {
+                    return res.apiBadRequest(`Cannot delete project: ${projectDeployments} deployments exist for this project`);
+                }
+                
                 deletedRecord = await Project.findByIdAndDelete(id);
                 break;
+                
             case 'deployments':
                 deletedRecord = await Deployment.findByIdAndDelete(id);
                 break;
+                
+            case 'logs':
+                return res.apiSuccess(null, 'Logs are managed automatically by the system');
+                
             default:
                 return res.apiBadRequest('Invalid table name');
         }
@@ -471,10 +705,26 @@ const deleteRecord = async (req, res) => {
 const getTables = async (req, res) => {
     try {
         const tables = [
-            { name: 'users', count: await User.countDocuments() },
-            { name: 'projects', count: await Project.countDocuments() },
-            { name: 'deployments', count: await Deployment.countDocuments() },
-            { name: 'logs', count: 0 }
+            { 
+                name: 'users', 
+                count: await User.countDocuments(),
+                description: 'System users with authentication and profile data'
+            },
+            { 
+                name: 'projects', 
+                count: await Project.countDocuments(),
+                description: 'User projects with repository and deployment configuration'
+            },
+            { 
+                name: 'deployments', 
+                count: await Deployment.countDocuments(),
+                description: 'Project deployment history and status'
+            },
+            { 
+                name: 'logs', 
+                count: 0,
+                description: 'System logs (managed automatically)'
+            }
         ];
         
         return res.apiSuccess(tables, 'Tables retrieved successfully');

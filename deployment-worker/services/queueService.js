@@ -1,6 +1,6 @@
-import { EventEmitter } from 'node:events';
-import { v4 as uuidv4 } from 'uuid';
-import logger from '../utils/logger.js';
+const { EventEmitter } = require('events');
+const { v4: uuidv4 } = require('uuid');
+const logger = require('../utils/logger');
 
 class JobQueue extends EventEmitter {
   constructor(concurrency = 3) {
@@ -256,4 +256,4 @@ class JobQueue extends EventEmitter {
   }
 }
 
-export default JobQueue;
+module.exports = JobQueue;

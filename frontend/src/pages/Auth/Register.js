@@ -42,22 +42,16 @@ const Register = () => {
 
   const handleGithubLogin = () => {
     setError('');
-    // GitHub OAuth flow - redirect to GitHub authorization page
-    const githubClientId = process.env.REACT_APP_GITHUB_CLIENT_ID;
-    const redirectUri = `${window.location.origin}/auth/github/callback`;
-    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${githubClientId}&redirect_uri=${redirectUri}&scope=user:email`;
-
-    window.location.href = githubAuthUrl;
+    // GitHub OAuth flow - redirect to backend OAuth endpoint
+    const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    window.location.href = `${backendUrl}/api/auth/github/login`;
   };
 
   const handleGoogleLogin = () => {
     setError('');
-    // Google OAuth flow - redirect to Google authorization page
-    const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-    const redirectUri = `${window.location.origin}/auth/google/callback`;
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${redirectUri}&response_type=code&scope=profile email`;
-
-    window.location.href = googleAuthUrl;
+    // Google OAuth flow - redirect to backend OAuth endpoint
+    const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    window.location.href = `${backendUrl}/api/auth/google/login`;
   };
 
   return (
@@ -121,7 +115,7 @@ const Register = () => {
                 autoComplete="new-password"
                 required
                 className="appearance-none relative block w-full px-3 py-2 border border-black-200 dark:border-white-700 bg-white-100 dark:bg-black-800 placeholder-black-400 dark:placeholder-white-500 text-black-900 dark:text-white-100 rounded-none focus:outline-none focus:ring-2 focus:ring-black-500 dark:focus:ring-white-500 focus:border-black-500 dark:focus:border-white-500 focus:z-10 sm:text-sm shadow-sm transition-all duration-200 pr-10"
-                
+
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -146,7 +140,7 @@ const Register = () => {
                 autoComplete="new-password"
                 required
                 className="appearance-none relative block w-full px-3 py-2 border border-black-200 dark:border-white-700 bg-white-100 dark:bg-black-800 placeholder-black-400 dark:placeholder-white-500 text-black-900 dark:text-white-100 rounded-none focus:outline-none focus:ring-2 focus:ring-black-500 dark:focus:ring-white-500 focus:border-black-500 dark:focus:border-white-500 focus:z-10 sm:text-sm shadow-sm transition-all duration-200 pr-10"
-                
+
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
@@ -194,7 +188,7 @@ const Register = () => {
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-3">
+        <div className="mt-6">
           <button
             onClick={handleGithubLogin}
             className="group relative w-full inline-flex justify-center py-2.5 px-4 border border-black-900 rounded-none shadow-lg bg-white-100 text-sm font-medium text-black-900 hover:text-white-100 dark:bg-black-900 dark:border dark:border-white-100 dark:text-white-100 dark:hover:text-black-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-500 dark:focus:ring-white-500 transition-all duration-200 overflow-hidden hover:border-black-900 dark:hover:border-white-100"

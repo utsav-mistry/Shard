@@ -144,7 +144,7 @@ const EditEnvironmentVariable = () => {
       {/* Back button */}
       <div>
         <Link
-          to={`/dashboard/environment/${projectId}`}
+          to={`/app/environment/${projectId}`}
           className="inline-flex items-center text-sm font-medium text-black-500 hover:text-black-900 dark:text-white-400 dark:hover:text-white-100 border-b-2 border-transparent hover:border-black-900 dark:hover:border-white-100 transition-all duration-200 px-2 py-1"
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
@@ -257,7 +257,7 @@ const EditEnvironmentVariable = () => {
         <div className="px-4 py-3 bg-white-200 dark:bg-black-800 text-right sm:px-6 border-t-2 border-black-200 dark:border-white-700">
           <button
             type="button"
-            onClick={() => navigate(`/dashboard/environment/${projectId}`)}
+            onClick={() => navigate(`/app/environment/${projectId}`)}
             className="mr-3 inline-flex justify-center py-2 px-4 border-2 border-black-300 dark:border-white-700 shadow-sm text-sm font-medium rounded-none text-black-700 dark:text-white-200 bg-white-100 dark:bg-black-900 hover:bg-black-200 dark:hover:bg-black-800 transition-all duration-200 focus:outline-none"
           >
             Cancel

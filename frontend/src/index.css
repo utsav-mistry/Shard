@@ -1,5 +1,10 @@
 /* Import Tailwind base styles */
-@import 'tailwindcss/base';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import grid styles */
+@import './styles/grid.css';
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 

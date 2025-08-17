@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../../utils/axiosConfig';
 import { AlertTriangle, Plus, Search, Eye, EyeOff, Edit, Trash2, ArrowLeft } from 'lucide-react';
 
 const EnvironmentVariables = () => {
   const { projectId } = useParams();
+  const navigate = useNavigate();
   const [project, setProject] = useState(null);
   const [envVars, setEnvVars] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +22,7 @@ const EnvironmentVariables = () => {
 
         // Fetch project details and environment variables in parallel
         const [projectResponse, envResponse] = await Promise.all([
-          api.get(`/api/projects/${projectId}`),
+          navigate(`/app/projects/${projectId}`),
           api.get(`/api/env/${projectId}`)
         ]);
 
@@ -123,7 +124,7 @@ const EnvironmentVariables = () => {
         {/* Back button */}
         <div className="mb-6">
           <Link
-            to={`/dashboard/projects/${projectId}`}
+            to={`/app/projects/${projectId}`}
             className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden hover:scale-[1.02] active:scale-95"
           >
             <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
@@ -146,7 +147,7 @@ const EnvironmentVariables = () => {
           </div>
           <div className="mt-4 md:mt-0">
             <Link
-              to={`/dashboard/environment/${projectId}/new`}
+              to={`/app/environment/${projectId}/new`}
               className="group relative inline-flex items-center px-4 py-2 bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 hover:bg-white-100 hover:text-black-900 dark:hover:bg-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-white-100 hover:scale-[1.02] active:scale-95"
             >
               <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform translate-x-full group-hover:translate-x-0"></span>
@@ -188,7 +189,7 @@ const EnvironmentVariables = () => {
             </p>
             {!searchTerm && (
               <Link
-                to={`/dashboard/environment/${projectId}/new`}
+                to={`/app/environment/${projectId}/new`}
                 className="group relative inline-flex items-center px-4 py-2 bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 hover:bg-white-100 hover:text-black-900 dark:hover:bg-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-white-100 hover:scale-[1.02] active:scale-95"
               >
                 <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform translate-x-full group-hover:translate-x-0"></span>
@@ -236,7 +237,7 @@ const EnvironmentVariables = () => {
                           </span>
                           {env.secret && (
                             <button
-                              onClick={() => toggleShowSecret(env._id)}
+                              onClick={() => navigate(`/app/projects/${projectId}`)}
                               className="ml-2 text-black-600 hover:text-black-900 dark:text-white-400 dark:hover:text-white-100 transition-colors duration-200"
                             >
                               {showSecrets[env._id] ? (
@@ -262,7 +263,7 @@ const EnvironmentVariables = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
                           <Link
-                            to={`/dashboard/environment/${projectId}/edit/${env._id}`}
+                            to={`/app/environment/${projectId}/edit/${env._id}`}
                             className="text-black-600 hover:text-black-900 dark:text-white-400 dark:hover:text-white-100 border-b-2 border-transparent hover:border-black-900 dark:hover:border-white-100 transition-all duration-200 px-2 py-1"
                           >
                             <Edit className="h-4 w-4" />

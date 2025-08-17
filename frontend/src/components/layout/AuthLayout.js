@@ -5,7 +5,7 @@ const AuthLayout = () => {
 
 
   return (
-    <div className="min-h-screen bg-white-100 dark:bg-black-900 flex flex-col">
+    <div className="min-h-screen flex flex-col bg-white/80 dark:bg-black/80 backdrop-blur-sm">
 
       {/* Logo */}
       <div className="flex justify-center mt-8">

@@ -154,7 +154,7 @@ function validateEnvironment() {
 
         // Log successful validation
         if (varErrors.length === 0 && value) {
-            logger.debug(`✓ ${name}: validated`);
+            logger.debug(`${name}: validated`);
         }
     }
 
@@ -171,13 +171,13 @@ function validateEnvironment() {
     // Log results
     if (errors.length > 0) {
         logger.error('Environment validation failed:');
-        errors.forEach(error => logger.error(`  ❌ ${error}`));
+        errors.forEach(error => logger.error(`  ERROR: ${error}`));
         throw new Error(`Environment validation failed with ${errors.length} error(s)`);
     }
 
     if (warnings.length > 0) {
         logger.warn('Environment validation warnings:');
-        warnings.forEach(warning => logger.warn(`  ⚠️  ${warning}`));
+        warnings.forEach(warning => logger.warn(`  WARNING: ${warning}`));
     }
 
     logger.info(`Environment validation passed (${Object.keys(requiredEnvVars).length} variables checked)`);

@@ -29,13 +29,13 @@ const ProjectSchema = new mongoose.Schema(
                 message: props => `${props.value} is not a valid repository URL`
             },
         },
-        stack: {
+        framework: {
             type: String,
             enum: {
                 values: ['mern', 'django', 'flask', 'node', 'react', 'nextjs', 'vue', 'angular'],
-                message: 'Stack {VALUE} is not supported'
+                message: 'Framework {VALUE} is not supported'
             },
-            required: [true, 'Stack is required'],
+            required: [true, 'Framework is required'],
         },
         subdomain: {
             type: String,
@@ -109,9 +109,22 @@ const ProjectSchema = new mongoose.Schema(
 ProjectSchema.index({ ownerId: 1, name: 1 }, { unique: true });
 ProjectSchema.index({ status: 1, lastDeployedAt: -1 });
 
-// Virtual for project URL
+// Virtual for project URL (localhost for college project)
 ProjectSchema.virtual('url').get(function () {
-    return `https://${this.subdomain}.${process.env.APP_DOMAIN || 'shard.dev'}`;
+    const PORT_CONFIG = {
+        mern: { backend: 12000, frontend: 12001 },
+        django: { backend: 13000 },
+        flask: { backend: 14000 },
+    };
+    
+    const ports = PORT_CONFIG[this.framework?.toLowerCase()];
+    if (!ports) return `http://localhost:3000`;
+    
+    if (this.framework?.toLowerCase() === 'mern' && ports.frontend) {
+        return `http://localhost:${ports.frontend}`;
+    }
+    
+    return `http://localhost:${ports.backend}`;
 });
 
 // Pre-save hook to validate subdomain uniqueness

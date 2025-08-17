@@ -1,13 +1,8 @@
-import winston from 'winston';
-import { format } from 'winston';
-import 'winston-daily-rotate-file';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import axios from 'axios';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const winston = require('winston');
+const { format } = require('winston');
+require('winston-daily-rotate-file');
+const path = require('path');
+const axios = require('axios');
 
 const { combine, timestamp, printf, colorize, errors } = format;
 
@@ -80,7 +75,7 @@ logger.stream = {
 };
 
 // Helper function to log deployment steps
-export const logStep = async (projectId, deploymentId, step, message) => {
+const logStep = async (projectId, deploymentId, step, message) => {
   const logMessage = `[Project: ${projectId}] [Deployment: ${deploymentId}] ${step.toUpperCase()}: ${message}`;
   logger.info(logMessage);
   
@@ -98,4 +93,5 @@ export const logStep = async (projectId, deploymentId, step, message) => {
   }
 };
 
-export default logger;
+module.exports = logger;
+module.exports.logStep = logStep;

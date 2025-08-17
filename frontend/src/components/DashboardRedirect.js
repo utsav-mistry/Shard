@@ -15,7 +15,7 @@ const DashboardRedirect = () => {
   }
 
   // If user is logged in, redirect to dashboard, otherwise to landing page
-  return currentUser ? <Navigate to="/dashboard" replace /> : <Navigate to="/" replace />;
+  return currentUser ? <Navigate to="/app" replace /> : <Navigate to="/" replace />;
 };
 
 export default DashboardRedirect;

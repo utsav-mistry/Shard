@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const githubService = require('../services/githubService');
 const logger = require('../utils/logger');
 const { v4: uuidv4 } = require('uuid');
@@ -9,11 +10,29 @@ const { cache } = require('../services/cacheService');
  */
 exports.initiateAuth = (req, res) => {
     try {
-        const state = uuidv4();
-        const redirectUri = `${process.env.BACKEND_URL}/api/github/auth/callback`;
+        const state = req.query.state || uuidv4();
+        const redirectUri = process.env.GITHUB_REDIRECT_URI || `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/github/auth/callback`;
         
-        // Store state in cache for validation in callback
-        cache.set(`github:state:${state}`, { userId: req.user?.id }, 600); // 10 min TTL
+        try {
+            // If state is provided, it contains the user's token
+            if (req.query.state) {
+                const stateData = JSON.parse(Buffer.from(req.query.state, 'base64').toString('utf-8'));
+                if (stateData.token) {
+                    // Verify the token is valid
+                    const decoded = jwt.verify(stateData.token, process.env.JWT_SECRET);
+                    // Store user ID in cache with state
+                    cache.set(`github:state:${state}`, { userId: decoded.id }, 600); // 10 min TTL
+                }
+            } else if (req.user?.id) {
+                // Fallback to session user if available
+                cache.set(`github:state:${state}`, { userId: req.user.id }, 600);
+            } else {
+                throw new Error('No authentication provided');
+            }
+        } catch (error) {
+            logger.error('State validation failed:', error);
+            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/integrations/github?error=auth_required`);
+        }
         
         const authUrl = new URL('https://github.com/login/oauth/authorize');
         authUrl.searchParams.append('client_id', process.env.GITHUB_CLIENT_ID);
@@ -41,16 +60,30 @@ exports.handleCallback = async (req, res) => {
     try {
         // Verify state to prevent CSRF
         const stateData = cache.get(`github:state:${state}`);
-        if (!stateData) {
+        if (!stateData || !stateData.userId) {
+            logger.error('Invalid or expired state:', { state, stateData });
             return res.redirect(`${frontendUrl}/integrations/github?error=invalid_state`);
         }
+        
+        const userId = stateData.userId;
+        cache.del(`github:state:${state}`); // Clean up state after use
         
         // Exchange code for access token
         const accessToken = await githubService.getAccessToken(code);
         const githubUser = await githubService.getGitHubUser(accessToken);
         
-        // Store GitHub token in user's session or database
-        // In a real app, you'd save this to the user's profile
+        // Update user with GitHub credentials
+        const User = require('../models/User');
+        if (stateData.userId) {
+            await User.findByIdAndUpdate(stateData.userId, {
+                githubAccessToken: accessToken,
+                githubUsername: githubUser.login,
+                githubId: githubUser.id.toString(),
+                avatar: githubUser.avatar_url || undefined
+            });
+        }
+        
+        // Store session data for immediate use
         const sessionData = {
             githubAccessToken: accessToken,
             githubUsername: githubUser.login,
@@ -62,7 +95,7 @@ exports.handleCallback = async (req, res) => {
         cache.set(`github:session:${state}`, sessionData, 3600);
         
         // Redirect to frontend with success state
-        res.redirect(`${frontendUrl}/integrations/github/callback?state=${state}`);
+        res.redirect(`${frontendUrl}/integrations/github/callback?state=${state}&success=true`);
     } catch (error) {
         logger.error('GitHub OAuth callback failed:', error);
         res.redirect(`${frontendUrl}/integrations/github?error=auth_failed`);
@@ -74,8 +107,15 @@ exports.handleCallback = async (req, res) => {
  */
 exports.listRepos = async (req, res) => {
     try {
-        const { githubAccessToken } = req.user; // Assuming this is set by auth middleware
+        const { githubAccessToken } = req.user;
         const { page = 1, perPage = 30 } = req.query;
+        
+        if (!githubAccessToken) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'GitHub not connected. Please connect your GitHub account first.' 
+            });
+        }
         
         const repos = await githubService.listUserRepos(githubAccessToken, { 
             page: parseInt(page), 
@@ -181,6 +221,13 @@ exports.setupDeployment = async (req, res) => {
             });
         }
         
+        if (!githubAccessToken) {
+            return res.status(400).json({
+                success: false,
+                message: 'GitHub not connected. Please connect your GitHub account first.'
+            });
+        }
+        
         // Verify repository access
         const repoData = await githubService.getRepo(githubAccessToken, owner, repo);
         if (!repoData) {
@@ -190,13 +237,18 @@ exports.setupDeployment = async (req, res) => {
             });
         }
         
+        // Generate custom subdomain with random words
+        const customWords = ['swift', 'bright', 'cosmic', 'stellar', 'quantum', 'nexus', 'prime', 'alpha', 'beta', 'gamma', 'delta', 'omega'];
+        const randomWord = customWords[Math.floor(Math.random() * customWords.length)];
+        const subdomain = `${projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-')}-${randomWord}-on`;
+        
         // Create project in database
         const project = new Project({
             ownerId: userId,
             name: projectName,
-            repoUrl: repoData.url,
+            repoUrl: repoData.clone_url,
             stack: framework,
-            subdomain: `${projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-')}-${Date.now()}`,
+            subdomain: subdomain,
             settings: {
                 envVars: envVars.map(({ key, value, isSecret = false }) => ({
                     key,
@@ -216,19 +268,26 @@ exports.setupDeployment = async (req, res) => {
         
         await project.save();
         
-        // Trigger initial deployment (async)
-        project.triggerDeployment(userId, branch)
-            .catch(err => {
-                logger.error(`Initial deployment failed for project ${project._id}:`, err);
-            });
+        // Trigger initial deployment with proper integration
+        const deploymentController = require('./deployController');
+        const deploymentResult = await deploymentController.createDeploymentFromProject({
+            projectId: project._id,
+            userId: userId,
+            branch: branch,
+            commitHash: repoData.default_branch === branch ? 'HEAD' : branch,
+            message: `Initial deployment from ${owner}/${repo}`,
+            envVars: envVars
+        });
         
         res.json({
             success: true,
-            message: 'Deployment setup initiated',
+            message: 'Project imported and deployment initiated',
             data: {
                 projectId: project._id,
                 projectName: project.name,
                 subdomain: project.subdomain,
+                deploymentId: deploymentResult.deploymentId,
+                customDomain: getCustomDomain(framework, subdomain),
                 status: 'pending'
             }
         });
@@ -277,4 +336,23 @@ function getDefaultStartCommand(framework) {
 function encryptValue(value) {
     // In a real app, use proper encryption
     return Buffer.from(value).toString('base64');
+}
+
+function getCustomDomain(framework, subdomain) {
+    const PORT_CONFIG = {
+        mern: { backend: 12000, frontend: 12001 },
+        django: { backend: 13000 },
+        flask: { backend: 14000 },
+    };
+    
+    const ports = PORT_CONFIG[framework.toLowerCase()];
+    if (!ports) {
+        return `http://localhost:3000`; // fallback
+    }
+    
+    if (framework.toLowerCase() === 'mern' && ports.frontend) {
+        return `http://localhost:${ports.frontend}`;
+    }
+    
+    return `http://localhost:${ports.backend}`;
 }

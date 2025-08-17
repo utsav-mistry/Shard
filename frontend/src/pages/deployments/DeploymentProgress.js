@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/axiosConfig';
 import { ArrowLeft, CheckCircle, Clock, XCircle, AlertTriangle, Eye, Code, Settings, Rocket, Play } from 'lucide-react';
+import DeploymentStreaming from '../../components/DeploymentStreaming';
 
 const DeploymentProgress = () => {
   const { id } = useParams();
@@ -297,48 +298,73 @@ const DeploymentProgress = () => {
         </div>
       </div>
 
-      {/* Recent Logs */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-            Recent Activity
-          </h2>
-          <button
-            onClick={() => navigate(`/deployments/${id}/logs`)}
-            className="text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
-          >
-            View all logs →
-          </button>
-        </div>
-        
-        <div className="space-y-2 max-h-64 overflow-y-auto">
-          {logs.slice(-10).reverse().map((log, index) => (
-            <div key={index} className="flex items-start space-x-3 text-sm">
-              <span className="text-gray-400 dark:text-gray-500 font-mono">
-                {new Date(log.createdAt).toLocaleTimeString()}
-              </span>
-              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                log.type === 'error' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-                log.type === 'setup' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
-                log.type === 'config' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                log.type === 'deploy' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200' :
-                'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-              }`}>
-                {log.type}
-              </span>
-              <span className="text-gray-700 dark:text-gray-300 flex-1">
-                {log.content}
-              </span>
-            </div>
-          ))}
+      {/* Real-time Deployment Streaming */}
+      {(deployment?.status === 'pending' || deployment?.status === 'running') && (
+        <DeploymentStreaming
+          deploymentData={{
+            deploymentId: deployment._id,
+            projectId: deployment.projectId,
+            repoUrl: project.repoUrl,
+            stack: project.stack,
+            subdomain: project.subdomain,
+            userEmail: deployment.userEmail || 'user@example.com',
+            token: localStorage.getItem('token')
+          }}
+          onStatusChange={(statusUpdate) => {
+            console.log('Deployment status update:', statusUpdate);
+          }}
+          onComplete={(result) => {
+            console.log('Deployment completed:', result);
+            // Refresh deployment data
+            fetchData();
+          }}
+        />
+      )}
+
+      {/* Recent Logs - Only show for completed/failed deployments */}
+      {(deployment?.status === 'success' || deployment?.status === 'failed') && (
+        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+              Recent Activity
+            </h2>
+            <button
+              onClick={() => navigate(`/deployments/${id}/logs`)}
+              className="text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+            >
+              View all logs →
+            </button>
+          </div>
           
-          {logs.length === 0 && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-              No logs available yet
-            </p>
-          )}
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {logs.slice(-10).reverse().map((log, index) => (
+              <div key={index} className="flex items-start space-x-3 text-sm">
+                <span className="text-gray-400 dark:text-gray-500 font-mono">
+                  {new Date(log.createdAt).toLocaleTimeString()}
+                </span>
+                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  log.type === 'error' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                  log.type === 'setup' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                  log.type === 'config' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                  log.type === 'deploy' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200' :
+                  'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                }`}>
+                  {log.type}
+                </span>
+                <span className="text-gray-700 dark:text-gray-300 flex-1">
+                  {log.content}
+                </span>
+              </div>
+            ))}
+            
+            {logs.length === 0 && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                No logs available yet
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

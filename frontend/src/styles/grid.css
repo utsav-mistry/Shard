@@ -1,0 +1,202 @@
+/* Global Grid Background */
+body {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.03) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 2px, transparent 2px);
+  background-size: 40px 40px;
+  background-position: 0 0, 0 0;
+  background-attachment: fixed;
+}
+
+.dark body {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: 0 0, 0 0;
+  background-attachment: fixed;
+}
+
+/* Sharp corners for all elements */
+* {
+  border-radius: 0 !important;
+}
+
+/* Override any rounded corners */
+.rounded,
+.rounded-sm,
+.rounded-md,
+.rounded-lg,
+.rounded-xl,
+.rounded-2xl,
+.rounded-3xl,
+.rounded-full {
+  border-radius: 0 !important;
+}
+
+/* Ensure buttons are sharp */
+button,
+.btn,
+input,
+textarea,
+select {
+  border-radius: 0 !important;
+}
+
+/* Sharp modals and dropdowns */
+.modal,
+.dropdown,
+.popover,
+.tooltip {
+  border-radius: 0 !important;
+}
+
+/* Sharp cards and containers */
+.card,
+.container,
+.panel {
+  border-radius: 0 !important;
+}
+
+/* Solid backgrounds for components to prevent grid bleed-through */
+.component-bg {
+  background-color: white;
+}
+
+.dark .component-bg {
+  background-color: black;
+}
+
+/* Main content areas need solid backgrounds */
+.content-bg {
+  background-color: white;
+}
+
+.dark .content-bg {
+  background-color: black;
+}
+
+/* Form containers need solid backgrounds */
+.form-container {
+  background-color: white;
+}
+
+.dark .form-container {
+  background-color: black;
+}
+
+/* Ensure dropdowns and modals have solid backgrounds */
+[role="menu"],
+[role="dialog"],
+.dropdown-menu,
+.modal-content {
+  background-color: white !important;
+}
+
+.dark [role="menu"],
+.dark [role="dialog"],
+.dark .dropdown-menu,
+.dark .modal-content {
+  background-color: black !important;
+}
+
+/* ===== CENTRALIZED GRID SYSTEM ===== */
+
+/* Base Grid Container */
+.shard-grid {
+  display: grid;
+  gap: 1.25rem;
+  /* 20px */
+}
+
+/* Responsive Grid Layouts */
+.shard-grid-1 {
+  grid-template-columns: 1fr;
+}
+
+.shard-grid-2 {
+  grid-template-columns: 1fr;
+}
+
+.shard-grid-3 {
+  grid-template-columns: 1fr;
+}
+
+.shard-grid-4 {
+  grid-template-columns: 1fr;
+}
+
+/* Tablet breakpoint (768px+) */
+@media (min-width: 768px) {
+  .shard-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .shard-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .shard-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Desktop breakpoint (1024px+) */
+@media (min-width: 1024px) {
+  .shard-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .shard-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Special Layout Grids */
+.shard-grid-sidebar {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .shard-grid-sidebar {
+    grid-template-columns: 1fr 3fr;
+  }
+}
+
+.shard-grid-main-sidebar {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .shard-grid-main-sidebar {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+/* Auth Grid (2 columns equal) */
+.shard-grid-auth {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+/* Gap Variations */
+.shard-grid-gap-sm {
+  gap: 1rem;
+}
+
+.shard-grid-gap-md {
+  gap: 1.25rem;
+}
+
+.shard-grid-gap-lg {
+  gap: 1.5rem;
+}
+
+.shard-grid-gap-xl {
+  gap: 2rem;
+}

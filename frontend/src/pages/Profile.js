@@ -1,31 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  User, Camera, Loader2, Mail, Lock, Bell, Shield, Check, X, 
-  Github, Twitter, Link as LinkIcon, Clock, Calendar,
-  CreditCard, Key, LogOut, Edit2, Eye, EyeOff, CheckCircle, GitBranch
+  User, Camera, Loader2, Mail, Lock, Bell, Github, Twitter, 
+  Link as LinkIcon, Edit2, Key
 } from 'lucide-react';
+import api from '../utils/axiosConfig';
 
 // Common styles
 const activeClass = "bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900";
 const hoverClass = "hover:bg-black-100 hover:text-black-900 dark:hover:bg-white-900 dark:hover:text-white-100";
 const textClass = "text-black-900 dark:text-white-100";
 const borderClass = "border-black-900 dark:border-white-100";
-const cardClass = `bg-white dark:bg-black-800/50  shadow-sm border-2 ${borderClass} p-6`;
+const cardClass = `bg-white-100 dark:bg-black-700 shadow-md border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow p-6`;
 
 const TabButton = ({ active, onClick, children, icon: Icon }) => (
   <button
     onClick={onClick}
-    className={`px-4 py-2 text-sm font-medium transition-colors flex items-center ${
+    className={`group relative px-4 py-2 text-sm font-bold transition-all duration-200 overflow-hidden flex items-center rounded-none border-2 ${
       active
-        ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
-        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+        ? 'border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900'
+        : 'border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900'
     }`}
   >
-    {Icon && <Icon className="h-4 w-4 mr-2" />}
-    {children}
+    {!active && (
+      <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+    )}
+    <span className="relative z-10 flex items-center">
+      {Icon && <Icon className="h-4 w-4 mr-2" />}
+      {children}
+    </span>
   </button>
 );
 
@@ -37,47 +41,81 @@ const Profile = () => {
     const [avatar, setAvatar] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [userProfile, setUserProfile] = useState(null);
+    const [fetchingProfile, setFetchingProfile] = useState(true);
     
-    const connectedAccounts = [
-      { provider: 'github', connected: true, email: 'user@github.com' },
-      { provider: 'twitter', connected: false }
-    ];
-    
+    const [connectedAccounts, setConnectedAccounts] = useState([
+      { provider: 'github', connected: false, email: '' },
+      { provider: 'twitter', connected: false, email: '' }
+    ]);
+
     const getProviderIcon = (provider) => {
-      switch (provider) {
-        case 'github': return <Github className="h-5 w-5" />;
-        case 'twitter': return <Twitter className="h-5 w-5 text-blue-400" />;
-        default: return <LinkIcon className="h-5 w-5" />;
-      }
+        switch (provider) {
+            case 'github': return <Github className="h-5 w-5" />;
+            case 'twitter': return <Twitter className="h-5 w-5 text-blue-400" />;
+            default: return <LinkIcon className="h-5 w-5" />;
+        }
     };
-    
+
     const getProviderName = (provider) => {
-      return provider.charAt(0).toUpperCase() + provider.slice(1);
+        return provider.charAt(0).toUpperCase() + provider.slice(1);
     };
-    
+
     const formatDate = (dateString) => {
-      const options = { year: 'numeric', month: 'long', day: 'numeric' };
-      return new Date(dateString).toLocaleDateString(undefined, options);
+        const options = { year: 'numeric', month: 'long', day: 'numeric' };
+        return new Date(dateString).toLocaleDateString(undefined, options);
     };
-    
+
     const formatDateTime = (dateTimeString) => {
-      const options = { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      };
-      return new Date(dateTimeString).toLocaleString(undefined, options);
+        const options = {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        };
+        return new Date(dateTimeString).toLocaleString(undefined, options);
     };
 
     useEffect(() => {
-        if (currentUser) {
-            setName(currentUser.name || '');
-            setEmail(currentUser.email || '');
-            setAvatar(currentUser.avatar || '');
+        fetchUserProfile();
+    }, []);
+
+    const fetchUserProfile = async () => {
+        try {
+            setFetchingProfile(true);
+            const response = await api.get('/auth/profile');
+            const userData = response.data?.data?.user || response.data?.user || response.data?.data;
+
+            if (userData) {
+                setUserProfile(userData);
+                setName(userData.name || userData.username || '');
+                setEmail(userData.email || '');
+                setAvatar(userData.avatar || '');
+
+                // Update connected accounts based on user data
+                setConnectedAccounts([
+                    {
+                        provider: 'github',
+                        connected: !!userData.githubUsername,
+                        email: userData.githubUsername ? `${userData.githubUsername}@github.com` : ''
+                    },
+                    { provider: 'twitter', connected: false, email: '' }
+                ]);
+            }
+        } catch (error) {
+            console.error('Failed to fetch user profile:', error);
+            toast.error('Failed to load profile data');
+            // Fallback to currentUser if available
+            if (currentUser) {
+                setName(currentUser.name || currentUser.username || '');
+                setEmail(currentUser.email || '');
+                setAvatar(currentUser.avatar || '');
+            }
+        } finally {
+            setFetchingProfile(false);
         }
-    }, [currentUser]);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -108,83 +146,78 @@ const Profile = () => {
         }
     };
 
-    if (!currentUser) {
+    if (fetchingProfile) {
         return (
-            <div className="flex items-center justify-center h-full">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex items-center justify-center">
+                <div className="text-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-4" />
+                    <p>Loading profile...</p>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
-            {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Account Settings</h1>
-                <p className="text-gray-600 dark:text-gray-400">
-                    Manage your account settings and preferences
-                </p>
-            </div>
-            
-            
-            {/* Main Content */}
-            <div className="bg-white dark:bg-black-800/50  shadow-sm border-2 border-black-900/10 dark:border-white/10 overflow-hidden">
-                {/* Tabs */}
-                <div className="border-b border-gray-200 dark:border-gray-700 px-6 pt-2">
-                    <nav className="flex space-x-4" aria-label="Tabs">
-                        <TabButton 
-                            active={activeTab === 'profile'} 
-                            onClick={() => setActiveTab('profile')}
-                            icon={User}
-                        >
-                            Profile
-                        </TabButton>
-                        <TabButton 
-                            active={activeTab === 'security'} 
-                            onClick={() => setActiveTab('security')}
-                            icon={Lock}
-                        >
-                            Security
-                        </TabButton>
-                        <TabButton 
-                            active={activeTab === 'notifications'} 
-                            onClick={() => setActiveTab('notifications')}
-                            icon={Bell}
-                        >
-                            Notifications
-                        </TabButton>
-                    </nav>
+        <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white">
+            <div className="max-w-4xl mx-auto px-4 py-8">
+                {/* Header */}
+                <div className="mb-8">
+                    <h1 className="text-4xl font-extrabold text-black-900 dark:text-white-100 mb-2">Profile Settings</h1>
+                    <p className="text-lg text-black-600 dark:text-white-400">
+                        Manage your account settings and preferences
+                    </p>
                 </div>
                 
-                {/* Tab Panels */}
-                <div className="p-6">
-                    {/* Profile Tab */}
-                    <AnimatePresence mode="wait">
-                        {activeTab === 'profile' && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.2 }}
-                                className="space-y-6"
+                {/* Main Content */}
+                <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+                    {/* Tabs */}
+                    <div className="border-b-2 border-black-900 dark:border-white-100 px-6 pt-4">
+                        <nav className="flex space-x-2 pb-4" aria-label="Tabs">
+                            <TabButton 
+                                active={activeTab === 'profile'} 
+                                onClick={() => setActiveTab('profile')}
+                                icon={User}
                             >
-                                <div className="flex flex-col items-center md:flex-row md:items-start space-y-6 md:space-y-0 md:space-x-8">
+                                Profile
+                            </TabButton>
+                            <TabButton 
+                                active={activeTab === 'security'} 
+                                onClick={() => setActiveTab('security')}
+                                icon={Lock}
+                            >
+                                Security
+                            </TabButton>
+                            <TabButton 
+                                active={activeTab === 'notifications'} 
+                                onClick={() => setActiveTab('notifications')}
+                                icon={Bell}
+                            >
+                                Notifications
+                            </TabButton>
+                        </nav>
+                    </div>
+                    
+                    {/* Tab Content */}
+                    <div className="p-6">
+                        {activeTab === 'profile' && (
+                            <div className="space-y-6">
+                                <div className="flex flex-col md:flex-row md:items-start space-y-6 md:space-y-0 md:space-x-8">
                                     <div className="flex-shrink-0">
                                         <div className="relative">
                                             {avatar ? (
                                                 <img 
                                                     src={avatar} 
                                                     alt="Profile" 
-                                                    className="w-32 h-32 object-cover border-2 border-blue-500"
+                                                    className="w-32 h-32 object-cover border-2 border-black-900 dark:border-white-100 rounded-none"
                                                 />
                                             ) : (
-                                                <div className="w-32 h-32 bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                                                <div className="w-32 h-32 bg-white-200 dark:bg-black-600 border-2 border-black-900 dark:border-white-100 rounded-none flex items-center justify-center">
                                                     <User className="w-16 h-16 text-gray-500 dark:text-gray-400" />
                                                 </div>
                                             )}
                                             <label 
                                                 htmlFor="avatar-upload" 
-                                                className="absolute bottom-0 right-0 bg-blue-500 text-white p-2 cursor-pointer hover:bg-blue-600 transition-colors"
+                                                className="absolute bottom-0 right-0 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 p-2 rounded-none cursor-pointer hover:scale-110 transition-all duration-200 border-2 border-black-900 dark:border-white-100"
                                                 title="Change photo"
                                             >
                                                 <Camera className="h-4 w-4" />
@@ -201,22 +234,25 @@ const Profile = () => {
                                     
                                     <div className="flex-1 w-full">
                                         <div className="flex justify-between items-center mb-4">
-                                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Profile Information</h2>
-                                            {!isEditing ? (
+                                            <h2 className="text-2xl font-bold text-black-900 dark:text-white-100">Profile Information</h2>
+                                            {!isEditing && (
                                                 <button
                                                     type="button"
                                                     onClick={() => setIsEditing(true)}
-                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium shadow-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                                                    className="group relative inline-flex items-center px-3 py-1.5 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 text-sm font-bold rounded-none transition-all duration-200 overflow-hidden"
                                                 >
-                                                    <Edit2 className="h-3.5 w-3.5 mr-1" />
-                                                    Edit Profile
+                                                    <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+                                                    <span className="relative z-10 flex items-center">
+                                                        <Edit2 className="h-3.5 w-3.5 mr-1" />
+                                                        Edit Profile
+                                                    </span>
                                                 </button>
-                                            ) : null}
+                                            )}
                                         </div>
                                         
                                         <form onSubmit={handleSubmit} className="space-y-4">
                                             <div>
-                                                <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                <label htmlFor="name" className="block text-sm font-bold text-black-900 dark:text-white-100 mb-2">
                                                     Full Name
                                                 </label>
                                                 <input
@@ -224,26 +260,26 @@ const Profile = () => {
                                                     type="text"
                                                     value={name}
                                                     onChange={(e) => setName(e.target.value)}
-                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                                                    className="w-full px-3 py-2 border-2 border-black-900 dark:border-white-100 rounded-none bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
                                                     placeholder="Your name"
                                                     disabled={!isEditing}
                                                 />
                                             </div>
                                             
                                             <div>
-                                                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                <label htmlFor="email" className="block text-sm font-bold text-black-900 dark:text-white-100 mb-2">
                                                     Email Address
                                                 </label>
                                                 <div className="relative">
                                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                        <Mail className="h-4 w-4 text-gray-400" />
+                                                        <Mail className="h-4 w-4 text-black-900 dark:text-white-100" />
                                                     </div>
                                                     <input
                                                         id="email"
                                                         type="email"
                                                         value={email}
                                                         onChange={(e) => setEmail(e.target.value)}
-                                                        className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                                                        className="w-full pl-10 pr-3 py-2 border-2 border-black-900 dark:border-white-100 rounded-none bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
                                                         placeholder="your@email.com"
                                                         disabled={!isEditing}
                                                     />
@@ -251,11 +287,11 @@ const Profile = () => {
                                             </div>
                                             
                                             {isEditing && (
-                                                <div className="flex space-x-3 pt-2">
+                                                <div className="flex space-x-3 pt-4">
                                                     <button
                                                         type="submit"
                                                         disabled={isLoading}
-                                                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 text-sm font-bold rounded-none transition-all duration-200 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
                                                         {isLoading ? (
                                                             <>
@@ -268,16 +304,18 @@ const Profile = () => {
                                                         type="button"
                                                         onClick={() => {
                                                             setIsEditing(false);
-                                                            // Reset form
-                                                            if (currentUser) {
-                                                                setName(currentUser.name || '');
-                                                                setEmail(currentUser.email || '');
-                                                                setAvatar(currentUser.avatar || '');
+                                                            if (userProfile) {
+                                                                setName(userProfile.name || userProfile.username || '');
+                                                                setEmail(userProfile.email || '');
+                                                                setAvatar(userProfile.avatar || '');
                                                             }
                                                         }}
-                                                        className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                                        className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 text-sm font-bold rounded-none transition-all duration-200 overflow-hidden"
                                                     >
-                                                        Cancel
+                                                        <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+                                                        <span className="relative z-10">
+                                                            Cancel
+                                                        </span>
                                                     </button>
                                                 </div>
                                             )}
@@ -286,21 +324,21 @@ const Profile = () => {
                                 </div>
                                 
                                 {/* Connected Accounts */}
-                                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Connected Accounts</h3>
+                                <div className="border-t-2 border-black-900 dark:border-white-100 pt-6">
+                                    <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-4">Connected Accounts</h3>
                                     <div className="space-y-3">
                                         {connectedAccounts.map((account, index) => (
-                                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50">
+                                            <div key={index} className="flex items-center justify-between p-4 bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none">
                                                 <div className="flex items-center">
-                                                    <div className="flex-shrink-0 h-10 w-10 bg-white dark:bg-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-600">
+                                                    <div className="flex-shrink-0 h-10 w-10 bg-black-900 dark:bg-white-100 border-2 border-black-900 dark:border-white-100 rounded-none flex items-center justify-center">
                                                         {getProviderIcon(account.provider)}
                                                     </div>
                                                     <div className="ml-3">
-                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                                        <p className="text-sm font-bold text-black-900 dark:text-white-100">
                                                             {getProviderName(account.provider)}
                                                         </p>
                                                         {account.email && (
-                                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                            <p className="text-xs text-black-600 dark:text-white-400">
                                                                 {account.email}
                                                             </p>
                                                         )}
@@ -308,69 +346,173 @@ const Profile = () => {
                                                 </div>
                                                 <button
                                                     type="button"
-                                                    className={`inline-flex items-center px-3 py-1.5 border text-xs font-medium ${
+                                                    className={`group relative inline-flex items-center px-3 py-1.5 border-2 text-xs font-bold rounded-none transition-all duration-200 overflow-hidden ${
                                                         account.connected
-                                                            ? 'border-red-300 text-red-700 dark:text-red-400 bg-white dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-gray-600'
-                                                            : 'border-gray-300 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'
+                                                            ? 'border-red-600 text-red-600 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900'
+                                                            : 'border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900'
                                                     }`}
                                                 >
-                                                    {account.connected ? 'Disconnect' : 'Connect'}
+                                                    <span className={`absolute inset-0 w-full h-full transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0 ${
+                                                        account.connected ? 'bg-red-600' : 'bg-black-900 dark:bg-white-100'
+                                                    }`} />
+                                                    <span className="relative z-10">
+                                                        {account.connected ? 'Disconnect' : 'Connect'}
+                                                    </span>
                                                 </button>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-                            </motion.div>
+                            </div>
                         )}
                         
-                        {/* Security Tab */}
                         {activeTab === 'security' && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.2 }}
-                                className="space-y-6"
-                            >
-                                <div className="text-center py-12">
-                                    <Lock className="h-12 w-12 mx-auto text-gray-400" />
-                                    <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">Security settings</h3>
-                                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                        Manage your account security settings
-                                    </p>
-                                    <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-                                        This section is under development
-                                    </p>
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-4">Security Settings</h3>
+                                    
+                                    {/* Two-Factor Authentication */}
+                                    <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div>
+                                                <h4 className="text-lg font-bold text-black-900 dark:text-white-100">Two-Factor Authentication</h4>
+                                                <p className="text-sm text-black-600 dark:text-white-400">Add an extra layer of security to your account</p>
+                                            </div>
+                                            <div className="flex items-center">
+                                                <span className="text-sm font-medium text-black-600 dark:text-white-400 mr-3">Disabled</span>
+                                                <button className="group relative px-4 py-2 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden rounded-none font-bold">
+                                                    <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+                                                    <span className="relative z-10">Enable 2FA</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Login Sessions */}
+                                    <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div>
+                                                <h4 className="text-lg font-bold text-black-900 dark:text-white-100">Active Sessions</h4>
+                                                <p className="text-sm text-black-600 dark:text-white-400">Manage your active login sessions</p>
+                                            </div>
+                                            <button className="group relative px-4 py-2 border-2 border-red-600 bg-red-600 text-white-100 hover:text-red-600 transition-all duration-200 overflow-hidden rounded-none font-bold">
+                                                <span className="absolute inset-0 w-full h-full bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+                                                <span className="relative z-10">Revoke All Sessions</span>
+                                            </button>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between p-3 bg-black-50 dark:bg-white-950 border border-black-200 dark:border-white-800 rounded-none">
+                                                <div className="flex items-center">
+                                                    <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-black-900 dark:text-white-100">Current Session</p>
+                                                        <p className="text-xs text-black-600 dark:text-white-400">Chrome on Windows • {new Date().toLocaleDateString()}</p>
+                                                    </div>
+                                                </div>
+                                                <span className="text-xs font-medium text-green-600 dark:text-green-400">Active</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* API Keys */}
+                                    <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none p-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div>
+                                                <h4 className="text-lg font-bold text-black-900 dark:text-white-100">API Keys</h4>
+                                                <p className="text-sm text-black-600 dark:text-white-400">Manage your API access keys</p>
+                                            </div>
+                                            <button className="group relative px-4 py-2 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden rounded-none font-bold">
+                                                <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+                                                <span className="relative z-10">Generate New Key</span>
+                                            </button>
+                                        </div>
+                                        <div className="text-center py-8">
+                                            <Key className="h-8 w-8 text-black-400 dark:text-white-600 mx-auto mb-2" />
+                                            <p className="text-sm text-black-600 dark:text-white-400">No API keys created yet</p>
+                                        </div>
+                                    </div>
                                 </div>
-                            </motion.div>
+                            </div>
                         )}
                         
-                        {/* Notifications Tab */}
                         {activeTab === 'notifications' && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.2 }}
-                                className="space-y-6"
-                            >
-                                <div className="text-center py-12">
-                                    <Bell className="h-12 w-12 mx-auto text-gray-400" />
-                                    <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">Notification preferences</h3>
-                                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                        Manage your notification settings
-                                    </p>
-                                    <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-                                        This section is under development
-                                    </p>
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-4">Notification Preferences</h3>
+                                    
+                                    {/* Email Notifications */}
+                                    <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none p-6 mb-6">
+                                        <h4 className="text-lg font-bold text-black-900 dark:text-white-100 mb-4">Email Notifications</h4>
+                                        <div className="space-y-4">
+                                            {[
+                                                { id: 'deployments', label: 'Deployment Status', description: 'Get notified when deployments succeed or fail' },
+                                                { id: 'security', label: 'Security Alerts', description: 'Important security notifications and login alerts' },
+                                                { id: 'updates', label: 'Product Updates', description: 'New features and platform updates' },
+                                                { id: 'marketing', label: 'Marketing', description: 'Tips, best practices, and promotional content' }
+                                            ].map((setting) => (
+                                                <div key={setting.id} className="flex items-center justify-between p-4 bg-black-50 dark:bg-white-950 border border-black-200 dark:border-white-800 rounded-none">
+                                                    <div>
+                                                        <h5 className="font-bold text-black-900 dark:text-white-100">{setting.label}</h5>
+                                                        <p className="text-sm text-black-600 dark:text-white-400">{setting.description}</p>
+                                                    </div>
+                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                        <input type="checkbox" className="sr-only peer" defaultChecked={setting.id !== 'marketing'} />
+                                                        <div className="w-11 h-6 bg-black-200 dark:bg-white-700 peer-focus:outline-none rounded-none peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-none after:h-5 after:w-5 after:transition-all peer-checked:bg-black-900 dark:peer-checked:bg-white-100"></div>
+                                                    </label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Push Notifications */}
+                                    <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none p-6 mb-6">
+                                        <h4 className="text-lg font-bold text-black-900 dark:text-white-100 mb-4">Push Notifications</h4>
+                                        <div className="space-y-4">
+                                            {[
+                                                { id: 'browser', label: 'Browser Notifications', description: 'Show notifications in your browser' },
+                                                { id: 'desktop', label: 'Desktop Notifications', description: 'Show system notifications on your desktop' }
+                                            ].map((setting) => (
+                                                <div key={setting.id} className="flex items-center justify-between p-4 bg-black-50 dark:bg-white-950 border border-black-200 dark:border-white-800 rounded-none">
+                                                    <div>
+                                                        <h5 className="font-bold text-black-900 dark:text-white-100">{setting.label}</h5>
+                                                        <p className="text-sm text-black-600 dark:text-white-400">{setting.description}</p>
+                                                    </div>
+                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                        <input type="checkbox" className="sr-only peer" />
+                                                        <div className="w-11 h-6 bg-black-200 dark:bg-white-700 peer-focus:outline-none rounded-none peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-none after:h-5 after:w-5 after:transition-all peer-checked:bg-black-900 dark:peer-checked:bg-white-100"></div>
+                                                    </label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Notification Frequency */}
+                                    <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none p-6">
+                                        <h4 className="text-lg font-bold text-black-900 dark:text-white-100 mb-4">Notification Frequency</h4>
+                                        <div className="space-y-3">
+                                            {[
+                                                { id: 'instant', label: 'Instant', description: 'Get notified immediately' },
+                                                { id: 'daily', label: 'Daily Digest', description: 'Receive a daily summary' },
+                                                { id: 'weekly', label: 'Weekly Summary', description: 'Receive a weekly summary' }
+                                            ].map((option) => (
+                                                <label key={option.id} className="flex items-center p-4 bg-black-50 dark:bg-white-950 border border-black-200 dark:border-white-800 rounded-none cursor-pointer hover:bg-black-100 dark:hover:bg-white-900 transition-colors">
+                                                    <input type="radio" name="frequency" value={option.id} className="w-4 h-4 text-black-900 dark:text-white-100 border-black-300 dark:border-white-700 focus:ring-black-500 dark:focus:ring-white-500" defaultChecked={option.id === 'instant'} />
+                                                    <div className="ml-3">
+                                                        <h5 className="font-bold text-black-900 dark:text-white-100">{option.label}</h5>
+                                                        <p className="text-sm text-black-600 dark:text-white-400">{option.description}</p>
+                                                    </div>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
-                            </motion.div>
+                            </div>
                         )}
-                    </AnimatePresence>
+                    </div>
                 </div>
             </div>
         </div>
     );
-};
+}
 
 export default Profile;

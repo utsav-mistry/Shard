@@ -1,48 +1,44 @@
-const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
-const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
-const fs = require("fs");
-const path = require("path");
+const fs = require('fs');
+const path = require('path');
 
-const REGION = process.env.S3_REGION;
-const BUCKET = process.env.S3_BUCKET;
+// Local storage configuration
+const STORAGE_DIR = path.join(__dirname, '../../storage');
 
-const s3 = new S3Client({
-    region: REGION,
-    credentials: {
-        accessKeyId: process.env.S3_ACCESS_KEY,
-        secretAccessKey: process.env.S3_SECRET_KEY,
-    },
-});
+// Ensure storage directory exists
+if (!fs.existsSync(STORAGE_DIR)) {
+    fs.mkdirSync(STORAGE_DIR, { recursive: true });
+}
 
-// Upload file (used for logs, backups, etc.)
+// Copy file to local storage
 const uploadFile = async (key, filePath) => {
-    const fileStream = fs.createReadStream(filePath);
-
-    const uploadParams = {
-        Bucket: BUCKET,
-        Key: key,
-        Body: fileStream,
-    };
-
-    await s3.send(new PutObjectCommand(uploadParams));
-    console.log(`✅ Uploaded file: ${key}`);
+    const targetPath = path.join(STORAGE_DIR, key);
+    const targetDir = path.dirname(targetPath);
+    
+    // Ensure target directory exists
+    if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+    }
+    
+    fs.copyFileSync(filePath, targetPath);
+    console.log(`Stored file locally: ${key}`);
 };
 
-// Generate temporary download URL
+// Get local file path
 const getFileUrl = async (key) => {
-    const command = new GetObjectCommand({
-        Bucket: BUCKET,
-        Key: key,
-    });
-
-    const url = await getSignedUrl(s3, command, { expiresIn: 3600 }); // 1 hour link
-    return url;
+    const filePath = path.join(STORAGE_DIR, key);
+    if (fs.existsSync(filePath)) {
+        return filePath;
+    }
+    throw new Error(`File not found: ${key}`);
 };
 
-// Delete file
+// Delete local file
 const deleteFile = async (key) => {
-    await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
-    console.log(`✅ Deleted file: ${key}`);
+    const filePath = path.join(STORAGE_DIR, key);
+    if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log(`Deleted file: ${key}`);
+    }
 };
 
 module.exports = {

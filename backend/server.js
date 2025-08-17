@@ -57,11 +57,19 @@ const httpServer = createServer(app);
 
 // Configure CORS for Express
 const corsOptions = {
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: [
+        'http://localhost:3000', 
+        'http://127.0.0.1:3000',
+        'http://localhost:5000',  // For OAuth callbacks
+        'http://127.0.0.1:5000'   // For OAuth callbacks
+    ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    exposedHeaders: ['Set-Cookie'],
     credentials: true,
-    optionsSuccessStatus: 200 // For legacy browser support
+    optionsSuccessStatus: 200, // For legacy browser support
+    preflightContinue: false,
+    maxAge: 600 // 10 minutes
 };
 
 // Configure Socket.IO with CORS and other options
@@ -140,14 +148,19 @@ const healthRoutes = require('./routes/health');
 const adminRoutes = require('./routes/admin');
 const envRoutes = require('./routes/env');
 const logsRoutes = require('./routes/logs');
+const githubRoutes = require('./routes/github');
+const notificationRoutes = require('./routes/notifications');
 
 // Mount routes
 app.use('/api/auth', authRoutes);
+app.use('/api/integrations', require('./routes/integrations'));
 app.use('/api/projects', projectRoutes);
 app.use('/api/deploy', deployRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/env', envRoutes);
 app.use('/api/logs', logsRoutes);
+app.use('/api/github', githubRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/health', healthRoutes);
 
 // Serve static files from the public directory

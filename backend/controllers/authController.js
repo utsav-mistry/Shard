@@ -1,5 +1,9 @@
-const User = require("../models/User");
-const { generateToken } = require("../config/jwt");
+const User = require('../models/User');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const { validationResult } = require('express-validator');
+const emailService = require('../services/emailService');
+const { generateToken } = require('../config/jwt');
 const githubService = require("../services/githubService");
 const googleService = require("../services/googleService");
 
@@ -36,6 +40,14 @@ const registerUser = async (req, res) => {
         });
 
         await user.save();
+
+        // Send welcome email
+        try {
+            await emailService.sendWelcomeEmail(user.email, user.name);
+        } catch (emailError) {
+            console.error('Failed to send welcome email:', emailError);
+            // Don't fail registration if email fails
+        }
 
         // Generate JWT token
         const token = generateToken(user);
@@ -109,81 +121,207 @@ const loginUser = async (req, res) => {
 
 // GitHub OAuth Callback
 const githubOAuthCallback = async (req, res) => {
-    const { code } = req.body;
+    const code = req.query.code || req.body.code;
+    const error = req.query.error;
+
+    if (error) {
+        console.error('GitHub OAuth error:', error);
+        return res.redirect(`/login?error=${encodeURIComponent(error)}`);
+    }
 
     if (!code) {
-        return res.apiValidationError({ code: 'Authorization code is required' }, 'Authorization code is required');
+        return res.status(400).send('Authorization code is required');
     }
 
     try {
         const accessToken = await githubService.getAccessToken(code);
         const gitHubUser = await githubService.getGitHubUser(accessToken);
 
-        let user = await User.findOne({ githubId: gitHubUser.id });
+        let user = await User.findOne({ 
+            $or: [
+                { githubId: gitHubUser.id },
+                { email: gitHubUser.email || `${gitHubUser.login}@github.com` }
+            ]
+        });
+
         if (!user) {
+            // Generate a more readable name from GitHub login if name is not provided
+            const generateReadableName = (login) => {
+                // Convert login from 'some-user-name' to 'Some User Name'
+                return login
+                    .split('-')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+            };
+
             user = new User({
                 githubId: gitHubUser.id,
                 email: gitHubUser.email || `${gitHubUser.login}@github.com`,
-                name: gitHubUser.name || gitHubUser.login,
+                name: gitHubUser.name || generateReadableName(gitHubUser.login),
                 avatar: gitHubUser.avatar_url,
+                isEmailVerified: !!gitHubUser.email_verified
             });
+            await user.save();
+        } else if (!user.githubId) {
+            // Link GitHub to existing account
+            user.githubId = gitHubUser.id;
+            if (!user.avatar) user.avatar = gitHubUser.avatar_url;
             await user.save();
         }
 
         const token = generateToken(user);
+        const frontendUrl = new URL(process.env.FRONTEND_URL || 'http://localhost:3000');
+        
+        // Set HTTP-only cookie for better security
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: (process.env.JWT_COOKIE_EXPIRE || 7) * 24 * 60 * 60 * 1000 // Default to 7 days if not set
+        });
+
+        // Redirect to frontend with token in URL (for clients that can't access cookies)
+        const redirectUrl = new URL('/auth/callback', frontendUrl);
+        redirectUrl.searchParams.set('token', token);
+        redirectUrl.searchParams.set('provider', 'github');
+        
+        return res.redirect(redirectUrl.toString());
+    } catch (err) {
+        console.error('GitHub OAuth error:', err);
+        const frontendUrl = new URL(process.env.FRONTEND_URL || 'http://localhost:3000');
+        const errorUrl = new URL('/login', frontendUrl);
+        errorUrl.searchParams.set('error', 'github_oauth_failed');
+        return res.redirect(errorUrl.toString());
+    }
+};
+
+// GitHub OAuth Callback (for login)
+const githubOAuthCallbackLogin = async (req, res) => {
+    const code = req.body.code;
+
+    if (!code) {
+        return res.apiValidationError({ code: 'Authorization code is required' }, 'Missing authorization code');
+    }
+
+    try {
+        const accessToken = await githubService.getAccessToken(code);
+        const gitHubUser = await githubService.getGitHubUser(accessToken);
+
+        // Find user by GitHub ID or email
+        let user = await User.findOne({ 
+            $or: [
+                { githubId: gitHubUser.id },
+                { email: gitHubUser.email || `${gitHubUser.login}@github.com` }
+            ]
+        });
+
+        if (!user) {
+            // Generate a more readable name from GitHub login if name is not provided
+            const generateReadableName = (login) => {
+                return login
+                    .split('-')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+            };
+
+            user = new User({
+                githubId: gitHubUser.id,
+                email: gitHubUser.email || `${gitHubUser.login}@github.com`,
+                name: gitHubUser.name || generateReadableName(gitHubUser.login),
+                avatar: gitHubUser.avatar_url,
+                githubUsername: gitHubUser.login,
+                isVerified: !!gitHubUser.email
+            });
+            await user.save();
+        } else if (!user.githubId) {
+            // Link GitHub to existing account
+            user.githubId = gitHubUser.id;
+            user.githubUsername = gitHubUser.login;
+            if (!user.avatar) user.avatar = gitHubUser.avatar_url;
+            await user.save();
+        }
+
+        // Update last login
+        user.lastLogin = new Date();
+        await user.save();
+
+        const token = generateToken(user);
+        
+        // Return user data and token
         const userResponse = {
             id: user._id,
             email: user.email,
             name: user.name,
             avatar: user.avatar,
             role: user.role,
-            githubId: user.githubId
+            githubUsername: user.githubUsername,
+            isVerified: user.isVerified
         };
 
-        return res.apiSuccess({ token, user: userResponse }, 'GitHub authentication successful');
+        return res.apiSuccess({ token, user: userResponse }, 'GitHub login successful');
     } catch (err) {
-        console.error('GitHub OAuth error:', err);
-        return res.apiServerError('GitHub OAuth failed', err.message);
+        console.error('GitHub OAuth callback error:', err);
+        return res.apiServerError('GitHub authentication failed', err.message);
     }
 };
 
-// Google OAuth Callback
+// Google OAuth Callback (for login)
 const googleOAuthCallback = async (req, res) => {
-    const { code } = req.body;
+    const code = req.body.code;
 
     if (!code) {
-        return res.apiValidationError({ code: 'Authorization code is required' }, 'Authorization code is required');
+        return res.apiValidationError({ code: 'Authorization code is required' }, 'Missing authorization code');
     }
 
     try {
         const accessToken = await googleService.getAccessToken(code);
         const googleUser = await googleService.getGoogleUser(accessToken);
 
-        let user = await User.findOne({ googleId: googleUser.id });
+        // Find user by Google ID or email
+        let user = await User.findOne({
+            $or: [
+                { googleId: googleUser.id },
+                { email: googleUser.email }
+            ]
+        });
+
         if (!user) {
+            // Create new user
             user = new User({
                 googleId: googleUser.id,
                 email: googleUser.email,
                 name: googleUser.name,
                 avatar: googleUser.picture,
+                isVerified: googleUser.verified_email || false
             });
+            await user.save();
+        } else if (!user.googleId) {
+            // Link Google to existing account
+            user.googleId = googleUser.id;
+            if (!user.avatar) user.avatar = googleUser.picture;
             await user.save();
         }
 
+        // Update last login
+        user.lastLogin = new Date();
+        await user.save();
+
         const token = generateToken(user);
+        
+        // Return user data and token
         const userResponse = {
             id: user._id,
             email: user.email,
             name: user.name,
             avatar: user.avatar,
             role: user.role,
-            googleId: user.googleId
+            isVerified: user.isVerified
         };
 
-        return res.apiSuccess({ token, user: userResponse }, 'Google authentication successful');
+        return res.apiSuccess({ token, user: userResponse }, 'Google login successful');
     } catch (err) {
-        console.error('Google OAuth error:', err);
-        return res.apiServerError('Google OAuth failed', err.message);
+        console.error('Google OAuth callback error:', err);
+        return res.apiServerError('Google authentication failed', err.message);
     }
 };
 
@@ -252,6 +390,7 @@ module.exports = {
     registerUser,
     loginUser,
     githubOAuthCallback,
+    githubOAuthCallbackLogin,
     googleOAuthCallback,
     getUserProfile,
     updateUserProfile

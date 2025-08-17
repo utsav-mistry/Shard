@@ -271,7 +271,7 @@ router.put("/:id",
     const schema = Joi.object({
       name: Joi.string().min(3).max(50).optional(),
       description: Joi.string().max(500).optional(),
-      repository: Joi.string().uri().optional(),
+      repoUrl: Joi.string().uri().optional(),
       branch: Joi.string().optional(),
       framework: Joi.string().valid('mern', 'flask', 'django').optional(),
       buildCommand: Joi.string().optional(),

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/axiosConfig';
-import { AlertTriangle, Save, Key, User, Shield } from 'lucide-react';
+import { AlertTriangle, Save, Key, User, Shield, Loader2 } from 'lucide-react';
 
 const Settings = () => {
     const { currentUser, updateUser } = useAuth();
@@ -21,47 +21,23 @@ const Settings = () => {
     const [passwordError, setPasswordError] = useState(null);
     const [passwordSuccess, setPasswordSuccess] = useState(false);
 
-    // API key settings
-    const [apiKeys, setApiKeys] = useState([]);
-    const [newKeyName, setNewKeyName] = useState('');
-    const [newKeyExpiry, setNewKeyExpiry] = useState('never');
-    const [apiKeyLoading, setApiKeyLoading] = useState(false);
-    const [apiKeyError, setApiKeyError] = useState(null);
-    const [newKeyGenerated, setNewKeyGenerated] = useState(null);
-    const [showNewKey, setShowNewKey] = useState(false);
+    // Active tab
+    const [activeTab, setActiveTab] = useState('profile');
 
-    // Security settings
+    // Two-factor authentication state
     const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-    const [twoFactorSetupCode, setTwoFactorSetupCode] = useState(null);
     const [twoFactorLoading, setTwoFactorLoading] = useState(false);
     const [twoFactorError, setTwoFactorError] = useState(null);
     const [twoFactorSuccess, setTwoFactorSuccess] = useState(false);
+    const [twoFactorSetupCode, setTwoFactorSetupCode] = useState(null);
 
     // Load user data
     useEffect(() => {
         if (currentUser) {
             setName(currentUser.name || '');
             setEmail(currentUser.email || '');
-            setTwoFactorEnabled(currentUser.twoFactorEnabled || false);
-
-            // Fetch API keys
-            fetchApiKeys();
         }
     }, [currentUser]);
-
-    // Fetch API keys
-    const fetchApiKeys = async () => {
-        try {
-            setApiKeyLoading(true);
-            const response = await api.get('/auth/api-keys');
-            setApiKeys(response.data);
-            setApiKeyLoading(false);
-        } catch (err) {
-            console.error('Error fetching API keys:', err);
-            setApiKeyError('Failed to load API keys');
-            setApiKeyLoading(false);
-        }
-    };
 
     // Update profile
     const handleProfileUpdate = async (e) => {
@@ -71,17 +47,14 @@ const Settings = () => {
         setProfileSuccess(false);
 
         try {
-            const response = await api.put('/auth/profile', { name, email });
-
+            const response = await api.put('/api/auth/profile', { name, email });
             updateUser(response.data);
             setProfileSuccess(true);
-            setProfileLoading(false);
-
-            // Clear success message after 3 seconds
             setTimeout(() => setProfileSuccess(false), 3000);
         } catch (err) {
             console.error('Error updating profile:', err);
             setProfileError(err.response?.data?.message || 'Failed to update profile');
+        } finally {
             setProfileLoading(false);
         }
     };
@@ -90,7 +63,6 @@ const Settings = () => {
     const handlePasswordUpdate = async (e) => {
         e.preventDefault();
 
-        // Validate passwords
         if (newPassword !== confirmPassword) {
             setPasswordError('New passwords do not match');
             return;
@@ -106,129 +78,68 @@ const Settings = () => {
         setPasswordSuccess(false);
 
         try {
-            await api.put('/auth/password', { currentPassword, newPassword });
-
+            await api.put('/api/auth/password', { currentPassword, newPassword });
             setPasswordSuccess(true);
             setCurrentPassword('');
             setNewPassword('');
             setConfirmPassword('');
-            setPasswordLoading(false);
-
-            // Clear success message after 3 seconds
             setTimeout(() => setPasswordSuccess(false), 3000);
         } catch (err) {
             console.error('Error updating password:', err);
             setPasswordError(err.response?.data?.message || 'Failed to update password');
+        } finally {
             setPasswordLoading(false);
         }
     };
 
-    // Generate new API key
-    const handleGenerateApiKey = async (e) => {
-        e.preventDefault();
-
-        if (!newKeyName.trim()) {
-            setApiKeyError('Key name is required');
-            return;
-        }
-
-        setApiKeyLoading(true);
-        setApiKeyError(null);
-        setNewKeyGenerated(null);
-
-        try {
-            const response = await api.post('/auth/api-keys', {
-                name: newKeyName,
-                expiry: newKeyExpiry === 'never' ? null : newKeyExpiry
-            });
-
-            // The API returns the full key only once
-            setNewKeyGenerated(response.data.key);
-            setShowNewKey(true);
-            setNewKeyName('');
-            setNewKeyExpiry('never');
-
-            // Refresh the API keys list
-            fetchApiKeys();
-            setApiKeyLoading(false);
-        } catch (err) {
-            console.error('Error generating API key:', err);
-            setApiKeyError(err.response?.data?.message || 'Failed to generate API key');
-            setApiKeyLoading(false);
-        }
-    };
-
-    // Revoke API key
+    // API key management
     const handleRevokeApiKey = async (keyId) => {
-        if (!window.confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) {
-            return;
-        }
-
-        try {
-            setApiKeyLoading(true);
-            await api.delete(`/auth/api-key/${keyId}`);
-
-            // Refresh the API keys list
-            fetchApiKeys();
-        } catch (err) {
-            console.error('Error revoking API key:', err);
-            setApiKeyError(err.response?.data?.message || 'Failed to revoke API key');
-            setApiKeyLoading(false);
-        }
+        // Implementation for revoking API key
+        console.log('Revoking API key:', keyId);
     };
 
     // Toggle two-factor authentication
     const handleToggleTwoFactor = async () => {
         setTwoFactorLoading(true);
         setTwoFactorError(null);
-        setTwoFactorSuccess(false);
-        setTwoFactorSetupCode(null);
-
-        try {
-            if (!twoFactorEnabled) {
-                // Enable 2FA - this will return a setup code and QR code URL
-                const response = await api.post('/auth/2fa/setup', {}, {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`,
-                        },
-                    }
-                );
-
-                setTwoFactorSetupCode(response.data);
-            } else {
-                // Disable 2FA
-                await api.post(
-                    '/auth/2fa/disable',
-                    {},
-                    {
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem('token')}`,
-                        },
-                    }
-                );
-
-                setTwoFactorEnabled(false);
-                setTwoFactorSuccess(true);
-
-                // Update user object
-                const userResponse = await api.get('/auth/profile', {
+        if (twoFactorEnabled) {
+            // Disable 2FA
+            await api.post(
+                '/api/auth/2fa/disable',
+                {},
+                {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem('token')}`,
                     },
-                });
+                }
+            );
 
-                updateUser(userResponse.data);
+            setTwoFactorEnabled(false);
+            setTwoFactorSuccess(true);
 
-                // Clear success message after 3 seconds
-                setTimeout(() => setTwoFactorSuccess(false), 3000);
-            }
+            // Update user object
+            const userResponse = await api.get('/auth/profile', {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`,
+                },
+            });
 
-            setTwoFactorLoading(false);
-        } catch (err) {
-            console.error('Error toggling 2FA:', err);
-            setTwoFactorError(err.response?.data?.message || 'Failed to update two-factor authentication');
-            setTwoFactorLoading(false);
+            updateUser(userResponse.data);
+
+            // Clear success message after 3 seconds
+            setTimeout(() => setTwoFactorSuccess(false), 3000);
+        } else {
+            // Enable 2FA
+            const response = await api.post('/api/auth/2fa/setup', {}, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`,
+                },
+            });
+
+            setTwoFactorSetupCode(response.data);
         }
+
+        setTwoFactorLoading(false);
     };
 
     // Verify and enable two-factor authentication
@@ -245,19 +156,18 @@ const Settings = () => {
         setTwoFactorError(null);
 
         try {
-            await api.post('/auth/2fa/verify', { code }, {
+            await api.post('/api/auth/2fa/verify', { code }, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem('token')}`,
-                    },
-                }
-            );
+                },
+            });
 
             setTwoFactorEnabled(true);
             setTwoFactorSetupCode(null);
             setTwoFactorSuccess(true);
 
             // Update user object
-            const userResponse = await api.get('/auth/profile', {
+            const userResponse = await api.get('/api/auth/profile', {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem('token')}`,
                 },
@@ -276,556 +186,312 @@ const Settings = () => {
         }
     };
 
+    const TabButton = ({ active, onClick, children, icon: Icon }) => (
+        <button
+            onClick={onClick}
+            className={`group relative px-4 py-2 text-sm font-bold transition-all duration-200 flex items-center border-2 rounded-none overflow-hidden ${active
+                ? 'bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 border-black-900 dark:border-white-100'
+                : 'text-black-900 dark:text-white-100 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900'
+                }`}
+        >
+            {!active && (
+                <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+            )}
+            <span className="relative z-10 flex items-center">
+                {Icon && <Icon className="h-4 w-4 mr-2" />}
+                {children}
+            </span>
+        </button>
+    );
+
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Account Settings</h1>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        Manage your account settings and security preferences
+        <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white">
+            <div className="max-w-4xl mx-auto px-4 py-8">
+                {/* Header */}
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold mb-2">Settings</h1>
+                    <p className="text-gray-600 dark:text-gray-400">
+                        Manage your account settings and preferences
                     </p>
                 </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Sidebar navigation */}
-                <div className="md:col-span-1">
-                    <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-                        <nav className="flex flex-col">
-                            <a href="#profile" className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-750 border-l-4 border-indigo-500 dark:border-indigo-400">
-                                Profile Information
-                            </a>
-                            <a href="#password" className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-750 border-l-4 border-transparent">
-                                Password
-                            </a>
-                            <a href="#api-keys" className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-750 border-l-4 border-transparent">
-                                API Keys
-                            </a>
-                            <a href="#security" className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-750 border-l-4 border-transparent">
+                {/* Main Content */}
+                <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none overflow-hidden shadow-md">
+                    {/* Tabs */}
+                    <div className="border-b-2 border-black-900 dark:border-white-100 px-6 pt-4">
+                        <nav className="flex space-x-2 pb-4" aria-label="Tabs">
+                            <TabButton
+                                active={activeTab === 'profile'}
+                                onClick={() => setActiveTab('profile')}
+                                icon={User}
+                            >
+                                Profile
+                            </TabButton>
+                            <TabButton
+                                active={activeTab === 'security'}
+                                onClick={() => setActiveTab('security')}
+                                icon={Shield}
+                            >
                                 Security
-                            </a>
+                            </TabButton>
                         </nav>
                     </div>
-                </div>
 
-                {/* Settings content */}
-                <div className="md:col-span-2 space-y-6">
-                    {/* Profile section */}
-                    <section id="profile" className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-                        <div className="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center">
-                                <User className="h-5 w-5 text-gray-400 mr-2" />
-                                <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                                    Profile Information
-                                </h3>
-                            </div>
-                            <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-                                Update your account profile information
-                            </p>
-                        </div>
+                    {/* Tab Content */}
+                    <div className="p-6">
+                        {activeTab === 'profile' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <h2 className="text-xl font-bold mb-4">Profile Information</h2>
 
-                        <div className="px-4 py-5 sm:p-6">
-                            {profileError && (
-                                <div className="mb-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 p-3 rounded-md flex items-center">
-                                    <AlertTriangle className="h-5 w-5 mr-2" />
-                                    {profileError}
-                                </div>
-                            )}
-
-                            {profileSuccess && (
-                                <div className="mb-4 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 p-3 rounded-md">
-                                    Profile updated successfully!
-                                </div>
-                            )}
-
-                            <form onSubmit={handleProfileUpdate}>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            Name
-                                        </label>
-                                        <input
-                                            type="text"
-                                            id="name"
-                                            value={name}
-                                            onChange={(e) => setName(e.target.value)}
-                                            className="mt-1 block w-full border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-indigo-500 dark:focus:border-indigo-400 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                                            required
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            Email
-                                        </label>
-                                        <input
-                                            type="email"
-                                            id="email"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            className="mt-1 block w-full border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-indigo-500 dark:focus:border-indigo-400 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="mt-5">
-                                    <button
-                                        type="submit"
-                                        disabled={profileLoading}
-                                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {profileLoading ? (
-                                            <>
-                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                                Saving...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Save className="-ml-1 mr-2 h-4 w-4" />
-                                                Save Changes
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </section>
-
-                    {/* Password section */}
-                    <section id="password" className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-                        <div className="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center">
-                                <Key className="h-5 w-5 text-gray-400 mr-2" />
-                                <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                                    Password
-                                </h3>
-                            </div>
-                            <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-                                Update your account password
-                            </p>
-                        </div>
-
-                        <div className="px-4 py-5 sm:p-6">
-                            {passwordError && (
-                                <div className="mb-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 p-3 rounded-md flex items-center">
-                                    <AlertTriangle className="h-5 w-5 mr-2" />
-                                    {passwordError}
-                                </div>
-                            )}
-
-                            {passwordSuccess && (
-                                <div className="mb-4 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 p-3 rounded-md">
-                                    Password updated successfully!
-                                </div>
-                            )}
-
-                            <form onSubmit={handlePasswordUpdate}>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            Current Password
-                                        </label>
-                                        <input
-                                            type="password"
-                                            id="current-password"
-                                            value={currentPassword}
-                                            onChange={(e) => setCurrentPassword(e.target.value)}
-                                            className="mt-1 block w-full border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-indigo-500 dark:focus:border-indigo-400 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                                            required
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            New Password
-                                        </label>
-                                        <input
-                                            type="password"
-                                            id="new-password"
-                                            value={newPassword}
-                                            onChange={(e) => setNewPassword(e.target.value)}
-                                            className="mt-1 block w-full border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-indigo-500 dark:focus:border-indigo-400 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                                            required
-                                            minLength={8}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            Confirm New Password
-                                        </label>
-                                        <input
-                                            type="password"
-                                            id="confirm-password"
-                                            value={confirmPassword}
-                                            onChange={(e) => setConfirmPassword(e.target.value)}
-                                            className="mt-1 block w-full border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-indigo-500 dark:focus:border-indigo-400 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                                            required
-                                            minLength={8}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="mt-5">
-                                    <button
-                                        type="submit"
-                                        disabled={passwordLoading}
-                                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {passwordLoading ? (
-                                            <>
-                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                                Updating...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Key className="-ml-1 mr-2 h-4 w-4" />
-                                                Update Password
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </section>
-
-                    {/* API Keys section */}
-                    <section id="api-keys" className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-                        <div className="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center">
-                                <Key className="h-5 w-5 text-gray-400 mr-2" />
-                                <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                                    API Keys
-                                </h3>
-                            </div>
-                            <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-                                Manage API keys for programmatic access to Shard
-                            </p>
-                        </div>
-
-                        <div className="px-4 py-5 sm:p-6">
-                            {apiKeyError && (
-                                <div className="mb-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 p-3 rounded-none border-2 border-red-600 dark:border-red-400 flex items-center">
-                                    <AlertTriangle className="h-5 w-5 mr-2" />
-                                    {apiKeyError}
-                                </div>
-                            )}
-
-                            {newKeyGenerated && (
-                                <div className="mb-4 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-4 rounded-none border-2 border-yellow-600 dark:border-yellow-400">
-                                    <div className="flex">
-                                        <div className="flex-shrink-0">
-                                            <AlertTriangle className="h-5 w-5 text-yellow-400" />
+                                    {profileError && (
+                                        <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-600 dark:border-red-400 flex items-center gap-3">
+                                            <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                                            <span className="text-red-800 dark:text-red-200">{profileError}</span>
                                         </div>
-                                        <div className="ml-3">
-                                            <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">New API Key Generated</h3>
-                                            <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
-                                                <p>This key will only be displayed once. Please copy it now and store it securely.</p>
-                                                <div className="mt-2">
-                                                    <div className="flex items-center justify-between bg-yellow-50 dark:bg-yellow-950 p-2 rounded-none border-2 border-yellow-200 dark:border-yellow-800">
-                                                        <code className="text-sm break-all">{showNewKey ? newKeyGenerated : '••••••••••••••••••••••••••••••••'}</code>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setShowNewKey(!showNewKey)}
-                                                            className="ml-2 text-xs text-yellow-600 dark:text-yellow-400 hover:text-yellow-800 dark:hover:text-yellow-300"
-                                                        >
-                                                            {showNewKey ? 'Hide' : 'Show'}
-                                                        </button>
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            navigator.clipboard.writeText(newKeyGenerated);
-                                                            alert('API key copied to clipboard');
-                                                        }}
-                                                        className="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
-                                                    >
-                                                        Copy to clipboard
-                                                    </button>
-                                                </div>
-                                            </div>
+                                    )}
+
+                                    {profileSuccess && (
+                                        <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border-2 border-green-600 dark:border-green-400 flex items-center gap-3">
+                                            <Save className="w-5 h-5 text-green-600 dark:text-green-400" />
+                                            <span className="text-green-800 dark:text-green-200">Profile updated successfully!</span>
                                         </div>
-                                    </div>
-                                </div>
-                            )}
+                                    )}
 
-                            {/* Generate new API key form */}
-                            <form onSubmit={handleGenerateApiKey} className="mb-6">
-                                <div className="space-y-4">
-                                    <div>
-                                        <label htmlFor="key-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            Key Name
-                                        </label>
-                                        <input
-                                            type="text"
-                                            id="key-name"
-                                            value={newKeyName}
-                                            onChange={(e) => setNewKeyName(e.target.value)}
-                                            placeholder="e.g., Development, CI/CD, etc."
-                                            className="mt-1 block w-full border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-indigo-500 dark:focus:border-indigo-400 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                                            required
-                                        />
-                                    </div>
+                                    <form onSubmit={handleProfileUpdate} className="space-y-4">
+                                        <div>
+                                            <label htmlFor="name" className="block text-sm font-medium mb-2">
+                                                Full Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                id="name"
+                                                value={name}
+                                                onChange={(e) => setName(e.target.value)}
+                                                className="w-full px-3 py-2 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                                                placeholder="Your name"
+                                                required
+                                            />
+                                        </div>
 
-                                    <div>
-                                        <label htmlFor="key-expiry" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            Expiration
-                                        </label>
-                                        <select
-                                            id="key-expiry"
-                                            value={newKeyExpiry}
-                                            onChange={(e) => setNewKeyExpiry(e.target.value)}
-                                            className="mt-1 block w-full border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-indigo-500 dark:focus:border-indigo-400 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                                        <div>
+                                            <label htmlFor="email" className="block text-sm font-medium mb-2">
+                                                Email Address
+                                            </label>
+                                            <input
+                                                type="email"
+                                                id="email"
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                                className="w-full px-3 py-2 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                                                placeholder="your@email.com"
+                                                required
+                                            />
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            disabled={profileLoading}
+                                            className="inline-flex items-center px-4 py-2 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 text-sm font-bold border-2 border-black-900 dark:border-white-100 rounded-none hover:scale-[1.02] active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            <option value="never">Never</option>
-                                            <option value="30d">30 Days</option>
-                                            <option value="90d">90 Days</option>
-                                            <option value="180d">180 Days</option>
-                                            <option value="365d">1 Year</option>
-                                        </select>
-                                    </div>
+                                            {profileLoading ? (
+                                                <>
+                                                    <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                                                    Saving...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Save className="-ml-1 mr-2 h-4 w-4" />
+                                                    Save Changes
+                                                </>
+                                            )}
+                                        </button>
+                                    </form>
                                 </div>
-
-                                <div className="mt-5">
-                                    <button
-                                        type="submit"
-                                        disabled={apiKeyLoading}
-                                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {apiKeyLoading ? (
-                                            <>
-                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                                Generating...
-                                            </>
-                                        ) : (
-                                            <>Generate New API Key</>
-                                        )}
-                                    </button>
-                                </div>
-                            </form>
-
-                            {/* API keys list */}
-                            <div className="mt-6">
-                                <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Your API Keys</h4>
-
-                                {apiKeyLoading && !apiKeys.length ? (
-                                    <div className="flex items-center justify-center py-6">
-                                        <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-indigo-500"></div>
-                                    </div>
-                                ) : apiKeys.length === 0 ? (
-                                    <div className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center border border-dashed border-gray-300 dark:border-gray-700 rounded-md">
-                                        You don't have any API keys yet
-                                    </div>
-                                ) : (
-                                    <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
-                                        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                                            {apiKeys.map((key) => (
-                                                <li key={key._id}>
-                                                    <div className="px-4 py-4 flex items-center justify-between sm:px-6">
-                                                        <div>
-                                                            <div className="flex items-center">
-                                                                <div className="text-sm font-medium text-indigo-600 dark:text-indigo-400 truncate">
-                                                                    {key.name}
-                                                                </div>
-                                                                {key.expiresAt && (
-                                                                    <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                                                                        Expires {new Date(key.expiresAt).toLocaleDateString()}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                                                Created on {new Date(key.createdAt).toLocaleDateString()}
-                                                            </div>
-                                                            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                                                Last used: {key.lastUsed ? new Date(key.lastUsed).toLocaleString() : 'Never'}
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleRevokeApiKey(key._id)}
-                                                                className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded text-red-700 dark:text-red-400 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-800"
-                                                            >
-                                                                Revoke
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
                             </div>
-                        </div>
-                    </section>
+                        )}
 
-                    {/* Security section */}
-                    <section id="security" className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-                        <div className="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center">
-                                <Shield className="h-5 w-5 text-gray-400 mr-2" />
-                                <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                                    Security
-                                </h3>
-                            </div>
-                            <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-                                Manage your account security settings
-                            </p>
-                        </div>
+                        {activeTab === 'security' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <h2 className="text-xl font-bold mb-4">Change Password</h2>
 
-                        <div className="px-4 py-5 sm:p-6">
-                            {twoFactorError && (
-                                <div className="mb-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 p-3 rounded-md flex items-center">
-                                    <AlertTriangle className="h-5 w-5 mr-2" />
-                                    {twoFactorError}
+                                    {passwordError && (
+                                        <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-600 dark:border-red-400 rounded-none flex items-center gap-3">
+                                            <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                                            <span className="text-red-800 dark:text-red-200">{passwordError}</span>
+                                        </div>
+                                    )}
+
+                                    {passwordSuccess && (
+                                        <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border-2 border-green-600 dark:border-green-400 rounded-none flex items-center gap-3">
+                                            <Key className="w-5 h-5 text-green-600 dark:text-green-400" />
+                                            <span className="text-green-800 dark:text-green-200">Password updated successfully!</span>
+                                        </div>
+                                    )}
+
+                                    <form onSubmit={handlePasswordUpdate} className="space-y-4">
+                                        <div>
+                                            <label htmlFor="current-password" className="block text-sm font-medium mb-2">
+                                                Current Password
+                                            </label>
+                                            <input
+                                                type="password"
+                                                id="current-password"
+                                                value={currentPassword}
+                                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                                className="w-full px-3 py-2 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="new-password" className="block text-sm font-medium mb-2">
+                                                New Password
+                                            </label>
+                                            <input
+                                                type="password"
+                                                id="new-password"
+                                                value={newPassword}
+                                                onChange={(e) => setNewPassword(e.target.value)}
+                                                className="w-full px-3 py-2 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                                                required
+                                                minLength={8}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="confirm-password" className="block text-sm font-medium mb-2">
+                                                Confirm New Password
+                                            </label>
+                                            <input
+                                                type="password"
+                                                id="confirm-password"
+                                                value={confirmPassword}
+                                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                                className="w-full px-3 py-2 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                                                required
+                                                minLength={8}
+                                            />
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            disabled={passwordLoading}
+                                            className="inline-flex items-center px-4 py-2 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 text-sm font-bold border-2 border-black-900 dark:border-white-100 rounded-none hover:scale-[1.02] active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {passwordLoading ? (
+                                                <>
+                                                    <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                                                    Updating...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Key className="-ml-1 mr-2 h-4 w-4" />
+                                                    Update Password
+                                                </>
+                                            )}
+                                        </button>
+                                    </form>
                                 </div>
-                            )}
 
-                            {twoFactorSuccess && (
-                                <div className="mb-4 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 p-3 rounded-md">
-                                    Two-factor authentication settings updated successfully!
-                                </div>
-                            )}
+                                <div>
+                                    <h2 className="text-xl font-bold mb-4">Two-Factor Authentication</h2>
 
-                            {/* Two-factor authentication */}
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h4 className="text-sm font-medium text-gray-900 dark:text-white">Two-Factor Authentication</h4>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                            Add an extra layer of security to your account
-                                        </p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleToggleTwoFactor}
-                                        disabled={twoFactorLoading}
-                                        className={`relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 ${twoFactorEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'}`}
-                                    >
-                                        <span className="sr-only">
-                                            {twoFactorEnabled ? 'Disable two-factor authentication' : 'Enable two-factor authentication'}
-                                        </span>
-                                        <span
-                                            className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200 ${twoFactorEnabled ? 'translate-x-5' : 'translate-x-0'}`}
-                                        />
-                                    </button>
-                                </div>
+                                    {twoFactorError && (
+                                        <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-600 dark:border-red-400 flex items-center gap-3">
+                                            <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                                            <span className="text-red-800 dark:text-red-200">{twoFactorError}</span>
+                                        </div>
+                                    )}
 
-                                {/* Two-factor setup */}
-                                {twoFactorSetupCode && (
-                                    <div className="mt-4 p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-750">
-                                        <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Set up Two-Factor Authentication</h5>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                                            Scan the QR code below with your authenticator app (like Google Authenticator, Authy, or 1Password).
-                                        </p>
+                                    {twoFactorSuccess && (
+                                        <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border-2 border-green-600 dark:border-green-400 flex items-center gap-3">
+                                            <Save className="w-5 h-5 text-green-600 dark:text-green-400" />
+                                            <span className="text-green-800 dark:text-green-200">Two-factor authentication updated successfully!</span>
+                                        </div>
+                                    )}
 
-                                        <div className="flex flex-col md:flex-row md:items-center md:space-x-6">
-                                            <div className="mb-4 md:mb-0 flex justify-center">
-                                                {twoFactorSetupCode.qrCodeUrl && (
-                                                    <img
-                                                        src={twoFactorSetupCode.qrCodeUrl}
-                                                        alt="QR Code for two-factor authentication"
-                                                        className="h-48 w-48 border border-gray-300 dark:border-gray-600 rounded-md"
+                                    {twoFactorEnabled ? (
+                                        <button
+                                            onClick={handleToggleTwoFactor}
+                                            disabled={twoFactorLoading}
+                                            className="inline-flex items-center px-4 py-2 bg-black dark:bg-white text-white dark:text-black text-sm font-medium border-2 border-black dark:border-white hover:scale-[1.02] active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {twoFactorLoading ? (
+                                                <>
+                                                    <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                                                    Disabling...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Shield className="-ml-1 mr-2 h-4 w-4" />
+                                                    Disable Two-Factor Authentication
+                                                </>
+                                            )}
+                                        </button>
+                                    ) : (
+                                        <div>
+                                            <form onSubmit={handleVerifyTwoFactor} className="space-y-4">
+                                                <div>
+                                                    <label htmlFor="verificationCode" className="block text-sm font-medium mb-2">
+                                                        Verification Code
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        id="verificationCode"
+                                                        required
+                                                        minLength={6}
+                                                        maxLength={6}
+                                                        className="w-full px-3 py-2 border-2 border-black dark:border-white bg-white dark:bg-black focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                     />
-                                                )}
-                                            </div>
-
-                                            <div className="flex-1">
-                                                <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                                                    If you can't scan the QR code, you can manually enter this setup key in your app:
-                                                </p>
-                                                <div className="bg-white dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-600 font-mono text-sm mb-4">
-                                                    {twoFactorSetupCode.secretKey}
                                                 </div>
 
-                                                <form onSubmit={handleVerifyTwoFactor}>
-                                                    <div className="mb-4">
-                                                        <label htmlFor="verification-code" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                                            Verification Code
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            id="verification-code"
-                                                            name="verificationCode"
-                                                            placeholder="Enter 6-digit code"
-                                                            className="block w-full border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-indigo-500 dark:focus:border-indigo-400 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                                                            maxLength={6}
-                                                            pattern="[0-9]{6}"
-                                                            required
-                                                        />
-                                                    </div>
-
-                                                    <button
-                                                        type="submit"
-                                                        disabled={twoFactorLoading}
-                                                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    >
-                                                        {twoFactorLoading ? (
-                                                            <>
-                                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                                </svg>
-                                                                Verifying...
-                                                            </>
-                                                        ) : (
-                                                            <>Verify and Enable</>
-                                                        )}
-                                                    </button>
-                                                </form>
-                                            </div>
+                                                <button
+                                                    type="submit"
+                                                    disabled={twoFactorLoading}
+                                                    className="inline-flex items-center px-4 py-2 bg-black dark:bg-white text-white dark:text-black text-sm font-medium border-2 border-black dark:border-white hover:scale-[1.02] active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {twoFactorLoading ? (
+                                                        <>
+                                                            <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                                                            Verifying...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Shield className="-ml-1 mr-2 h-4 w-4" />
+                                                            Enable Two-Factor Authentication
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </form>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
+                        )}
 
-                            {/* Session management - could be added in the future */}
-                            {/* <div className="mt-8">
-                <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Active Sessions</h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  These are the devices that are currently logged into your account
-                </p>
-                
-                <div className="mt-4">
-                  <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {[1, 2].map((session) => (
-                      <li key={session} className="py-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">
-                              Chrome on Windows
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              Last active: Today at 2:43 PM
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              IP: 192.168.1.1 · Location: New York, USA
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                          >
-                            Revoke
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div> */}
-                        </div>
-                    </section>
+                        {activeTab === 'api-keys' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <h2 className="text-xl font-bold mb-4">API Keys</h2>
+                                    <p className="text-gray-600 dark:text-gray-400 mb-6">
+                                        Manage API keys for programmatic access to your account.
+                                    </p>
+
+                                    <div className="text-center py-12 border-2 border-dashed border-black-900 dark:border-white-100 rounded-none">
+                                        <Key className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No API Keys</h3>
+                                        <p className="text-gray-500 dark:text-gray-400 mb-4">You haven't created any API keys yet.</p>
+                                        <button className="inline-flex items-center px-4 py-2 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 text-sm font-bold border-2 border-black-900 dark:border-white-100 rounded-none hover:scale-[1.02] active:scale-95 transition-all duration-200">
+                                            <Key className="-ml-1 mr-2 h-4 w-4" />
+                                            Create API Key
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deployment Started</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .status-badge {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            margin: 10px 0;
+        }
+        .project-info {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .project-info h3 {
+            margin: 0 0 10px 0;
+            color: #1e293b;
+        }
+        .project-info p {
+            margin: 5px 0;
+            color: #64748b;
+        }
+        .cta-button {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 500;
+            margin: 20px 0;
+            transition: background-color 0.2s;
+        }
+        .cta-button:hover {
+            background: #059669;
+        }
+        .footer {
+            background: #f8fafc;
+            padding: 20px;
+            text-align: center;
+            color: #64748b;
+            font-size: 14px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .emoji {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Deployment Started</h1>
+        </div>
+        
+        <div class="content">
+            <div class="status-badge">In Progress</div>
+            
+            <h2>Your deployment is now running!</h2>
+            
+            <p>We've started deploying your project and will notify you once it's complete. You can monitor the progress in real-time using the link below.</p>
+            
+            <div class="project-info">
+                <h3>{{projectName}}</h3>
+                <p><strong>Deployment ID:</strong> {{deploymentId}}</p>
+                <p><strong>Status:</strong> Building and deploying...</p>
+            </div>
+            
+            <a href="{{dashboardUrl}}" class="cta-button">View Progress</a>
+            
+            <p>The deployment process typically takes 2-5 minutes depending on your project size and complexity.</p>
+            
+            <h3>What's happening now:</h3>
+            <ul>
+                <li>Cloning your repository</li>
+                <li>Running AI code analysis</li>
+                <li>Building Docker container</li>
+                <li>Setting up custom domain</li>
+            </ul>
+        </div>
+        
+        <div class="footer">
+            <p>© {{currentYear}} Shard Platform. All rights reserved.</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>

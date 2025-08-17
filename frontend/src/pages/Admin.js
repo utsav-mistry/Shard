@@ -24,7 +24,9 @@ import {
   User,
   Mail,
   Shield,
-  Calendar
+  Calendar,
+  LogOut,
+  ChevronDown
 } from 'lucide-react';
 
 // Database Record Modal Component
@@ -48,23 +50,43 @@ const DatabaseRecordModal = ({ isOpen, onClose, onSubmit, record = null, tableNa
   const getEmptyFormForTable = (table) => {
     switch (table) {
       case 'users':
-        return { name: '', email: '', passwordHash: '', role: 'user' };
+        return { 
+          name: '', 
+          email: '', 
+          passwordHash: '', 
+          role: 'user',
+          avatar: '',
+          googleId: '',
+          githubId: '',
+          githubAccessToken: '',
+          githubUsername: ''
+        };
       case 'projects':
         return { 
           name: '', 
           repoUrl: '', 
-          stack: 'mern', 
+          framework: 'mern', 
           subdomain: '', 
           status: 'active',
-          ownerId: '' 
+          ownerId: '',
+          description: '',
+          port: 3000,
+          buildCommand: '',
+          startCommand: '',
+          installCommand: '',
+          envVars: []
         };
       case 'deployments':
         return { 
           projectId: '', 
           userId: '',
+          userEmail: '',
           status: 'pending', 
           branch: 'main', 
           commitHash: '',
+          commitMessage: '',
+          buildLogs: '',
+          deploymentUrl: '',
           environment: 'production'
         };
       case 'logs':
@@ -72,7 +94,8 @@ const DatabaseRecordModal = ({ isOpen, onClose, onSubmit, record = null, tableNa
           projectId: '', 
           deploymentId: '', 
           type: 'setup', 
-          content: '' 
+          content: '',
+          timestamp: new Date().toISOString()
         };
       default:
         return {};
@@ -139,7 +162,7 @@ const DatabaseRecordModal = ({ isOpen, onClose, onSubmit, record = null, tableNa
         );
       }
 
-      if (key === 'stack' && tableName === 'projects') {
+      if (key === 'framework' && tableName === 'projects') {
         return (
           <div key={key}>
             <label className="block text-sm font-medium mb-1 capitalize">{key}</label>
@@ -225,6 +248,56 @@ const DatabaseRecordModal = ({ isOpen, onClose, onSubmit, record = null, tableNa
         );
       }
 
+      if (key === 'port' && tableName === 'projects') {
+        return (
+          <div key={key}>
+            <label className="block text-sm font-medium mb-1 capitalize">{key}</label>
+            <input
+              type="number"
+              name={key}
+              value={value}
+              onChange={handleChange}
+              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+              min="1000"
+              max="65535"
+              placeholder="3000"
+            />
+          </div>
+        );
+      }
+
+      if ((key === 'buildLogs' || key === 'description') && (tableName === 'projects' || tableName === 'deployments')) {
+        return (
+          <div key={key}>
+            <label className="block text-sm font-medium mb-1 capitalize">{key}</label>
+            <textarea
+              name={key}
+              value={value}
+              onChange={handleChange}
+              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+              rows={3}
+              placeholder={key === 'description' ? 'Project description...' : 'Build logs...'}
+            />
+          </div>
+        );
+      }
+
+      if (key === 'envVars' && tableName === 'projects') {
+        return (
+          <div key={key}>
+            <label className="block text-sm font-medium mb-1 capitalize">Environment Variables</label>
+            <textarea
+              name={key}
+              value={Array.isArray(value) ? JSON.stringify(value, null, 2) : value}
+              onChange={handleChange}
+              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+              rows={4}
+              placeholder='[{"key": "NODE_ENV", "value": "production"}]'
+            />
+          </div>
+        );
+      }
+
       if (key === 'type' && tableName === 'logs') {
         return (
           <div key={key}>
@@ -263,19 +336,59 @@ const DatabaseRecordModal = ({ isOpen, onClose, onSubmit, record = null, tableNa
         );
       }
 
+      // Skip auto-generated fields in forms
+      if (['createdAt', 'updatedAt', '__v', '_id', 'timestamp'].includes(key)) {
+        return null;
+      }
+
       return (
         <div key={key}>
           <label className="block text-sm font-medium mb-1 capitalize">
-            {key === 'passwordHash' ? 'Password' : key === 'repoUrl' ? 'Repository URL' : key === 'ownerId' ? 'Owner ID' : key === 'projectId' ? 'Project ID' : key === 'userId' ? 'User ID' : key === 'deploymentId' ? 'Deployment ID' : key}
+            {key === 'passwordHash' ? 'Password' : 
+             key === 'repoUrl' ? 'Repository URL' : 
+             key === 'ownerId' ? 'Owner ID (User ID)' : 
+             key === 'projectId' ? 'Project ID' : 
+             key === 'userId' ? 'User ID' : 
+             key === 'deploymentId' ? 'Deployment ID' :
+             key === 'userEmail' ? 'User Email' :
+             key === 'commitHash' ? 'Commit Hash' :
+             key === 'commitMessage' ? 'Commit Message' :
+             key === 'deploymentUrl' ? 'Deployment URL' :
+             key === 'buildCommand' ? 'Build Command' :
+             key === 'startCommand' ? 'Start Command' :
+             key === 'installCommand' ? 'Install Command' :
+             key === 'githubAccessToken' ? 'GitHub Access Token' :
+             key === 'githubUsername' ? 'GitHub Username' :
+             key === 'githubId' ? 'GitHub ID' :
+             key === 'googleId' ? 'Google ID' :
+             key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+            {['name', 'email', 'repoUrl', 'framework', 'subdomain', 'ownerId', 'projectId'].includes(key) && ' *'}
           </label>
           <input
-            type={key === 'email' ? 'email' : (key === 'passwordHash' || key === 'password') ? 'password' : key === 'repoUrl' ? 'url' : 'text'}
+            type={key === 'email' || key === 'userEmail' ? 'email' : 
+                 (key === 'passwordHash' || key === 'password' || key === 'githubAccessToken') ? 'password' : 
+                 key === 'repoUrl' || key === 'deploymentUrl' ? 'url' : 
+                 key === 'port' ? 'number' :
+                 'text'}
             name={key}
-            value={value}
+            value={value || ''}
             onChange={handleChange}
             className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
-            required={key !== 'passwordHash' || !isEditing}
-            placeholder={key === 'subdomain' ? 'my-app (will be my-app.shard.dev)' : key === 'commitHash' ? 'Git commit hash' : ''}
+            required={['name', 'email', 'repoUrl', 'framework', 'subdomain', 'ownerId', 'projectId'].includes(key) && !isEditing}
+            placeholder={
+              key === 'subdomain' ? 'my-app (will be my-app.shard.dev)' : 
+              key === 'commitHash' ? 'Git commit hash or "latest"' :
+              key === 'ownerId' || key === 'projectId' || key === 'userId' || key === 'deploymentId' ? 'MongoDB ObjectId (24 hex characters)' :
+              key === 'port' ? '3000' :
+              key === 'buildCommand' ? 'npm run build' :
+              key === 'startCommand' ? 'npm start' :
+              key === 'installCommand' ? 'npm install' :
+              key === 'branch' ? 'main' :
+              key === 'userEmail' ? 'user@example.com' :
+              ''
+            }
+            min={key === 'port' ? '1000' : undefined}
+            max={key === 'port' ? '65535' : undefined}
           />
         </div>
       );
@@ -559,8 +672,72 @@ const UserModal = ({ isOpen, onClose, onSubmit, user = null, isEditing = false }
   )
 }
 
+// Admin Navigation Bar Component
+const AdminNavBar = ({ user, onLogout }) => {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  return (
+    <nav className="bg-white-100 dark:bg-black-900 border-b-2 border-black-900 dark:border-white-100 px-6 py-4">
+      <div className="flex items-center justify-between">
+        {/* Logo/Title */}
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-black-900 dark:bg-white-100 rounded-none flex items-center justify-center">
+            <Shield className="w-5 h-5 text-white-100 dark:text-black-900" />
+          </div>
+          <h1 className="text-xl font-bold text-black-900 dark:text-white-100">Shard Admin</h1>
+        </div>
+
+        {/* User Info & Logout */}
+        <div className="relative">
+          <button
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex items-center space-x-3 px-4 py-2 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:bg-black-900 hover:text-white-100 dark:hover:bg-white-100 dark:hover:text-black-900 transition-all duration-200 rounded-none"
+          >
+            <div className="w-8 h-8 bg-black-900 dark:bg-white-100 rounded-none flex items-center justify-center">
+              <User className="w-4 h-4 text-white-100 dark:text-black-900" />
+            </div>
+            <div className="text-left">
+              <div className="text-sm font-bold">{user?.name || 'Admin'}</div>
+              <div className="text-xs opacity-75">{user?.email}</div>
+            </div>
+            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Dropdown Menu */}
+          {dropdownOpen && (
+            <div className="absolute right-0 mt-2 w-64 bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none shadow-lg z-50">
+              <div className="p-4 border-b-2 border-black-900 dark:border-white-100">
+                <div className="text-sm font-bold text-black-900 dark:text-white-100">{user?.name}</div>
+                <div className="text-xs text-black-600 dark:text-white-400">{user?.email}</div>
+                <div className="text-xs text-black-500 dark:text-white-500 mt-1">
+                  Role: <span className="font-bold text-red-600 dark:text-red-400">Administrator</span>
+                </div>
+                <div className="text-xs text-black-500 dark:text-white-500">
+                  Member since: {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                </div>
+              </div>
+              <div className="p-2">
+                <button
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    onLogout();
+                  }}
+                  className="w-full flex items-center space-x-2 px-3 py-2 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-none transition-colors duration-200"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="font-medium">Logout</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </nav>
+  );
+};
+
 const Admin = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('health');
@@ -736,7 +913,10 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black-900">
+    <div className="min-h-screen bg-white-100 dark:bg-black-900">
+      {/* Admin Navigation Bar */}
+      <AdminNavBar user={currentUser} onLogout={logout} />
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8 border-b-2 border-black-900 dark:border-white-100 pb-6">
@@ -747,7 +927,7 @@ const Admin = () => {
             </p>
           </div>
           <a
-            href="http://localhost:5000/dashboard"
+            href="http://localhost:5000/app"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"

@@ -20,7 +20,7 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+// Removed framer-motion import - using CSS transitions instead
 import PageTemplate from '../components/layout/PageTemplate';
 
 const Dashboard = () => {
@@ -104,7 +104,7 @@ const Dashboard = () => {
       icon: Plus,
       action: () => navigate('/projects/new'),
       buttonText: 'Create Project',
-      className: "group relative flex flex-col items-start p-6 h-full w-full text-left border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200",
+      className: "group relative flex flex-col items-start p-6 h-full w-full text-left border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-200 hover:scale-[1.01]",
       iconClassName: 'mb-4 p-2 border-2 border-black-900 dark:border-white-100 rounded-none group-hover:bg-white-100 dark:group-hover:bg-black-900 transition-colors duration-200',
     },
     {
@@ -114,7 +114,7 @@ const Dashboard = () => {
       icon: Zap,
       action: () => navigate('/deployments/new'),
       buttonText: 'Deploy Now',
-      className: "group relative flex flex-col items-start p-6 h-full w-full text-left border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200",
+      className: "group relative flex flex-col items-start p-6 h-full w-full text-left border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-200 hover:scale-[1.01]",
       iconClassName: 'mb-4 p-2 border-2 border-black-900 dark:border-white-100 rounded-none group-hover:bg-white-100 dark:group-hover:bg-black-900 transition-colors duration-200',
     },
     {
@@ -124,7 +124,7 @@ const Dashboard = () => {
       icon: FileText,
       action: () => window.open('https://docs.shard.dev', '_blank', 'noopener,noreferrer'),
       buttonText: 'Read More',
-      className: "group relative flex flex-col items-start p-6 h-full w-full text-left border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200",
+      className: "group relative flex flex-col items-start p-6 h-full w-full text-left border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-200 hover:scale-[1.01]",
       iconClassName: 'mb-4 p-2 border-2 border-black-900 dark:border-white-100 rounded-none group-hover:bg-white-100 dark:group-hover:bg-black-900 transition-colors duration-200',
     }
   ];
@@ -258,15 +258,14 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Grid - Matching Landing Page Style */}
-        <div className="grid grid-cols-1 gap-5 mb-10 sm:grid-cols-2 lg:grid-cols-4 relative z-0">
+        <div className="mb-10 relative z-0">
           {stats.map((stat) => {
             const Icon = stat.icon;
             return (
-              <motion.div
+              <div
                 key={stat.id}
-                whileHover={{ y: -2 }}
                 onClick={stat.action}
-                className="group relative p-6 border-2 border-black-900 dark:border-white-100 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-300 cursor-pointer"
+                className="group relative p-6 border-2 border-black-900 dark:border-white-100 bg-transparent hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-300 cursor-pointer hover:transform hover:-translate-y-0.5 hover:scale-[1.01]"
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -279,7 +278,7 @@ const Dashboard = () => {
                     <Icon className="w-5 h-5" />
                   </div>
                 </div>
-              </motion.div>
+              </div>
             );
           })}
         </div>
@@ -289,12 +288,11 @@ const Dashboard = () => {
           <h2 className="text-xl font-bold text-black-900 dark:text-white-100 mb-6">
             Quick Actions
           </h2>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
             {quickActions.map((action) => (
-              <motion.div
+              <div
                 key={action.id}
-                whileHover={{ y: -2 }}
-                className="group relative p-6 border-2 border-black-900 dark:border-white-100 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-300 cursor-pointer"
+                className="group relative p-6 border-2 border-black-900 dark:border-white-100 bg-transparent hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-300 cursor-pointer hover:transform hover:-translate-y-0.5 hover:scale-[1.01]"
                 onClick={action.action}
               >
                 <div className="flex flex-col h-full">
@@ -314,7 +312,7 @@ const Dashboard = () => {
                     <ArrowRight className="ml-1 w-4 h-4 transition-transform group-hover:translate-x-1" />
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>

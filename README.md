@@ -1,10 +1,27 @@
 # Shard - SaaS Deployment Platform
 
-Shard is a comprehensive SaaS deployment platform that enables developers to deploy, manage, and monitor web applications with enterprise-grade security, automated code review, and seamless environment variable management.
+Shard is a comprehensive SaaS deployment platform that enables developers to deploy, manage, and monitor web applications with enterprise-grade security, automated AI code review, and seamless environment variable management.
 
 ## Overview
 
-Shard provides a Vercel-like deployment experience with advanced features including AI-powered code review, secure environment variable management, and real-time deployment monitoring. The platform supports multiple technology stacks and offers a complete CI/CD pipeline for modern web applications.
+Shard provides a Vercel-like deployment experience with advanced features including AI-powered code review, secure environment variable management, and real-time deployment monitoring. The platform supports multiple technology stacks (MERN, Django, Flask) and offers a complete CI/CD pipeline for modern web applications.
+
+## Latest Updates
+
+### Authentication & UI Improvements
+- **Fixed Sidebar Toggle**: Resolved sidebar open/close functionality across all screen sizes
+- **User Display Names**: Fixed user display to show actual names instead of generic "User" fallback
+- **OAuth Redirects**: Google and GitHub OAuth now properly redirect to `/app/` for users and `/admin` for admins
+- **Admin Login**: Enhanced admin authentication with role-based redirects
+- **Design System**: Applied consistent sharp corners and 2px borders across all components
+
+### Completed Pages & Features
+- **Documentation**: Comprehensive CLI reference and getting started guides
+- **API Reference**: Complete API documentation with interactive examples
+- **Support Center**: FAQ system and support contact options
+- **Integrations**: GitHub integration with repository import functionality
+- **Environment Variables**: Secure variable management with encryption
+- **Deployment Pipeline**: Real-time deployment progress with AI review integration
 
 ## Key Features
 
@@ -39,6 +56,36 @@ Shard provides a Vercel-like deployment experience with advanced features includ
 - Rate limiting and input validation
 - CORS protection and security headers
 
+## Complete User Flow
+
+### 1. User Registration/Login
+- Manual registration with email/password
+- JWT-based authentication
+- Secure session management
+
+### 2. GitHub Integration
+- OAuth-based GitHub connection
+- Repository access and listing
+- Automatic framework detection
+- Branch and commit selection
+
+### 3. Project Import & Deployment
+- One-click repository import
+- Custom subdomain assignment (e.g., `project-name-stellar-on`)
+- Environment variable configuration
+- AI-powered code review
+- Docker containerization
+- Custom domain mapping with PORT_CONFIG:
+  - MERN: Frontend (12001), Backend (12000)
+  - Django: Backend (13000)
+  - Flask: Backend (14000)
+
+### 4. Real-time Monitoring
+- Live deployment progress tracking
+- AI review results display
+- Custom domain access
+- Runtime logs and metrics
+
 ## Architecture
 
 Shard is built as a microservices architecture with the following components:
@@ -46,6 +93,7 @@ Shard is built as a microservices architecture with the following components:
 ### Frontend Dashboard
 - React-based user interface
 - Real-time deployment monitoring
+- GitHub integration pages
 - Project management interface
 - Environment variable configuration
 - Deployment logs and analytics
@@ -73,33 +121,36 @@ Shard is built as a microservices architecture with the following components:
 ## Technology Stack
 
 ### Frontend
-- React 18
-- Tailwind CSS
-- Axios for API communication
-- React Router for navigation
+- **React 18** with modern hooks and context
+- **Tailwind CSS** with custom design system (sharp corners, 2px borders)
+- **Lucide React** for consistent iconography
+- **React Router v6** for client-side routing
+- **Axios** with interceptors for API communication
 
 ### Backend
-- Node.js
-- Express.js
-- MongoDB with Mongoose
-- JWT for authentication
-- bcrypt for password hashing
+- **Node.js** with Express.js framework
+- **MongoDB** with Mongoose ODM
+- **JWT** authentication with refresh tokens
+- **bcrypt** for secure password hashing
+- **Winston** for structured logging
 
 ### Deployment Worker
-- Node.js
-- Docker for containerization
-- Simple Git for repository management
-- Axios for API communication
+- **Node.js** with job queue processing
+- **Docker** for containerization and orchestration
+- **Simple Git** for repository management
+- **Real-time logging** with WebSocket integration
 
 ### AI Review Service
-- Python 3.12
-- Machine learning models for code analysis
-- REST API for integration
+- **Python 3.12** with FastAPI
+- **Machine learning models** for code analysis
+- **Security vulnerability detection**
+- **Code quality assessment**
 
 ### Infrastructure
-- Docker for containerization
-- Nginx for reverse proxy
-- MongoDB for data persistence
+- **Docker Compose** for local development
+- **MongoDB** for data persistence
+- **Nginx** for reverse proxy (production)
+- **Environment-based configuration**
 
 ## API Documentation
 
@@ -135,17 +186,77 @@ Shard is built as a microservices architecture with the following components:
 - `GET /logs/:deploymentId` - Get deployment logs
 - `POST /logs` - Create log entry
 
+## Quick Start
+
+### Prerequisites
+- Node.js 16+ and npm/yarn
+- MongoDB running locally or connection string
+- Docker installed for deployment worker
+- Git for repository management
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/utsav-mistry/shard.git
+   cd shard
+   ```
+
+2. **Install dependencies**
+   ```bash
+   # Backend
+   cd backend && npm install
+
+   # Frontend
+   cd ../frontend && npm install
+
+   # Deployment Worker
+   cd ../deployment-worker && npm install
+   ```
+
+3. **Environment setup**
+   ```bash
+   # Copy environment files
+   cp backend/.env.example backend/.env
+   cp frontend/.env.example frontend/.env
+   cp deployment-worker/.env.example deployment-worker/.env
+   ```
+
+4. **Start services**
+   ```bash
+   # Backend (Terminal 1)
+   cd backend && npm start
+
+   # Frontend (Terminal 2)
+   cd frontend && npm start
+
+   # Deployment Worker (Terminal 3)
+   cd deployment-worker && npm start
+   ```
+
+5. **Access the application**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:5000
+   - Admin Panel: http://localhost:3000/admin
+
+### First Time Setup
+1. Register a new account at http://localhost:3000/auth/register
+2. Connect your GitHub account in Integrations
+3. Import a repository or create a new project
+4. Configure environment variables
+5. Deploy your application
+
 ## Deployment Process
 
 1. **Project Creation**: User creates a project with repository URL and stack type
 2. **Environment Configuration**: User adds environment variables for the project
 3. **Deployment Trigger**: User initiates deployment from the dashboard
-4. **Code Review**: AI service analyzes the code for security and quality issues
+4. **AI Code Review**: AI service analyzes the code for security and quality issues
 5. **Repository Cloning**: Worker clones the repository to local storage
 6. **Environment Injection**: Environment variables are injected into the project
 7. **Container Build**: Docker image is built with the project code
 8. **Container Deployment**: Container is deployed and made accessible
-9. **Monitoring**: Real-time logs and status are streamed to the dashboard
+9. **Real-time Monitoring**: Live logs and status are streamed to the dashboard
 
 ## Security Features
 

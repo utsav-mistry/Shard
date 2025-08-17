@@ -23,10 +23,10 @@ const Login = () => {
     try {
       // Clear any existing token to ensure a fresh login
       localStorage.removeItem('token');
-      
+
       // Call the login function from AuthContext
       await login(email, password);
-      
+
       // The actual redirect happens in the AuthContext after successful login
       // We don't need to do anything here as the AuthContext will handle it
     } catch (err) {
@@ -87,7 +87,7 @@ const Login = () => {
               autoComplete="email"
               required
               className="appearance-none relative block w-full px-3 py-2 border border-black-200 dark:border-white-700 bg-white-100 dark:bg-black-800 placeholder-black-400 dark:placeholder-white-500 text-black-900 dark:text-white-100 rounded-none focus:outline-none focus:ring-2 focus:ring-black-500 dark:focus:ring-white-500 focus:border-black-500 dark:focus:border-white-500 focus:z-10 sm:text-sm shadow-sm transition-all duration-200"
-              
+
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />

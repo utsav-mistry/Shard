@@ -25,6 +25,11 @@ const getEnvVars = async (projectId) => {
     }));
 };
 
+// Get env var by ID (for ownership verification)
+const getEnvVarById = async (envVarId) => {
+    return await EnvVar.findById(envVarId);
+};
+
 // Delete a specific env var
 const deleteEnvVar = async (envVarId) => {
     await EnvVar.findByIdAndDelete(envVarId);
@@ -33,5 +38,6 @@ const deleteEnvVar = async (envVarId) => {
 module.exports = {
     addEnvVar,
     getEnvVars,
+    getEnvVarById,
     deleteEnvVar
 };

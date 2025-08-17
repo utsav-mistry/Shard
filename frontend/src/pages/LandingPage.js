@@ -36,7 +36,7 @@ const LandingPage = () => {
             <div className="flex items-center space-x-4">
               {currentUser ? (
                 <Link
-                  to="/dashboard"
+                  to="/app"
                   className="group relative inline-flex items-center justify-center py-2 px-4 border-2 border-black-900 rounded-none shadow-sm bg-black-900 text-sm font-medium text-white-100 transition-all duration-200 overflow-hidden dark:bg-white-100 dark:border-white-100 dark:text-black-900"
                 >
                   <span className="absolute inset-0 w-full h-full bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-[110%] group-hover:translate-x-0 dark:bg-black-900 pointer-events-none" />
@@ -83,7 +83,7 @@ const LandingPage = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               {currentUser ? (
                 <Link
-                  to="/dashboard"
+                  to="/app"
                   className="group relative inline-flex items-center justify-center px-6 py-3 text-base font-medium rounded-none shadow-sm bg-black-900 text-white-100 hover:text-black-900 dark:bg-white-100 dark:text-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-2 dark:border-white-100"
                 >
                   <span className="absolute inset-0 w-full h-full bg-white-100 transition-all duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0 dark:bg-black-900"></span>

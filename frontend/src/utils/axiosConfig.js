@@ -73,7 +73,7 @@ api.interceptors.response.use(
       // If we're already on the login page, don't redirect again
       if (!window.location.pathname.includes('login')) {
         localStorage.removeItem('token');
-        window.location.href = '/login?session=expired';
+        window.location.href = '/auth/login?session=expired';
       }
     }
 

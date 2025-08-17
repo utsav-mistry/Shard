@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import PageTemplate from '../components/layout/PageTemplate';
 import {
     HelpCircle, Code, Zap, Settings, Box, Terminal, GitCommit, Shield, Info,
@@ -34,21 +33,13 @@ const DocumentationSection = ({ title, icon, children, defaultOpen = true }) => 
                 {isOpen ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
             </button>
 
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                    >
-                        <div className="pl-2 ml-6 border-l-2 border-gray-300 dark:border-gray-700 py-4">
-                            {children}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {isOpen && (
+                <div className="overflow-hidden transition-all duration-200">
+                    <div className="pl-2 ml-6 border-l-2 border-gray-300 dark:border-gray-700 py-4">
+                        {children}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

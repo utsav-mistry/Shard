@@ -110,7 +110,7 @@ const DeploymentLogs = () => {
         );
       default:
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-black-100 text-black-800 dark:bg-black-700 dark:text-black-300">
             {status}
           </span>
         );
@@ -158,13 +158,13 @@ const DeploymentLogs = () => {
         );
       case 'complete':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-black-100 text-black-800 dark:bg-black-700 dark:text-black-300">
             Complete
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-black-100 text-black-800 dark:bg-black-700 dark:text-black-300">
             {type}
           </span>
         );
@@ -222,8 +222,8 @@ const DeploymentLogs = () => {
       {/* Back button */}
       <div>
         <button
-          onClick={() => navigate(`/deployments/${id}`)}
-          className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          onClick={() => navigate(`/app/deployments/${id}`)}
+          className="inline-flex items-center text-sm font-medium text-black-500 hover:text-black-700 dark:text-black-400 dark:hover:text-black-300"
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back to deployment details
@@ -233,10 +233,10 @@ const DeploymentLogs = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-black-900 dark:text-white">
             Deployment Logs: {project.name}
           </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-sm text-black-500 dark:text-black-400">
             Deployment ID: {deployment._id}
           </p>
         </div>
@@ -244,14 +244,14 @@ const DeploymentLogs = () => {
           {getStatusBadge(deployment.status)}
           <button
             onClick={fetchData}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-650 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
+            className="inline-flex items-center px-3 py-2 border border-black-300 dark:border-black-600 shadow-sm text-sm leading-4 font-medium rounded-md text-black-700 dark:text-black-200 bg-white dark:bg-black-700 hover:bg-black-50 dark:hover:bg-black-650 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-black-800"
           >
             <RefreshCw className="-ml-0.5 mr-2 h-4 w-4" />
             Refresh
           </button>
           <button
             onClick={downloadLogs}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-650 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
+            className="inline-flex items-center px-3 py-2 border border-black-300 dark:border-black-600 shadow-sm text-sm leading-4 font-medium rounded-md text-black-700 dark:text-black-200 bg-white dark:bg-black-700 hover:bg-black-50 dark:hover:bg-black-650 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-black-800"
             disabled={logs.length === 0}
           >
             <Download className="-ml-0.5 mr-2 h-4 w-4" />
@@ -261,49 +261,49 @@ const DeploymentLogs = () => {
       </div>
 
       {/* Log filters and auto-refresh */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4">
+      <div className="bg-white dark:bg-black-800 shadow-sm rounded-none p-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           {/* Log type tabs */}
           <div className="flex space-x-2 overflow-x-auto pb-2 sm:pb-0">
             <button
               onClick={() => setActiveTab('all')}
-              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'all' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'all' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200' : 'text-black-500 hover:text-black-700 dark:text-black-400 dark:hover:text-black-300'}`}
             >
               All
             </button>
             <button
               onClick={() => setActiveTab('setup')}
-              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'setup' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'setup' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200' : 'text-black-500 hover:text-black-700 dark:text-black-400 dark:hover:text-black-300'}`}
             >
               Setup
             </button>
             <button
               onClick={() => setActiveTab('config')}
-              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'config' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'config' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200' : 'text-black-500 hover:text-black-700 dark:text-black-400 dark:hover:text-black-300'}`}
             >
               Config
             </button>
             <button
               onClick={() => setActiveTab('deploy')}
-              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'deploy' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'deploy' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200' : 'text-black-500 hover:text-black-700 dark:text-black-400 dark:hover:text-black-300'}`}
             >
               Deploy
             </button>
             <button
               onClick={() => setActiveTab('runtime')}
-              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'runtime' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'runtime' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200' : 'text-black-500 hover:text-black-700 dark:text-black-400 dark:hover:text-black-300'}`}
             >
               Runtime
             </button>
             <button
               onClick={() => setActiveTab('error')}
-              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'error' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'error' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200' : 'text-black-500 hover:text-black-700 dark:text-black-400 dark:hover:text-black-300'}`}
             >
               Error
             </button>
             <button
               onClick={() => setActiveTab('complete')}
-              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'complete' ? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+              className={`px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'complete' ? 'bg-black-100 text-black-700 dark:bg-black-700 dark:text-black-200' : 'text-black-500 hover:text-black-700 dark:text-black-400 dark:hover:text-black-300'}`}
             >
               Complete
             </button>
@@ -311,14 +311,14 @@ const DeploymentLogs = () => {
 
           {/* Auto-refresh toggle */}
           <div className="flex items-center">
-            <label htmlFor="auto-refresh" className="mr-2 text-sm text-gray-500 dark:text-gray-400">
+            <label htmlFor="auto-refresh" className="mr-2 text-sm text-black-500 dark:text-black-400">
               Auto-refresh
             </label>
             <button
               id="auto-refresh"
               type="button"
               onClick={() => setAutoRefresh(!autoRefresh)}
-              className={`${autoRefresh ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'} relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800`}
+              className={`${autoRefresh ? 'bg-indigo-600' : 'bg-black-200 dark:bg-black-700'} relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-black-800`}
               role="switch"
               aria-checked={autoRefresh}
               disabled={deployment.status !== 'pending' && deployment.status !== 'running'}
@@ -334,34 +334,34 @@ const DeploymentLogs = () => {
       </div>
 
       {/* Logs display */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
-        <div className="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-          <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+      <div className="bg-white dark:bg-black-800 shadow-sm rounded-none overflow-hidden">
+        <div className="px-4 py-5 sm:px-6 border-b border-black-200 dark:border-black-700 flex justify-between items-center">
+          <h3 className="text-lg leading-6 font-medium text-black-900 dark:text-white">
             Logs
           </h3>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="text-sm text-black-500 dark:text-black-400">
             {filteredLogs.length} entries
           </span>
         </div>
         
         {filteredLogs.length === 0 ? (
           <div className="px-4 py-5 sm:p-6 text-center">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-black-500 dark:text-black-400">
               No logs available for this deployment
             </p>
           </div>
         ) : (
-          <div className="overflow-auto max-h-[600px] p-4 bg-gray-50 dark:bg-gray-850 font-mono text-sm">
+          <div className="overflow-auto max-h-[600px] p-4 bg-black-50 dark:bg-black-850 font-mono text-sm">
             {filteredLogs.map((log, index) => (
               <div key={index} className="mb-2 last:mb-0">
                 <div className="flex items-start">
-                  <span className="text-gray-400 dark:text-gray-500 mr-2">
+                  <span className="text-black-400 dark:text-black-500 mr-2">
                     [{new Date(log.createdAt).toLocaleTimeString()}]
                   </span>
                   <div className="mr-2">
                     {getLogTypeBadge(log.type)}
                   </div>
-                  <pre className="whitespace-pre-wrap break-words text-gray-800 dark:text-gray-200 flex-1">
+                  <pre className="whitespace-pre-wrap break-words text-black-800 dark:text-black-200 flex-1">
                     {log.content}
                   </pre>
                 </div>
@@ -376,7 +376,7 @@ const DeploymentLogs = () => {
       <div className="flex justify-between items-center">
         <Link
           to={`/deployments/${id}`}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-650 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
+          className="inline-flex items-center px-4 py-2 border border-black-300 dark:border-black-600 shadow-sm text-sm font-medium rounded-md text-black-700 dark:text-black-200 bg-white dark:bg-black-700 hover:bg-black-50 dark:hover:bg-black-650 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-black-800"
         >
           Back to Deployment
         </Link>
@@ -386,13 +386,13 @@ const DeploymentLogs = () => {
             onClick={async () => {
               try {
                 await api.post(`/deploy/retry/${deployment._id}`, {});
-                navigate('/deployments');
+                navigate('/app/deployments');
               } catch (err) {
                 console.error('Error retrying deployment:', err);
                 setError('Failed to retry deployment');
               }
             }}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-black-800"
           >
             Retry Deployment
           </button>

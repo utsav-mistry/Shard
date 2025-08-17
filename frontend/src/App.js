@@ -3,22 +3,30 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './components/Toast';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-import DashboardRedirect from './components/DashboardRedirect';
 
 // Layout components
 import MainLayout from './components/layout/MainLayout';
 import AuthLayout from './components/layout/AuthLayout';
+
 // Auth pages
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
-import GitHubCallback from './pages/Auth/GitHubCallback';
-import GoogleCallback from './pages/Auth/GoogleCallback';
+import OAuthCallback from './pages/Auth/OAuthCallback';
+import AuthRedirect from './components/auth/AuthRedirect';
+
+// Integration pages
+import GitHubIntegration from './pages/integrations/GitHubIntegration';
+import GitHubCallbackPage from './pages/integrations/GitHubCallback';
+import GitHubIntegrationCallback from './pages/GitHubIntegrationCallback';
+import ImportRepository from './pages/projects/ImportRepository';
+import Integrations from './pages/Integrations';
 
 // Landing page
 import LandingPage from './pages/LandingPage';
 
 // Dashboard pages
 import Dashboard from './pages/Dashboard';
+import Overview from './pages/Overview';
 
 // Projects pages
 import ProjectsList from './pages/projects/ProjectsList';
@@ -28,6 +36,7 @@ import NewProject from './pages/projects/NewProject';
 // Deployments pages
 import DeploymentsList from './pages/deployments/DeploymentsList';
 import DeploymentDetail from './pages/deployments/DeploymentDetail';
+import DeploymentProgress from './pages/deployments/DeploymentProgress';
 import DeploymentLogs from './pages/deployments/DeploymentLogs';
 import NewDeployment from './pages/deployments/NewDeployment';
 
@@ -61,87 +70,90 @@ function App() {
       <AuthProvider>
         <ToastProvider>
           <Router>
-            <Routes>
-              {/* Public Landing Page */}
-              <Route path="/landing" element={<LandingPage />} />
+            <div className="min-h-screen bg-white/80 dark:bg-black/80 text-black dark:text-white backdrop-blur-sm">
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<LandingPage />} />
 
-              {/* Auth Routes */}
-              <Route path="/auth" element={<AuthLayout />}>
-                <Route index element={<Navigate to="/auth/login" replace />} />
-                <Route path="login" element={<Login />} />
-                <Route path="register" element={<Register />} />
-                <Route path="github/callback" element={<GitHubCallback />} />
-                <Route path="google/callback" element={<GoogleCallback />} />
-              </Route>
+                {/* Auth Routes */}
+                <Route path="/auth" element={<AuthLayout />}>
+                  <Route index element={<Navigate to="/auth/login" replace />} />
+                  <Route path="login" element={<AuthRedirect><Login /></AuthRedirect>} />
+                  <Route path="register" element={<AuthRedirect><Register /></AuthRedirect>} />
+                </Route>
 
-              {/* Dashboard redirect */}
-              <Route path="/app" element={<DashboardRedirect />} />
+                {/* OAuth Callback Routes - Outside Auth Layout */}
+                <Route path="/auth/oauth/callback" element={<OAuthCallback />} />
+                <Route path="/auth/github/callback" element={<OAuthCallback />} />
+                <Route path="/auth/google/callback" element={<OAuthCallback />} />
 
-              {/* Protected Routes */}
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <MainLayout />
-                </ProtectedRoute>
-              }>
-                <Route index element={<Navigate to="/dashboard" replace />} />
-                <Route path="dashboard" element={<Dashboard />} />
+                {/* Integration Callbacks - Outside MainLayout */}
+                <Route path="/integrations/github/callback" element={<ProtectedRoute><GitHubCallbackPage /></ProtectedRoute>} />
+                <Route path="/app/integrations/github/callback" element={<ProtectedRoute><GitHubIntegrationCallback /></ProtectedRoute>} />
 
-                {/* Projects routes */}
-                <Route path="projects" element={<ProjectsList />} />
-                <Route path="projects/new" element={<NewProject />} />
-                <Route path="projects/:id" element={<ProjectDetail />} />
+                {/* Protected Routes under /app */}
+                <Route path="/app" element={
+                  <ProtectedRoute>
+                    <MainLayout />
+                  </ProtectedRoute>
+                }>
+                  {/* Overview - Default route (Vercel-style) */}
+                  <Route index element={<Overview />} />
 
-                {/* Deployments routes */}
-                <Route path="deployments" element={<DeploymentsList />} />
-                <Route path="deployments/new" element={<NewDeployment />} />
-                <Route path="deployments/new/:projectId" element={<NewDeployment />} />
-                <Route path="deployments/:id" element={<DeploymentDetail />} />
-                <Route path="deployments/:id/logs" element={<DeploymentLogs />} />
+                  {/* Integration Routes */}
+                  <Route path="integrations" element={<Integrations />} />
+                  <Route path="integrations/github" element={<GitHubIntegration />} />
 
-                {/* Environment routes */}
-                <Route path="environment/:projectId" element={<EnvironmentVariables />} />
-                <Route path="environment/:projectId/new" element={<NewEnvironmentVariable />} />
-                <Route path="environment/:projectId/edit/:variableId" element={<EditEnvironmentVariable />} />
+                  {/* Projects Routes */}
+                  <Route path="projects" element={<ProjectsList />} />
+                  <Route path="projects/new" element={<NewProject />} />
+                  <Route path="projects/import" element={<ImportRepository />} />
+                  <Route path="projects/:id" element={<ProjectDetail />} />
 
-                {/* Logs route */}
-                <Route path="logs" element={<LogsList />} />
+                  {/* Deployments routes */}
+                  <Route path="deployments" element={<DeploymentsList />} />
+                  <Route path="deployments/new" element={<NewDeployment />} />
+                  <Route path="deployments/new/:projectId" element={<NewDeployment />} />
+                  <Route path="deployments/:id" element={<DeploymentDetail />} />
+                  <Route path="deployments/:id/progress" element={<DeploymentProgress />} />
+                  <Route path="deployments/:id/logs" element={<DeploymentLogs />} />
 
-                {/* Settings route */}
-                <Route path="settings" element={<Settings />} />
-                
-                {/* Profile route */}
-                <Route path="profile" element={<Profile />} />
-                
-                {/* Documentation route */}
-                <Route path="docs" element={<Documentation />} />
-                
-                {/* API Reference route */}
-                <Route path="api-docs" element={<ApiReference />} />
-                
-                {/* Support route */}
-                <Route path="support" element={<Support />} />
-                
-                {/* Changelog route */}
-                <Route path="changelog" element={<Changelog />} />
-              </Route>
+                  {/* Environment routes */}
+                  <Route path="environment/:projectId" element={<EnvironmentVariables />} />
+                  <Route path="environment/:projectId/new" element={<NewEnvironmentVariable />} />
+                  <Route path="environment/:projectId/edit/:variableId" element={<EditEnvironmentVariable />} />
 
-              {/* Admin Routes - Separate Layout */}
-              <Route path="/admin" element={
-                <ProtectedRoute>
-                  <Admin />
-                </ProtectedRoute>
-              }>
-                <Route index element={<Admin />} />
-                <Route path="users" element={<Admin />} />
-                <Route path="projects" element={<Admin />} />
-                <Route path="deployments" element={<Admin />} />
-                <Route path="services" element={<Admin />} />
-                <Route path="logs" element={<Admin />} />
-                <Route path="settings" element={<Admin />} />
-                <Route path="profile" element={<Admin />} />
-              </Route>
-            </Routes>
-            <ThemeToggle className="fixed bottom-4 right-4" />
+                  {/* Logs route */}
+                  <Route path="logs" element={<LogsList />} />
+
+                  {/* Profile route */}
+                  <Route path="profile" element={<Profile />} />
+
+                  {/* Settings route */}
+                  <Route path="settings" element={<Settings />} />
+
+                  {/* Documentation route */}
+                  <Route path="docs" element={<Documentation />} />
+
+                  {/* API Reference route */}
+                  <Route path="api-docs" element={<ApiReference />} />
+
+                  {/* Support route */}
+                  <Route path="support" element={<Support />} />
+
+                  {/* Changelog route */}
+                  <Route path="changelog" element={<Changelog />} />
+                </Route>
+
+                {/* Admin Routes - Separate Layout */}
+                <Route path="/admin" element={
+                  <ProtectedRoute>
+                    <Admin />
+                  </ProtectedRoute>
+                } />
+              </Routes>
+              <ThemeToggle className="fixed bottom-4 right-4" />
+            </div>
           </Router>
         </ToastProvider>
       </AuthProvider>

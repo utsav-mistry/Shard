@@ -1,18 +1,18 @@
-import simpleGit from 'simple-git';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+const simpleGit = require('simple-git');
+const fs = require('fs');
+const path = require('path');
+const StreamingLogger = require('../utils/streamingLogger');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const cloneRepo = async (repoUrl, projectId, branch = 'main') => {
+const cloneRepo = async (repoUrl, projectId, branch = 'main', socket = null) => {
     const basePath = path.join(__dirname, "..", "repos");
-    const projectPath = path.join(basePath, projectId);
+    // Create unique identifier for each repo clone
+    const timestamp = Date.now();
+    const uniqueId = `${projectId}-${timestamp}`;
+    const projectPath = path.join(basePath, uniqueId);
 
     // Create repos directory if not exists
     if (!fs.existsSync(basePath)) {
-        fs.mkdirSync(basePath);
+        fs.mkdirSync(basePath, { recursive: true });
     }
 
     // Clean previous clone if exists
@@ -20,24 +20,53 @@ const cloneRepo = async (repoUrl, projectId, branch = 'main') => {
         fs.rmSync(projectPath, { recursive: true, force: true });
     }
 
-    const git = simpleGit();
+    // Use streaming logger if socket is provided
+    if (socket) {
+        const streamLogger = new StreamingLogger(socket, projectId, 'clone');
+        
+        try {
+            await streamLogger.cloneRepository(repoUrl, projectPath, branch);
+            
+            // Get commit information using simple-git
+            const repoGit = simpleGit(projectPath);
+            const log = await repoGit.log(['-1']);
+            const latestCommit = log.latest;
 
-    console.log("Cloning repo:", repoUrl, "branch:", branch);
-    await git.clone(repoUrl, projectPath, ['--branch', branch]);
-    console.log("Repo cloned to:", projectPath);
+            streamLogger.emitLog(`Retrieved commit info: ${latestCommit.hash.substring(0, 8)} - ${latestCommit.message}`, 'success', 'clone');
 
-    // Get commit information
-    const repoGit = simpleGit(projectPath);
-    const log = await repoGit.log(['-1']); // Get latest commit
-    const latestCommit = log.latest;
+            return {
+                path: projectPath,
+                uniqueId: uniqueId,
+                commitHash: latestCommit.hash,
+                commitMessage: latestCommit.message,
+                author: latestCommit.author_name,
+                date: latestCommit.date
+            };
+        } catch (error) {
+            throw new Error(`Repository clone failed: ${error.message}`);
+        }
+    } else {
+        // Fallback to original simple-git method for backward compatibility
+        const git = simpleGit();
 
-    return {
-        path: projectPath,
-        commitHash: latestCommit.hash,
-        commitMessage: latestCommit.message,
-        author: latestCommit.author_name,
-        date: latestCommit.date
-    };
+        console.log("Cloning repo:", repoUrl, "branch:", branch);
+        await git.clone(repoUrl, projectPath, ['--branch', branch]);
+        console.log("Repo cloned to:", projectPath);
+
+        // Get commit information
+        const repoGit = simpleGit(projectPath);
+        const log = await repoGit.log(['-1']); // Get latest commit
+        const latestCommit = log.latest;
+
+        return {
+            path: projectPath,
+            uniqueId: uniqueId,
+            commitHash: latestCommit.hash,
+            commitMessage: latestCommit.message,
+            author: latestCommit.author_name,
+            date: latestCommit.date
+        };
+    }
 };
 
-export { cloneRepo };
+module.exports = { cloneRepo };

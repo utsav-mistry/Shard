@@ -9,28 +9,67 @@ const UserSchema = new mongoose.Schema(
             unique: true,
         },
         passwordHash: {
-            type: String,
+            type: String, // Optional for OAuth users
         },
         name: {
             type: String,
-        },
-        avatar: {
-            type: String,
-        },
-        googleId: {
-            type: String,
-        },
-        githubId: {
-            type: String,
+            required: true,
         },
         role: {
             type: String,
             enum: ['user', 'admin'],
             default: 'user',
         },
-        createdAt: {
+        
+        // OAuth fields (optional)
+        githubId: {
+            type: String,
+            sparse: true,
+            unique: true,
+        },
+        googleId: {
+            type: String,
+            sparse: true,
+            unique: true,
+        },
+        avatar: {
+            type: String,
+        },
+        githubAccessToken: {
+            type: String,
+        },
+        githubUsername: {
+            type: String,
+        },
+        
+        // Profile fields
+        username: {
+            type: String,
+        },
+        displayName: {
+            type: String,
+        },
+        bio: {
+            type: String,
+        },
+        location: {
+            type: String,
+        },
+        website: {
+            type: String,
+        },
+        
+        // Account status
+        isActive: {
+            type: Boolean,
+            default: true,
+        },
+        isVerified: {
+            type: Boolean,
+            default: false,
+        },
+        lastLogin: {
             type: Date,
-            default: Date.now,
         },
     },
     {
@@ -40,7 +79,6 @@ const UserSchema = new mongoose.Schema(
 );
 
 // Indexes for better query performance
-UserSchema.index({ email: 1 }, { unique: true }); // Email uniqueness and login lookup
 UserSchema.index({ role: 1 }); // For admin queries
 UserSchema.index({ githubId: 1 }, { sparse: true }); // For GitHub OAuth
 UserSchema.index({ googleId: 1 }, { sparse: true }); // For Google OAuth
