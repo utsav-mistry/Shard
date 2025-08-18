@@ -129,19 +129,19 @@ const ProjectsList = () => {
           {filteredProjects.map((project) => (
             <div 
               key={project._id} 
-              className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none p-6 hover:shadow-xl hover:shadow-black/20 dark:hover:shadow-white/20 hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer group shadow-lg shadow-black/10 dark:shadow-white/10"
+              className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none p-6 hover:shadow-xl hover:shadow-black/20 dark:hover:shadow-white/20 hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer shadow-lg shadow-black/10 dark:shadow-white/10"
               onClick={() => window.location.href = `/app/projects/${project._id}?tab=deployments`}
             >
               <div className="flex items-start justify-between mb-6">
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-xl font-bold text-black-900 dark:text-white-100 group-hover:text-black-700 dark:group-hover:text-white-200 transition-colors mb-2 truncate">
+                  <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-2 truncate">
                     {project.name}
                   </h3>
                   <p className="text-sm text-black-600 dark:text-white-400 font-medium truncate">
                     {project.subdomain ? `${project.subdomain}.localhost` : project.repoUrl}
                   </p>
                 </div>
-                <div className="p-2 border-2 border-dotted border-gray-400 dark:border-gray-600 rounded-none group-hover:border-black-900 dark:group-hover:border-white-100 transition-all duration-200">
+                <div className="p-2 border-2 border-dotted border-gray-400 dark:border-gray-600 rounded-none">
                   <ExternalLink className="h-4 w-4 text-black-900 dark:text-white-100" />
                 </div>
               </div>
@@ -162,7 +162,7 @@ const ProjectsList = () => {
                   className="group relative flex-1 inline-flex items-center justify-center px-4 py-2.5 text-sm font-bold bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 hover:text-black-900 dark:hover:text-white-100 rounded-none border-2 border-black-900 dark:border-white-100 transition-all duration-200 overflow-hidden"
                 >
                   <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-                  <span className="relative z-10 flex items-center">
+                  <span className="relative z-10 flex items-center transition-colors duration-200 group-hover:text-black-900 dark:group-hover:text-white-100">
                     <Zap className="w-4 h-4 mr-2" />
                     Deploy
                   </span>
@@ -175,7 +175,7 @@ const ProjectsList = () => {
                   className="group relative flex-1 inline-flex items-center justify-center px-4 py-2.5 text-sm font-bold border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900 rounded-none transition-all duration-200 overflow-hidden"
                 >
                   <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-                  <span className="relative z-10 flex items-center">
+                  <span className="relative z-10 flex items-center transition-colors duration-200 group-hover:text-white-100 dark:group-hover:text-black-900">
                     <Server className="w-4 h-4 mr-2" />
                     Settings
                   </span>

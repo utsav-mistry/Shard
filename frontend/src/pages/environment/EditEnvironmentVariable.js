@@ -4,7 +4,7 @@ import api from '../../utils/axiosConfig';
 import { AlertTriangle, ArrowLeft, Save, Eye, EyeOff } from 'lucide-react';
 
 const EditEnvironmentVariable = () => {
-  const { projectId, envId } = useParams();
+  const { projectId, variableId } = useParams();
   const navigate = useNavigate();
   
   const [key, setKey] = useState('');
@@ -27,7 +27,7 @@ const EditEnvironmentVariable = () => {
         setLoading(true);
         
         // Fetch environment variable details with standardized API path
-        const response = await api.get(`/api/projects/${projectId}/env/${envId}`);
+        const response = await api.get(`/api/projects/${projectId}/env/${variableId}`);
         
         // Handle standardized response
         if (response.data && response.data.success) {
@@ -47,7 +47,7 @@ const EditEnvironmentVariable = () => {
     };
 
     fetchEnvironmentVariable();
-  }, [envId]);
+  }, [variableId]);
 
   const validateForm = () => {
     let isValid = true;
@@ -85,7 +85,7 @@ const EditEnvironmentVariable = () => {
       setSaving(true);
       setError(null);
       
-      const response = await api.put(`/api/projects/${projectId}/env/${envId}`, {
+      const response = await api.put(`/api/projects/${projectId}/env/${variableId}`, {
         key: key.trim(),
         value: value.trim(),
         secret: isSecret

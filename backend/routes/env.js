@@ -38,6 +38,9 @@ router.post(
 // Get all environment variables for a project
 router.get('/', envController.getEnvVars);
 
+// Get a specific environment variable by ID
+router.get('/:id', envController.getEnvVarById);
+
 // Update a specific environment variable
 router.put('/:id', sanitizeBody, validateEnvVar, envController.updateEnvVar);
 

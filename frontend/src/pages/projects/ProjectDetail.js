@@ -313,7 +313,7 @@ const ProjectDetail = () => {
       </div>
 
       {/* Consistent tabs design */}
-      <div className="border-b-2 border-black-900 dark:border-white-100 mb-6">
+      <div className="border-black-900 dark:border-white-100 mb-6">
         <nav className="-mb-px flex space-x-2">
           <button
             onClick={() => setActiveTab('overview')}
@@ -542,7 +542,9 @@ const ProjectDetail = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white-100 dark:bg-black-700 divide-y divide-black-900 dark:divide-white-100">
-                  {deployments.map((deployment) => (
+                  {deployments.map((deployment, index) => {
+                    const isLatest = index === 0;
+                    return (
                     <tr key={deployment._id} className="hover:bg-white-200 dark:hover:bg-black-600 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col">
@@ -560,7 +562,14 @@ const ProjectDetail = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(deployment.status)}
+                        <div className="flex items-center space-x-2">
+                          {getStatusBadge(deployment.status)}
+                          {!isLatest && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 font-bold">
+                              Deprecated
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black-600 dark:text-white-400 font-medium">
                         {new Date(deployment.createdAt).toLocaleString()}
@@ -586,7 +595,7 @@ const ProjectDetail = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>

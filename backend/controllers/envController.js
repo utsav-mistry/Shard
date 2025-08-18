@@ -172,9 +172,45 @@ const deleteEnvVar = async (req, res) => {
     }
 };
 
+// Get a single environment variable by ID
+const getEnvVarById = async (req, res) => {
+    const { id, projectId } = req.params;
+
+    if (!id) {
+        return res.apiValidationError({ id: 'Environment variable ID is required' }, 'Environment variable ID is required');
+    }
+
+    try {
+        // Check if user has access to this project
+        const query = req.user.role === 'admin'
+            ? { _id: projectId }
+            : { _id: projectId, ownerId: req.user._id };
+
+        const project = await Project.findOne(query);
+        if (!project) {
+            return res.apiNotFound('Project');
+        }
+
+        const envVar = await envService.getEnvVarById(id);
+        if (!envVar) {
+            return res.apiNotFound('Environment variable');
+        }
+
+        if (envVar.projectId.toString() !== projectId) {
+            return res.apiForbidden('Environment variable does not belong to this project');
+        }
+
+        return res.apiSuccess(envVar, 'Environment variable retrieved successfully');
+    } catch (err) {
+        console.error("Failed to fetch env var by ID:", err);
+        return res.apiServerError('Failed to retrieve environment variable', err.message);
+    }
+};
+
 module.exports = {
     addEnvVar,
     getEnvVars,
+    getEnvVarById,
     updateEnvVar,
     deleteEnvVar
 };

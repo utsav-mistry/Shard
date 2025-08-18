@@ -9,13 +9,11 @@ import {
   XCircle,
   Plus,
   RefreshCw,
-  ArrowRight,
   Zap,
-  ExternalLink,
-  Terminal
+  ExternalLink
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import useDeployments from '../../hooks/useDeployments';
-import useProjects from '../../hooks/useProjects';
 import PageTemplate from '../../components/layout/PageTemplate';
 
 // Helper function to get deployment URL
@@ -24,393 +22,241 @@ const getDeploymentUrl = (subdomain) => {
   const protocol = window.location.protocol;
   const hostname = window.location.hostname;
   const port = window.location.port ? `:${window.location.port}` : '';
-
-  // Check if we're in development
   const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
-
   if (isLocalhost) {
-    // For local development, use the current host with the subdomain as a path
     return `${protocol}//${hostname}${port}/${subdomain}`;
   }
-
-  // For production, use subdomain as a subdomain
   return `${protocol}//${subdomain}.${hostname}${port}`;
 };
 
 // Format date helper function
 const formatDate = (dateString) => {
-  if (!dateString) return 'N/A';
+  if (!dateString) return '-';
   try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'Invalid date';
-    return date.toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleString(undefined, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit',
+      minute: '2-digit'
     });
-  } catch (err) {
-    console.error('Error formatting date:', err);
-    return 'Invalid date';
+  } catch (e) {
+    return dateString;
+  }
+};
+
+// Status badge renderer
+const getStatusBadge = (status) => {
+  const baseClasses = "inline-flex items-center px-2 py-0.5 text-xs font-bold rounded";
+
+  switch (status?.toLowerCase()) {
+    case 'pending':
+    case 'deploying':
+      return (
+        <span className={`${baseClasses} bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300`}>
+          <Clock className="w-3 h-3 mr-1" /> {status}
+        </span>
+      );
+    case 'running':
+    case 'active':
+      return (
+        <span className={`${baseClasses} bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300`}>
+          <Zap className="w-3 h-3 mr-1" /> {status}
+        </span>
+      );
+    case 'success':
+      return (
+        <span className={`${baseClasses} bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300`}>
+          <CheckCircle className="w-3 h-3 mr-1" /> Success
+        </span>
+      );
+    case 'failed':
+    case 'error':
+      return (
+        <span className={`${baseClasses} bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300`}>
+          <XCircle className="w-3 h-3 mr-1" /> Failed
+        </span>
+      );
+    default:
+      return (
+        <span className={`${baseClasses} bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200`}>
+          {status}
+        </span>
+      );
   }
 };
 
 const DeploymentsList = () => {
   const navigate = useNavigate();
   const { deployments, loading, error, refresh } = useDeployments();
-  const { projects, loading: projectsLoading, error: projectsError } = useProjects();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Handle refresh with loading state
   const handleRefresh = async () => {
     try {
       setIsRefreshing(true);
       await refresh();
-      // Using native alert for simplicity
-      alert('Deployments refreshed successfully');
+      toast.success('Deployments refreshed');
     } catch (err) {
       console.error('Error refreshing deployments:', err);
-      alert(`Failed to refresh deployments: ${err.message || 'Unknown error'}`);
+      toast.error(`Failed to refresh: ${err.message || 'Unknown error'}`);
     } finally {
       setIsRefreshing(false);
     }
   };
 
-  // Show error alert when there's an error
   useEffect(() => {
-    if (error) {
-      console.error('Error loading deployments:', error);
-    }
-    if (projectsError) {
-      console.error('Error loading projects:', projectsError);
-    }
-  }, [error, projectsError]);
+    if (error) console.error('Error loading deployments:', error);
+  }, [error]);
 
-  // Helper function to get project name by ID with error handling
-  const getProjectName = (projectId) => {
-    if (!projectId) return 'Unknown Project';
-    const project = projects.find(p => p && p._id === projectId);
-    return project?.name || 'Unknown Project';
-  };
-
-  // Format date consistently
-  const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    try {
-      return new Date(dateString).toLocaleString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (e) {
-      return dateString;
-    }
-  };
-
-  // Helper function to get status badge with consistent design
-  const getStatusBadge = (status) => {
-    const baseClasses = "inline-flex items-center px-3 py-1 rounded-none text-xs font-bold border-2";
-
-    switch (status?.toLowerCase()) {
-      case 'pending':
-      case 'deploying':
-        return (
-          <span className={`${baseClasses} bg-yellow-100 text-yellow-800 border-yellow-800 dark:bg-yellow-900 dark:text-yellow-300 dark:border-yellow-300`}>
-            <Clock className="w-3 h-3 mr-1.5" />
-            {status}
-          </span>
-        );
-      case 'running':
-      case 'active':
-        return (
-          <span className={`${baseClasses} bg-blue-100 text-blue-800 border-blue-800 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-300`}>
-            <Zap className="w-3 h-3 mr-1.5" />
-            {status}
-          </span>
-        );
-      case 'success':
-      case 'completed':
-        return (
-          <span className={`${baseClasses} bg-green-100 text-green-800 border-green-800 dark:bg-green-900 dark:text-green-300 dark:border-green-300`}>
-            <CheckCircle className="w-3 h-3 mr-1.5" />
-            {status}
-          </span>
-        );
-      case 'failed':
-      case 'error':
-        return (
-          <span className={`${baseClasses} bg-red-100 text-red-800 border-red-800 dark:bg-red-900 dark:text-red-300 dark:border-red-300`}>
-            <XCircle className="w-3 h-3 mr-1.5" />
-            Failed
-          </span>
-        );
-      default:
-        return (
-          <span className={`${baseClasses} bg-white-200 text-black-900 border-black-900 dark:bg-black-700 dark:text-white-100 dark:border-white-100`}>
-            {status}
-          </span>
-        );
-    }
-  };
-
-  // Filter deployments based on search term and status filter
-  const filteredDeployments = deployments.filter(deployment => {
-    const projectName = getProjectName(deployment.projectId).toLowerCase();
+  // Sort + filter
+  const sortedDeployments = [...deployments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const filteredDeployments = sortedDeployments.filter(deployment => {
+    const projectName = deployment.projectId?.name?.toLowerCase() || '';
     const matchesSearch = projectName.includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || deployment.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  if (loading || projectsLoading) {
+  if (loading) {
     return (
       <PageTemplate>
-        <div className="flex items-center justify-center h-64">
+        <div className="flex items-center justify-center h-64">Loading...</div>
+      </PageTemplate>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageTemplate>
+        <div className="bg-red-100 dark:bg-red-900 p-4 rounded border-2 border-red-600 dark:border-red-400">
+          <div className="flex items-center">
+            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2" />
+            <span>Error loading deployments</span>
+          </div>
         </div>
       </PageTemplate>
     );
   }
 
-  if (error || projectsError) {
-    return (
-      <PageTemplate>
-        <div className="bg-red-100 dark:bg-red-900 p-4 rounded-none border-2 border-red-600 dark:border-red-400">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-bold text-red-800 dark:text-red-200">
-                Error loading deployments
-              </h3>
-              <div className="mt-2 text-sm text-red-700 dark:text-red-300 font-medium">
-                {error || projectsError || 'An unknown error occurred'}
-              </div>
-              <div className="mt-4">
-                <button
-                  type="button"
-                  onClick={handleRefresh}
-                  className="group relative inline-flex items-center px-3 py-1.5 border-2 border-red-600 text-sm font-bold rounded-none shadow-sm text-red-600 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden"
-                >
-                  <span className="absolute inset-0 w-full h-full bg-red-600 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-                  <RefreshCw className="mr-1.5 h-4 w-4" />
-                  Try Again
-                  </button>
-            </div>
-          </div>
+  return (
+    <PageTemplate>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 px-2">
+        <div>
+          <h1 className="text-3xl font-bold text-black-900 dark:text-white-100">Deployments</h1>
+          <p className="mt-2 text-base text-black-600 dark:text-white-400">Manage your deployments</p>
         </div>
-      </div>
-      </PageTemplate >
-    );
-  }
-
-return (
-  <PageTemplate>
-
-    {/* Header */}
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 px-2">
-      <div>
-        <h1 className="text-3xl font-bold text-black-900 dark:text-white-100">Deployments</h1>
-        <p className="mt-2 text-base text-black-600 dark:text-white-400">
-          Manage your deployments
-        </p>
-      </div>
-      <div className="mt-4 md:mt-0 flex space-x-3">
-        <button
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden hover:scale-[1.02] active:scale-95"
-        >
-          <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
-          <span className="relative z-10 flex items-center">
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+        <div className="flex space-x-3">
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="px-4 py-2 border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:bg-black-900 hover:text-white-100 dark:hover:bg-white-100 dark:hover:text-black-900 transition"
+          >
             {isRefreshing ? 'Refreshing...' : 'Refresh'}
-          </span>
-        </button>
-        <Link
-          to="/app/projects/new"
-          className="group relative inline-flex items-center px-4 py-2 bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 hover:text-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-white-100 hover:scale-[1.02] active:scale-95 rounded-none font-bold"
-        >
-          <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
-          <span className="relative z-10 flex items-center transition-colors duration-200">
-            <Plus className="h-4 w-4 mr-2" />
+          </button>
+          <Link
+            to="/app/projects/new"
+            className="px-4 py-2 bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 border-2 border-black-900 dark:border-white-100 font-bold hover:opacity-80 transition"
+          >
             New Project
-          </span>
-        </Link>
-      </div>
-    </div>
-
-    {/* Search and Filter */}
-    <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div className="relative flex-1 max-w-md">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search className="h-4 w-4 text-black-900 dark:text-white-100" />
+          </Link>
         </div>
-        <input
-          type="text"
-          className="block w-full pl-10 pr-3 py-2 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 placeholder-black-600 dark:placeholder-white-400 focus:outline-none focus:ring-2 focus:ring-black-500 dark:focus:ring-white-500 sm:text-sm font-medium rounded-none shadow-sm transition-all duration-200"
-          placeholder="Search deployments..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
       </div>
-      <div className="flex items-center">
-        <label htmlFor="status-filter" className="text-sm font-medium text-black-900 dark:text-white-100 mr-2">
-          Status:
-        </label>
+
+      {/* Search + Filter */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-black-600 dark:text-white-400" />
+          <input
+            type="text"
+            className="block w-full pl-10 pr-3 py-2 border-2 border-black-900 dark:border-white-100 bg-white dark:bg-black-900 text-black-900 dark:text-white-100"
+            placeholder="Search deployments..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
         <select
-          id="status-filter"
-          className="block w-full pl-3 pr-10 py-2 text-base border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 focus:outline-none focus:ring-2 focus:ring-black-500 dark:focus:ring-white-500 sm:text-sm font-bold rounded-none shadow-sm transition-all duration-200"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-2 border-2 border-black-900 dark:border-white-100 bg-white dark:bg-black-900 text-black-900 dark:text-white-100"
         >
-          <option value="all" className="bg-white dark:bg-black-900 text-black-900 dark:text-white-100">All</option>
-          <option value="success" className="bg-white dark:bg-black-900 text-black-900 dark:text-white-100">Success</option>
-          <option value="failed" className="bg-white dark:bg-black-900 text-black-900 dark:text-white-100">Failed</option>
-          <option value="pending" className="bg-white dark:bg-black-900 text-black-900 dark:text-white-100">Pending</option>
-          <option value="deploying" className="bg-white dark:bg-black-900 text-black-900 dark:text-white-100">Deploying</option>
+          <option value="all">All</option>
+          <option value="success">Success</option>
+          <option value="failed">Failed</option>
+          <option value="pending">Pending</option>
+          <option value="deploying">Deploying</option>
         </select>
       </div>
-    </div>
 
-    {/* Deployments Table */}
-    {filteredDeployments.length === 0 ? (
-      <div className="text-center py-12">
-        <Server className="mx-auto h-12 w-12 text-black-900 dark:text-white-100 mb-4" />
-        <h3 className="text-lg font-bold text-black-900 dark:text-white-100 mb-1">No deployments found</h3>
-        <p className="text-black-600 dark:text-white-400 max-w-md mx-auto mb-6 font-medium">
-          Get started by creating a new deployment.
-        </p>
-        <Link
-          to="/app/projects/new"
-          className="group relative inline-flex items-center px-4 py-2 bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 hover:text-black-900 dark:hover:text-white-100 font-bold hover:scale-105 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-white-100 rounded-none shadow-sm"
-        >
-          <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
-          <span className="relative z-10 flex items-center transition-colors duration-200">
-            <Plus className="h-4 w-4 mr-2" />
-            New Project
-          </span>
-        </Link>
-      </div>
-    ) : (
-      <div className="overflow-hidden border-2 border-black-900 dark:border-white-100">
-        <table className="min-w-full divide-y divide-black-900/10 dark:divide-white-100/10">
-          <thead className="bg-black-900/5 dark:bg-white-100/5">
-            <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-black-500 dark:text-white-500 uppercase tracking-wider">
-                Project
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-black-500 dark:text-white-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-black-500 dark:text-white-500 uppercase tracking-wider">
-                Created
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-black-500 dark:text-white-500 uppercase tracking-wider">
-                Duration
-              </th>
-              <th scope="col" className="relative px-6 py-3">
-                <span className="sr-only">View</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-black-900 divide-y divide-black-900/10 dark:divide-white-100/10">
-            {filteredDeployments.map((deployment) => {
-              const project = projects.find(p => p._id === deployment.projectId) || {};
-              return (
-                <tr
-                  key={deployment._id}
-                  className="group hover:bg-black-900/5 dark:hover:bg-white-100/5 transition-colors cursor-pointer"
-                  onClick={() => navigate(`/app/projects`)}
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center border-2 border-black-900 dark:border-white-100">
-                        <Server className="h-5 w-5" />
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-bold text-black-900 dark:text-white-100">
-                          {project.name || 'Unknown Project'}
-                        </div>
-                        {project.subdomain && (
-                          <a
-                            href={getDeploymentUrl(project.subdomain)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-blue-600 hover:underline dark:text-blue-400 flex items-center"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {getDeploymentUrl(project.subdomain)}
-                            <ExternalLink className="ml-1 h-3 w-3 inline-block" />
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${deployment.status === 'success'
-                        ? 'bg-black-900/10 text-black-900 dark:bg-white-100/10 dark:text-white-100'
-                        : deployment.status === 'failed'
-                          ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                          : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                        }`}
+      {/* Masonry Layout */}
+      {filteredDeployments.length === 0 ? (
+        <div className="text-center py-12">
+          <Server className="mx-auto h-12 w-12 text-black-900 dark:text-white-100 mb-4" />
+          <h3 className="text-lg font-bold">No deployments found</h3>
+          <p className="text-black-600 dark:text-white-400 mb-6">Get started by creating a new deployment.</p>
+          <Link to="/app/projects/new" className="px-4 py-2 bg-black-900 text-white dark:bg-white dark:text-black border-2 border-black-900 dark:border-white-100 font-bold">New Project</Link>
+        </div>
+      ) : (
+        <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
+          {filteredDeployments.map((deployment) => {
+            const project = deployment.projectId || {};
+            return (
+              <div
+                key={deployment._id}
+                className="break-inside-avoid border-2 border-black-900 dark:border-white-100 p-4 rounded-lg bg-white dark:bg-black-900 shadow-sm hover:shadow-md transition cursor-pointer"
+                onClick={() => navigate(`/app/deployments/${deployment._id}`)}
+              >
+                {/* Title + Status */}
+                <div className="flex justify-between items-center mb-2">
+                  <h2 className="text-lg font-bold text-black-900 dark:text-white-100">{project.name || 'Unknown Project'}</h2>
+                  {getStatusBadge(deployment.status)}
+                </div>
+
+                {/* URL */}
+                {project.subdomain && (
+                    <a
+                      href={project.subdomain ? `http://${project.subdomain}.localhost:${project.framework === 'mern' ? '12001' : project.framework === 'django' ? '13000' : '14000'}` : `http://localhost:3000`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all font-medium"
                     >
-                      {deployment.status === 'success' ? (
-                        <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-                      ) : deployment.status === 'failed' ? (
-                        <XCircle className="mr-1.5 h-3.5 w-3.5" />
-                      ) : (
-                        <Clock className="mr-1.5 h-3.5 w-3.5" />
-                      )}
-                      {deployment.status.charAt(0).toUpperCase() + deployment.status.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black-500 dark:text-white-400">
-                    {formatDate(deployment.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-black-500 dark:text-white-400">
-                    {deployment.duration ? `${Math.round(deployment.duration / 1000)}s` : 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end space-x-2">
-                      {(deployment.status === 'pending' || deployment.status === 'deploying') && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/app/deployments/${deployment._id}/progress`);
-                          }}
-                          className="group relative inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
-                        >
-                          <Terminal className="w-4 h-4 mr-1" />
-                          Progress
-                        </button>
-                      )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/app/deployments/${deployment._id}`);
-                        }}
-                        className="group relative inline-flex items-center text-black-900 dark:text-white-100 hover:opacity-80 transition-opacity"
-                      >
-                        Details
-                        <ArrowRight className="ml-1 w-4 h-4 transition-transform group-hover:translate-x-1" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    )}
-  </PageTemplate>
-);
+                      {project.subdomain ? `${project.subdomain}.localhost` : 'localhost:3000'}
+                    </a>
+                )}
+
+                {/* Commit Info */}
+                <p className="text-sm text-black-600 dark:text-white-400 mb-1">
+                  <span className="font-medium">Commit:</span> {deployment.commitMessage}
+                </p>
+                <p className="text-sm text-black-600 dark:text-white-400 mb-2">
+                  <span className="font-medium">Author:</span> {deployment.metadata?.author}
+                </p>
+
+                {/* AI Review */}
+                {deployment.aiReviewResults && (
+                  <div className="mt-2 p-2 border rounded bg-gray-50 dark:bg-gray-800">
+                    <p className="text-xs font-bold text-black-700 dark:text-white-300 mb-1">AI Review</p>
+                    <p className="text-xs mb-1">Verdict:
+                      <span className="ml-1 font-bold text-green-600 dark:text-green-400">
+                        {deployment.aiReviewResults.verdict}
+                      </span>
+                    </p>
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div className="mt-3 flex justify-between text-xs text-black-500 dark:text-white-400">
+                  <span>{formatDate(deployment.createdAt)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </PageTemplate>
+  );
 };
 
 export default DeploymentsList;
