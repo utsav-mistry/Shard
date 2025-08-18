@@ -4,13 +4,17 @@ const Joi = require('joi');
 const projectSchema = Joi.object({
     name: Joi.string().min(1).max(100).required(),
     repoUrl: Joi.string().uri().required(),
-    stack: Joi.string().valid('mern', 'django', 'flask').required()
-});
+    stack: Joi.string().valid('mern', 'django', 'flask').required(),
+    framework: Joi.string().valid('mern', 'django', 'flask').optional(),
+    subdomain: Joi.string().optional(),
+    branch: Joi.string().optional().default('main')
+}).options({ allowUnknown: true });
 
 const envVarSchema = Joi.object({
     key: Joi.string().min(1).max(100).pattern(/^[A-Z_][A-Z0-9_]*$/).required(),
-    value: Joi.string().max(1000).required()
-});
+    value: Joi.string().max(1000).required(),
+    projectId: Joi.string().hex().length(24).optional()
+}).options({ allowUnknown: true });
 
 const deploymentSchema = Joi.object({
     projectId: Joi.string().hex().length(24).required(),
@@ -22,7 +26,7 @@ const deploymentSchema = Joi.object({
         value: Joi.string().required(),
         isSecret: Joi.boolean().optional().default(false)
     })).optional().default([])
-});
+}).options({ allowUnknown: true });
 
 // Validation middleware
 const validateProject = (req, res, next) => {
@@ -38,7 +42,10 @@ const validateProject = (req, res, next) => {
 };
 
 const validateEnvVar = (req, res, next) => {
-    const { error } = envVarSchema.validate(req.body);
+    // Create a copy of req.body without projectId for validation
+    const { projectId, ...bodyWithoutProjectId } = req.body;
+    
+    const { error } = envVarSchema.validate(bodyWithoutProjectId, { allowUnknown: true });
     if (error) {
         const errors = {};
         error.details.forEach(detail => {

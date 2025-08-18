@@ -13,7 +13,8 @@ const ProjectDetail = () => {
   const [error, setError] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [deploymentToDelete, setDeploymentToDelete] = useState(null);
+  const [itemToDelete, setItemToDelete] = useState(null); // Generic for deployment or env var
+  const [deleteType, setDeleteType] = useState(''); // 'deployment' or 'envVar'
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
@@ -59,7 +60,7 @@ const ProjectDetail = () => {
 
         // Fetch environment variables - non-critical, continue if fails
         try {
-          const envVarsResponse = await api.get(`/api/env/${id}`);
+          const envVarsResponse = await api.get(`/api/projects/${id}/env`);
           if (envVarsResponse.data.success) {
             setEnvVars(envVarsResponse.data.data || []);
           } else {
@@ -145,20 +146,34 @@ const ProjectDetail = () => {
     }
   };
 
-  // Trigger new deployment (Vercel-style)
-  const triggerDeployment = async () => {
+  // Show deployment status and options (Vercel-style)
+  const showDeploymentStatus = () => {
+    // Get latest deployment
+    const latestDeployment = deployments.length > 0 ? deployments[0] : null;
+
+    if (!latestDeployment) {
+      // No deployments - show deploy button
+      return triggerNewDeployment();
+    }
+
+    // Show current deployment status with logs and AI review
+    navigate(`/app/deployments/${latestDeployment._id}`);
+  };
+
+  // Trigger new deployment
+  const triggerNewDeployment = async () => {
     try {
       setLoading(true);
 
       // Create new deployment
-      const response = await api.post('/api/deploy', {
+      const response = await api.post('/api/deployments', {
         projectId: id,
         branch: 'main' // Default branch, could be configurable
       });
 
       if (response.data.success) {
         // Redirect to deployment progress page to show Vercel-style progress
-        navigate(`/app/projects/${id}/deployments/${response.data.data._id}/progress`);
+        navigate(`/app/deployments/${response.data.data._id}`);
       } else {
         setError('Failed to trigger deployment');
       }
@@ -171,29 +186,47 @@ const ProjectDetail = () => {
   };
 
   // Handle deployment deletion
-  const handleDeleteDeployment = async (deploymentId) => {
-    setDeploymentToDelete(deploymentId);
+  const handleDeleteDeployment = (deploymentId) => {
+    setItemToDelete(deploymentId);
+    setDeleteType('deployment');
     setDeleteModalOpen(true);
   };
 
-  const confirmDeleteDeployment = async () => {
-    if (!deploymentToDelete) return;
+  // Handle env var deletion
+  const handleDeleteEnvVar = (envVarId) => {
+    setItemToDelete(envVarId);
+    setDeleteType('envVar');
+    setDeleteModalOpen(true);
+  };
 
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+
+    setDeleteLoading(true);
     try {
-      setDeleteLoading(true);
-      const response = await api.delete(`/api/deploy/${deploymentToDelete}`);
-      
-      if (response.data.success) {
-        // Remove deployment from local state
-        setDeployments(deployments.filter(d => d._id !== deploymentToDelete));
-        setDeploymentToDelete(null);
+      let response;
+      if (deleteType === 'deployment') {
+        response = await api.delete(`/api/deploy/${itemToDelete}`);
+        if (response.data.success) {
+          setDeployments(deployments.filter(d => d._id !== itemToDelete));
+        }
+      } else if (deleteType === 'envVar') {
+        response = await api.delete(`/api/projects/${id}/env/${itemToDelete}`);
+        if (response.data.success) {
+          setEnvVars(envVars.filter(e => e._id !== itemToDelete));
+        }
+      }
+
+      if (response && response.data.success) {
         setDeleteModalOpen(false);
+        setItemToDelete(null);
+        setDeleteType('');
       } else {
-        setError('Failed to delete deployment');
+        setError(`Failed to delete ${deleteType}`);
       }
     } catch (err) {
-      console.error('Error deleting deployment:', err);
-      setError('Failed to delete deployment');
+      console.error(`Error deleting ${deleteType}:`, err);
+      setError(`Failed to delete ${deleteType}`);
     } finally {
       setDeleteLoading(false);
     }
@@ -215,6 +248,18 @@ const ProjectDetail = () => {
       </div>
     );
   }
+
+  const latestSuccessfulDeployment = deployments
+    .filter(d => d.status === 'success')
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+
+  const getProductionUrl = () => {
+    if (latestSuccessfulDeployment && latestSuccessfulDeployment.port) {
+      return `http://${project.subdomain}.localhost:${latestSuccessfulDeployment.port}`;
+    }
+    // Fallback for older projects or if port isn't available
+    return project.subdomain ? `http://${project.subdomain}.localhost:3000` : '#';
+  };
 
   if (!project) {
     return (
@@ -246,11 +291,13 @@ const ProjectDetail = () => {
         </div>
         <div className="flex space-x-3">
           <button
-            onClick={triggerDeployment}
+            onClick={showDeploymentStatus}
             className="group relative inline-flex items-center px-4 py-2 text-sm font-bold bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 hover:text-black-900 dark:hover:text-white-100 rounded-none border-2 border-black-900 dark:border-white-100 hover:scale-105 transition-all duration-200 shadow-sm overflow-hidden"
           >
             <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-            <span className="relative z-10 transition-colors duration-200">Deploy</span>
+            <span className="relative z-10 transition-colors duration-200">
+              {deployments.length > 0 ? 'View Deployment' : 'Deploy'}
+            </span>
           </button>
           <button
             onClick={() => setDeleteModalOpen(true)}
@@ -296,8 +343,8 @@ const ProjectDetail = () => {
             </span>
           </button>
           <button
-            onClick={() => setActiveTab('settings')}
-            className={`group relative px-4 py-2 text-sm font-bold transition-all duration-200 overflow-hidden flex items-center rounded-none border-2 ${activeTab === 'settings'
+            onClick={() => setActiveTab('environment')}
+            className={`group relative px-4 py-2 text-sm font-bold transition-all duration-200 overflow-hidden flex items-center rounded-none border-2 ${activeTab === 'environment'
               ? 'border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900'
               : 'border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900'
               }`}
@@ -306,8 +353,8 @@ const ProjectDetail = () => {
               <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
             )}
             <span className="relative z-10 flex items-center">
-              <Settings className="w-4 h-4 mr-1" />
-              Settings
+                            <Key className="w-4 h-4 mr-1" />
+              Environment
             </span>
           </button>
         </nav>
@@ -325,12 +372,12 @@ const ProjectDetail = () => {
               </div>
               <div className="mt-2">
                 <a
-                  href={project.subdomain ? `http://${project.subdomain}.localhost:${project.framework === 'mern' ? '12001' : project.framework === 'django' ? '13000' : '14000'}` : `http://localhost:3000`}
+                  href={getProductionUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all font-medium"
                 >
-                  {project.subdomain ? `${project.subdomain}.localhost` : 'localhost:3000'}
+                  {project.subdomain ? `${project.subdomain}.localhost:${latestSuccessfulDeployment?.port || '3000'}` : 'Not Deployed'}
                 </a>
               </div>
             </div>
@@ -452,10 +499,10 @@ const ProjectDetail = () => {
           <div className="px-6 py-4 border-b-2 border-black-900 dark:border-white-100 flex justify-between items-center">
             <h2 className="text-xl font-bold text-black-900 dark:text-white-100">All Deployments</h2>
             <button
-              onClick={triggerDeployment}
+              onClick={showDeploymentStatus}
               className="group relative inline-flex items-center px-3 py-2 border-2 border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 text-sm font-bold rounded-none transition-all duration-200 overflow-hidden"
             >
-              <span className="relative z-10">Deploy</span>
+              <span className="relative z-10">{deployments.length > 0 ? 'View Status' : 'Deploy'}</span>
             </button>
           </div>
           {deployments.length === 0 ? (
@@ -466,7 +513,7 @@ const ProjectDetail = () => {
               <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-2">No deployments yet</h3>
               <p className="text-sm mb-4 font-medium">Deploy your project to see it live on the web.</p>
               <button
-                onClick={triggerDeployment}
+                onClick={triggerNewDeployment}
                 className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 text-sm font-bold rounded-none transition-all duration-200 overflow-hidden"
               >
                 <span className="relative z-10">Deploy Now</span>
@@ -553,7 +600,7 @@ const ProjectDetail = () => {
         </div>
       )}
 
-      {activeTab === 'settings' && (
+      {activeTab === 'environment' && (
         <div className="space-y-8">
           {/* Environment Variables */}
           <div className="bg-white-100 dark:bg-black-900 shadow-md rounded-none overflow-hidden border-2 border-black-200 dark:border-white-700">
@@ -612,9 +659,7 @@ const ProjectDetail = () => {
                           </Link>
                           <button
                             className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                            onClick={() => {
-                              // Handle delete env var
-                            }}
+                            onClick={() => handleDeleteEnvVar(envVar._id)}
                           >
                             Delete
                           </button>
@@ -629,8 +674,8 @@ const ProjectDetail = () => {
         </div>
       )}
 
-      {/* Delete Deployment Confirmation Modal */}
-      {deleteModalOpen && deploymentToDelete && (
+      {/* Generic Delete Confirmation Modal */}
+      {deleteModalOpen && itemToDelete && (
         <div className="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
           <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity" aria-hidden="true">
@@ -646,34 +691,30 @@ const ProjectDetail = () => {
                     <Trash2 className="h-6 w-6 text-red-600 dark:text-red-400" />
                   </div>
                   <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">
-                      Delete deployment
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100" id="modal-title">
+                      {`Delete ${deleteType === 'deployment' ? 'Deployment' : 'Environment Variable'}`}
                     </h3>
                     <div className="mt-2">
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Are you sure you want to delete this deployment? All deployment data including logs will be permanently removed. This action cannot be undone.
+                        Are you sure you want to delete this {deleteType === 'deployment' ? 'deployment' : 'environment variable'}? This action cannot be undone.
                       </p>
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-                  onClick={confirmDeleteDeployment}
+                  onClick={confirmDelete}
                   disabled={deleteLoading}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
                 >
                   {deleteLoading ? 'Deleting...' : 'Delete'}
                 </button>
                 <button
                   type="button"
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                  onClick={() => {
-                    setDeleteModalOpen(false);
-                    setDeploymentToDelete(null);
-                  }}
-                  disabled={deleteLoading}
+                  onClick={() => setDeleteModalOpen(false)}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                 >
                   Cancel
                 </button>
@@ -684,7 +725,7 @@ const ProjectDetail = () => {
       )}
 
       {/* Delete Project Confirmation Modal */}
-      {deleteModalOpen && !deploymentToDelete && (
+      {deleteModalOpen && !itemToDelete && (
         <div className="fixed z-10 inset-0 overflow-y-auto">
           <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity" aria-hidden="true">

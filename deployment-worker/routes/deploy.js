@@ -1,105 +1,114 @@
 const express = require('express');
-const { processJob } = require('../services/jobProcessor.js');
-const logger = require('../utils/logger.js');
-
 const router = express.Router();
+const jobProcessor = require('../services/jobProcessor');
+const { cleanupProjectContainers } = require('../utils/dockerHelpers');
+const logger = require('../utils/logger');
 
-/**
- * POST /api/deploy
- * Handle deployment requests from backend
- */
-router.post('/', async (req, res) => {
+// Health check endpoint
+router.get('/', (req, res) => {
+    res.json({
+        status: 'ok',
+        message: 'Deployment worker is running',
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Process deployment job
+router.post('/job', async (req, res) => {
+        const { deploymentId, projectId, repoUrl, branch, stack, subdomain, envVars, userEmail, token } = req.body;
+
+    // Validate required fields
+    if (!deploymentId || !projectId || !repoUrl || !stack || !subdomain) {
+        return res.status(400).json({
+            success: false,
+            message: 'Missing required fields: deploymentId, projectId, repoUrl, stack, subdomain'
+        });
+    }
+
     try {
-        const {
-            deploymentId,
-            projectId,
-            repoUrl,
-            branch,
-            stack,
-            subdomain,
-            userEmail,
+        logger.info(`Received deployment job for project ${projectId}`);
+        
+        // Process the job asynchronously
+                jobProcessor.processJob({
             token,
-            envVars,
-            buildCommand,
-            startCommand,
-            metadata
-        } = req.body;
-
-        // Validate required fields
-        if (!deploymentId || !projectId || !repoUrl || !stack || !subdomain || !token) {
-            return res.status(400).json({
-                success: false,
-                message: 'Missing required fields: deploymentId, projectId, repoUrl, stack, subdomain, token'
-            });
-        }
-
-        logger.info(`Received deployment request for project ${projectId}, deployment ${deploymentId}`);
-
-        // Process deployment job asynchronously
-        processJob({
             deploymentId,
             projectId,
             repoUrl,
             branch: branch || 'main',
             stack,
             subdomain,
-            userEmail: userEmail || 'user@example.com',
-            token,
-            envVars: envVars || {},
-            buildCommand: buildCommand || 'npm install && npm run build',
-            startCommand: startCommand || 'npm start',
-            metadata: metadata || {}
-        }).catch(error => {
-            logger.error(`Deployment job failed for ${deploymentId}:`, error);
+                        envVars: envVars || [],
+            userEmail
         });
 
         res.json({
             success: true,
             message: 'Deployment job queued successfully',
-            deploymentId,
-            status: 'queued'
+            deploymentId
         });
-
     } catch (error) {
-        logger.error('Deployment API error:', error);
+        logger.error('Failed to queue deployment job:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to queue deployment',
+            message: 'Failed to queue deployment job',
             error: error.message
         });
     }
 });
 
-/**
- * POST /api/deploy/status
- * Update deployment status
- */
-router.post('/status', async (req, res) => {
+// Cleanup project Docker resources
+router.delete('/cleanup/:projectId', async (req, res) => {
+    const { projectId } = req.params;
+    const { subdomain } = req.body;
+
+    // Validate required fields
+    if (!projectId || !subdomain) {
+        return res.status(400).json({
+            success: false,
+            message: 'Missing required fields: projectId and subdomain'
+        });
+    }
+
     try {
-        const { deploymentId, status, message } = req.body;
-
-        if (!deploymentId || !status) {
-            return res.status(400).json({
-                success: false,
-                message: 'Missing required fields: deploymentId, status'
-            });
-        }
-
-        logger.info(`Status update for deployment ${deploymentId}: ${status}`);
-
-        // Here you would typically update the deployment status in your database
-        // For now, we'll just log it and return success
-
+        logger.info(`Received cleanup request for project ${projectId} with subdomain ${subdomain}`);
+        
+        const result = await cleanupProjectContainers(projectId, subdomain);
+        
         res.json({
             success: true,
-            message: 'Status updated successfully'
+            message: 'Docker resources cleaned up successfully',
+            data: result
         });
-
     } catch (error) {
-        logger.error('Status update error:', error);
+        logger.error(`Failed to cleanup Docker resources for project ${projectId}:`, error);
         res.status(500).json({
             success: false,
-            message: 'Failed to update status',
+            message: 'Failed to cleanup Docker resources',
+            error: error.message
+        });
+    }
+});
+
+// Update deployment status
+router.put('/status/:deploymentId', async (req, res) => {
+    const { deploymentId } = req.params;
+    const { status, message, logs } = req.body;
+
+    try {
+        logger.info(`Updating deployment status for ${deploymentId}: ${status}`);
+        
+        // Here you would typically update the deployment status in your database
+        // For now, we'll just log it
+        
+        res.json({
+            success: true,
+            message: 'Deployment status updated successfully'
+        });
+    } catch (error) {
+        logger.error('Failed to update deployment status:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update deployment status',
             error: error.message
         });
     }

@@ -88,17 +88,16 @@ const processJob = async (job) => {
     const logPath = path.join(CONFIG.LOG_DIR, `${deploymentId}.log`);
 
     try {
-        // Update deployment status to running
-        await updateDeploymentStatus(deploymentId, "running", token);
-        
         // Send deployment started notification
         await sendDeploymentNotification(userEmail, projectId, deploymentId, "started");
+
         // === Step 1: Clone Repository ===
+        // The deployment status is 'pending' by default.
         await logStep(projectId, deploymentId, "setup", "Cloning repository", token);
         const repoInfo = await cloneRepo(repoUrl, projectId);
         const localPath = repoInfo.path;
         const uniqueRepoId = repoInfo.uniqueId;
-        
+
         logger.info(`Repository cloned to: ${localPath} with unique ID: ${uniqueRepoId}`);
 
         // Update deployment with commit information
@@ -112,6 +111,7 @@ const processJob = async (job) => {
         await logStep(projectId, deploymentId, "setup", `Repository cloned - ${repoInfo.commitMessage.substring(0, 50)}...`, token);
 
         // === Step 2: AI Review ===
+        await updateDeploymentStatus(deploymentId, "reviewing", token);
         await logStep(projectId, deploymentId, "setup", "Starting AI code review", token);
         const aiReviewResult = await analyzeRepo(localPath, deploymentId);
         const { verdict, issues, issueCount, severity_breakdown, linter_count, ai_count } = aiReviewResult;
@@ -126,7 +126,7 @@ const processJob = async (job) => {
         if (verdict === "deny") {
             const securityIssues = severity_breakdown?.security || 0;
             const errorIssues = severity_breakdown?.error || 0;
-            
+
             if (securityIssues === 0 && errorIssues === 0) {
                 console.log(`[AI Review] Overriding deny verdict - no critical issues found`);
                 // Continue with deployment
@@ -143,13 +143,14 @@ const processJob = async (job) => {
             await logStep(projectId, deploymentId, "warning", `AI flagged for manual review: ${issueCount} issues found (${linter_count} linter, ${ai_count} AI)`, token);
             fs.appendFileSync(logPath, `AI_REVIEW_MANUAL: ${JSON.stringify(aiReviewResult, null, 2)}\n`);
             await sendDeploymentNotification(userEmail, projectId, deploymentId, "ai_manual_review");
-            await updateDeploymentStatus(deploymentId, "pending_review", token);
+            await updateDeploymentStatus(deploymentId, "failed", token, { reason: "Manual review required" });
             return;
         }
 
         await logStep(projectId, deploymentId, "setup", `AI review passed: ${issueCount} minor issues found`, token);
 
         // === Step 3: Fetch and Inject Environment Variables ===
+        await updateDeploymentStatus(deploymentId, "configuring", token);
         await logStep(projectId, deploymentId, "config", "Fetching environment variables", token);
         const envVars = await fetchEnvVars(projectId, token, logPath);
         const envResult = await injectEnv(localPath, envVars, projectId);
@@ -161,23 +162,24 @@ const processJob = async (job) => {
         }
 
         // === Step 4: Build and Run Container ===
+        await updateDeploymentStatus(deploymentId, "building", token);
         await logStep(projectId, deploymentId, "deploy", "Starting container deployment", token);
         await cleanupExistingContainer(containerName);
         const dockerLog = await deployContainer(localPath, stack, subdomain, projectId, deploymentId);
-        
+
         // Log the custom domain URL
         const PORT_CONFIG = {
             mern: { backend: 12000, frontend: 12001 },
             django: { backend: 13000 },
             flask: { backend: 14000 },
         };
-        
+
         const ports = PORT_CONFIG[stack?.toLowerCase()];
         if (ports) {
-            const customUrl = stack?.toLowerCase() === 'mern' && ports.frontend 
+            const customUrl = stack?.toLowerCase() === 'mern' && ports.frontend
                 ? `http://${subdomain}.localhost:${ports.frontend}`
                 : `http://${subdomain}.localhost:${ports.backend}`;
-            
+
             await logStep(projectId, deploymentId, "deploy", `Application deployed at: ${customUrl}`, token);
             logger.info(`Deployment ${deploymentId} accessible at: ${customUrl}`);
         }
@@ -215,10 +217,9 @@ const handleDeploymentError = async (error, projectId, deploymentId, userEmail, 
             type: "error",
             content: `Deployment failed: ${error.message}`,
             timestamp: new Date().toISOString()
+        }, {
+            headers: { 'Authorization': `Bearer ${token}` }
         });
-
-        await updateDeploymentStatus(deploymentId, "failed", token);
-        await sendDeploymentNotification(userEmail, projectId, deploymentId, "failed");
     } catch (err) {
         console.error("Error handling failed:", err.message);
     }

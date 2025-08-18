@@ -25,7 +25,7 @@ const getLogs = async (req, res) => {
 
     try {
         const logs = await Log.find({ deploymentId }).sort({ createdAt: 1 });
-        res.json(logs);
+                res.json({ success: true, data: logs });
     } catch (err) {
         console.error("Log fetch error:", err);
         res.status(500).json({ message: "Failed to fetch logs" });

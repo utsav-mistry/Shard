@@ -21,17 +21,21 @@ const getDeploymentUrl = (subdomain) => {
   const protocol = window.location.protocol;
   const hostname = window.location.hostname;
   const port = window.location.port ? `:${window.location.port}` : '';
-  
-  // Check if we're in development
+
   const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
-  
+
   if (isLocalhost) {
-    // For local development, use the current host with the subdomain as a path
-    return `${protocol}//${hostname}${port}/${subdomain}`;
+    // Correctly format for local development with subdomain
+    return `${protocol}//${subdomain}.${hostname}${port}`;
   }
-  
-  // For production, use subdomain as a subdomain
-  return `${protocol}//${subdomain}.${hostname}${port}`;
+
+  // For production, format with subdomain
+  const parts = hostname.split('.');
+  if (parts.length > 2) {
+    parts.shift(); // remove current subdomain if any
+  }
+  const baseHostname = parts.join('.');
+  return `${protocol}//${subdomain}.${baseHostname}${port}`;
 };
 
 const DeploymentDetail = () => {
@@ -48,7 +52,7 @@ const DeploymentDetail = () => {
         setLoading(true);
 
         // Fetch deployment details first with standardized API path
-        const deploymentResponse = await api.get(`/api/deploy/${id}`);
+        const deploymentResponse = await api.get(`/api/deployments/${id}`);
 
         // Handle standardized response
         if (deploymentResponse.data && deploymentResponse.data.success) {
@@ -56,7 +60,8 @@ const DeploymentDetail = () => {
           setDeployment(deploymentData);
 
           // Then fetch project details using the deployment's projectId
-          const projectResponse = await api.get(`/api/projects/${deploymentData.projectId}`);
+          const projectId = deploymentData.projectId?._id || deploymentData.projectId;
+          const projectResponse = await api.get(`/api/projects/${projectId}`);
 
           // Handle standardized project response
           if (projectResponse.data && projectResponse.data.success) {
@@ -224,7 +229,7 @@ const DeploymentDetail = () => {
           </div>
           <div className="flex items-center space-x-4">
             <Link
-              to="/deployments"
+              to="/app/deployments"
               className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden hover:scale-[1.02] active:scale-95"
             >
               <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
@@ -264,7 +269,7 @@ const DeploymentDetail = () => {
                     <dd className="mt-1 text-sm">
                       {deployment.commitHash ? (
                         <a
-                          href={`https://github.com/${project?.repo}/commit/${deployment.commitHash}`}
+                          href={`${project?.repoUrl}/commit/${deployment.commitHash}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center border-b-2 border-black-900 dark:border-white-100 hover:border-transparent hover:bg-black-900 hover:text-white-100 dark:hover:bg-white-100 dark:hover:text-black-900 px-1 transition-colors duration-200 font-bold"
@@ -294,25 +299,43 @@ const DeploymentDetail = () => {
             {/* Actions */}
             <div className="flex flex-wrap gap-4">
               <Link
-                to={`/deployments/${deployment._id}/logs`}
+                to={`/app/deployments/${deployment._id}/logs`}
                 className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden hover:scale-[1.02] active:scale-95"
               >
                 <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
                 <span className="relative z-10">View Logs</span>
               </Link>
               <Link
-                to={`/deployments/${deployment._id}/progress`}
+                to={`/app/deployments/${deployment._id}/progress`}
                 className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden hover:scale-[1.02] active:scale-95"
               >
                 <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
                 <span className="relative z-10">View Progress</span>
               </Link>
+              <button
+                onClick={async () => {
+                  try {
+                    await api.post(`/api/deployments/${deployment._id}/redeploy`, {});
+                    navigate('app/deployments');
+                  } catch (err) {
+                    console.error('Error redeploying:', err);
+                    setError('Failed to redeploy');
+                  }
+                }}
+                className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden hover:scale-[1.02] active:scale-95"
+              >
+                <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
+                <span className="relative z-10 flex items-center">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Redeploy
+                </span>
+              </button>
               {deployment.status === 'failed' && (
                 <button
                   onClick={async () => {
                     try {
-                      await api.post(`/api/deploy/retry/${deployment._id}`, {});
-                      navigate('/deployments');
+                      await api.post(`/api/deployments/retry/${deployment._id}`, {});
+                      navigate('app/deployments');
                     } catch (err) {
                       console.error('Error retrying deployment:', err);
                       setError('Failed to retry deployment');
@@ -332,26 +355,7 @@ const DeploymentDetail = () => {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Deployment URL */}
-            {deployment.status === 'success' && project.subdomain && (
-              <div className="border-2 border-black-900 dark:border-white-100">
-                <div className="px-6 py-4 border-b-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900">
-                  <h3 className="text-lg font-bold text-black-900 dark:text-white-100">Live Site</h3>
-                </div>
-                <div className="p-6">
-                  <a
-                    href={getDeploymentUrl(project.subdomain)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center border-b-2 border-black-900 dark:border-white-100 hover:border-transparent hover:bg-black-900 hover:text-white-100 dark:hover:bg-white-100 dark:hover:text-black-900 px-1 transition-colors duration-200 font-bold"
-                  >
-                    {getDeploymentUrl(project.subdomain)}
-                    <ExternalLink className="ml-1 h-3 w-3" />
-                  </a>
-                </div>
-              </div>
-            )}
-
+            
             {/* AI Code Review Results */}
             {deployment.aiReviewResults && (
               <div className="border-2 border-black-900 dark:border-white-100">

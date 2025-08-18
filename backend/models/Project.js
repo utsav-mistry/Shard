@@ -10,6 +10,20 @@ const ProjectSchema = new mongoose.Schema(
             required: [true, 'Owner ID is required'],
             index: true,
         },
+        settings: {
+            buildCommand: {
+                type: String,
+                default: 'npm install && npm run build'
+            },
+            startCommand: {
+                type: String,
+                default: 'npm start'
+            },
+            envVars: [{
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'EnvVar'
+            }]
+        },
         name: {
             type: String,
             required: [true, 'Project name is required'],
@@ -49,22 +63,6 @@ const ProjectSchema = new mongoose.Schema(
             type: String,
             enum: ['active', 'inactive', 'suspended', 'deleted'],
             default: 'active',
-        },
-        settings: {
-            // Auto-deploy feature removed - deployments are manual only
-            buildCommand: {
-                type: String,
-                default: 'npm install && npm run build',
-            },
-            startCommand: {
-                type: String,
-                default: 'npm start',
-            },
-            envVars: [{
-                key: { type: String, required: true },
-                value: { type: String, required: true },
-                isSecret: { type: Boolean, default: false },
-            }],
         },
         lastDeployedAt: Date,
         lastDeploymentStatus: {

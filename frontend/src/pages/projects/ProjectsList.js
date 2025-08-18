@@ -130,7 +130,7 @@ const ProjectsList = () => {
             <div 
               key={project._id} 
               className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none p-6 hover:shadow-xl hover:shadow-black/20 dark:hover:shadow-white/20 hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer group shadow-lg shadow-black/10 dark:shadow-white/10"
-              onClick={() => window.location.href = `/app/projects/${project._id}`}
+              onClick={() => window.location.href = `/app/projects/${project._id}?tab=deployments`}
             >
               <div className="flex items-start justify-between mb-6">
                 <div className="flex-1 min-w-0">
@@ -157,7 +157,7 @@ const ProjectsList = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    window.location.href = `/app/deployments/new/${project._id}`;
+                    window.location.href = `/app/projects/${project._id}`;
                   }}
                   className="group relative flex-1 inline-flex items-center justify-center px-4 py-2.5 text-sm font-bold bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 hover:text-black-900 dark:hover:text-white-100 rounded-none border-2 border-black-900 dark:border-white-100 transition-all duration-200 overflow-hidden"
                 >

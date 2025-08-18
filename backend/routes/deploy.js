@@ -1,5 +1,5 @@
 const express = require("express");
-const { createDeployment, getDeployments, updateDeploymentStatus, updateDeploymentStep, deleteDeployment } = require("../controllers/deployController");
+const { createDeployment, getDeployments, updateDeploymentStatus, updateDeploymentStep, deleteDeployment, redeployDeployment } = require("../controllers/deployController");
 const { authenticate } = require("../middleware/auth");
 const { validateDeployment, sanitizeBody } = require("../utils/validation");
 
@@ -30,6 +30,9 @@ router.post("/update-step", protect, updateDeploymentStep);
 
 // Delete deployment
 router.delete("/:id", protect, deleteDeployment);
+
+// Redeploy a previous deployment
+router.post("/:id/redeploy", protect, redeployDeployment);
 
 // Update deployment with AI review results
 router.post('/ai-results', protect, async (req, res) => {

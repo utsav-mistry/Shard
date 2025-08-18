@@ -31,8 +31,8 @@ const NewEnvironmentVariable = () => {
     if (!key.trim()) {
       setKeyError('Key is required');
       isValid = false;
-    } else if (!/^[A-Za-z0-9_]+$/.test(key)) {
-      setKeyError('Key can only contain letters, numbers, and underscores');
+    } else if (!/^[A-Z_][A-Z0-9_]*$/.test(key)) {
+      setKeyError('Key must be in UPPER_SNAKE_CASE (e.g., API_KEY, DATABASE_URL) and start with a letter or underscore', 'error');
       isValid = false;
     }
     
@@ -56,20 +56,20 @@ const NewEnvironmentVariable = () => {
       setLoading(true);
       setError(null);
       
-      const response = await api.post('/api/env', {
-        projectId,
-        key: key.trim(),
+      const response = await api.post(`/api/projects/${projectId}/env`, {
+        key: key.trim().toUpperCase(), // Ensure key is uppercase
         value: value.trim(),
-        secret: isSecret
+        projectId: projectId // Include projectId in the request body
       });
       
       // Handle standardized response
       if (response.data && response.data.success) {
-        // Navigate back to environment variables list with success message
-        navigate(`/projects/${projectId}/env`, {
+        // Navigate back to project detail page with success message
+        navigate(`/app/projects/${projectId}`, {
           state: {
             message: 'Environment variable created successfully',
-            type: 'success'
+            type: 'success',
+            activeTab: 'settings'
           }
         });
       } else {

@@ -27,14 +27,14 @@ const LogsList = () => {
 
                 // Fetch all data in parallel using unified API utility
                 const [logsResponse, projectsResponse, deploymentsResponse] = await Promise.all([
-                    api.get('/logs'),
-                    api.get('/projects'),
-                    api.get('/deploy')
+                    api.get('/api/logs'),
+                    api.get('/api/projects'),
+                    api.get('/api/deployments')
                 ]);
 
-                setLogs(logsResponse.data);
-                setProjects(projectsResponse.data);
-                setDeployments(deploymentsResponse.data);
+                setLogs(logsResponse.data.success ? logsResponse.data.data : logsResponse.data);
+                setProjects(projectsResponse.data.success ? projectsResponse.data.data : projectsResponse.data);
+                setDeployments(deploymentsResponse.data.success ? deploymentsResponse.data.data : deploymentsResponse.data);
                 setLoading(false);
             } catch (err) {
                 console.error('Error fetching logs:', err);
@@ -422,7 +422,7 @@ const LogsList = () => {
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="text-sm font-bold text-black-900 dark:text-white-100">
                                                     <Link
-                                                        to={`/projects/${log.projectId}`}
+                                                        to={`/app/projects/${log.projectId}`}
                                                         className="border-b-2 border-transparent hover:border-black-900 dark:hover:border-white-100 transition-all duration-200"
                                                     >
                                                         {getProjectName(log.projectId)}

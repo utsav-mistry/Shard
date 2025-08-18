@@ -1,4 +1,7 @@
-const Project = require("../models/Project");
+const Project = require('../models/Project');
+const Deployment = require('../models/Deployment');
+const EnvVar = require('../models/EnvVar');
+const { encrypt } = require('../utils/encryptor');
 const { generateSubdomain } = require("../services/subdomainService");
 const logger = require('../utils/logger');
 
@@ -74,7 +77,8 @@ const logger = require('../utils/logger');
 
 // Create New Project
 const createProject = async (req, res) => {
-    const { name, repoUrl, framework, branch = 'main', description } = req.body;
+    const { name, repoUrl, framework, branch = 'main', description, environmentVariables = [] } = req.body;
+    const ownerId = req.user._id;
 
     const logContext = {
         userId: req.user._id,
@@ -86,27 +90,180 @@ const createProject = async (req, res) => {
     try {
         logger.info('Creating new project', logContext);
 
+        // Validate input
+        if (!name || !repoUrl || !framework) {
+            logger.error('Missing required fields', {
+                ...logContext,
+                error: 'Missing required fields',
+                details: {
+                    name: !name ? 'Project name is required' : undefined,
+                    repoUrl: !repoUrl ? 'Repository URL is required' : undefined,
+                    framework: !framework ? 'Framework is required' : undefined
+                }
+            });
+
+            return res.apiValidationError(
+                {
+                    name: !name ? 'Project name is required' : undefined,
+                    repoUrl: !repoUrl ? 'Repository URL is required' : undefined,
+                    framework: !framework ? 'Framework is required' : undefined
+                },
+                'Missing required fields'
+            );
+        }
+
         // Generate unique subdomain
         const subdomain = generateSubdomain(name);
         logContext.subdomain = subdomain;
 
         // Create new project document
         const project = await Project.create({
-            ownerId: req.user._id,
+            ownerId,
             name,
             description,
             repoUrl,
             framework,
             branch,
             subdomain,
+            status: 'active',
         });
+
+        // Save environment variables
+        const envObjectForJob = {};
+        if (environmentVariables && Array.isArray(environmentVariables) && environmentVariables.length > 0) {
+            const envPromises = environmentVariables.map(async (env) => {
+                if (env.key && env.value) {
+                    const encryptedValue = encrypt(env.value);
+                    await EnvVar.create({
+                        projectId: project._id,
+                        key: env.key.toUpperCase(),
+                        value: encryptedValue,
+                    });
+                    envObjectForJob[env.key.toUpperCase()] = env.value; // Use unencrypted for job
+                }
+            });
+            await Promise.all(envPromises);
+        }
 
         logger.info('Project created successfully', {
             ...logContext,
             projectId: project._id
         });
 
-        return res.apiCreated(project, 'Project created successfully');
+        // Auto-create first deployment (Vercel-like flow)
+        try {
+            const axios = require('axios');
+            const logService = require('../services/logService');
+
+            // Create initial deployment record
+            const Deployment = require('../models/Deployment');
+            const deployment = await Deployment.create({
+                projectId: project._id,
+                status: "pending",
+                branch: branch,
+                commitHash: 'latest',
+                commitMessage: `Initial deployment of ${name}`,
+                userEmail: req.user.email,
+                createdAt: new Date()
+            });
+
+            // Prepare job for deployment worker
+            const job = {
+                projectId: project._id,
+                deploymentId: deployment._id,
+                repoUrl: project.repoUrl,
+                stack: project.framework,
+                subdomain: project.subdomain,
+                branch: branch,
+                commitHash: 'latest',
+                envVars: envObjectForJob, // Pass saved env vars
+                userEmail: req.user.email,
+                token: req.headers.authorization?.replace('Bearer ', ''),
+                isInitialDeployment: true
+            };
+
+            // Log deployment start
+            await logService.addLog(project._id, deployment._id, "build", "Initial deployment started");
+
+            // Start AI review process
+            await logService.addLog(project._id, deployment._id, "ai-review", "Starting AI code review");
+
+            try {
+                const aiReviewResponse = await axios.post(
+                    `${process.env.AI_SERVICE_URL || 'http://localhost:8000'}/review/`,
+                    { projectId: project._id.toString() },
+                    { timeout: 60000 }
+                );
+
+                const { verdict, issueCount } = aiReviewResponse.data;
+                await logService.addLog(project._id, deployment._id, "ai-review",
+                    `AI review completed: ${verdict} (${issueCount} issues found)`);
+
+                if (verdict === "deny") {
+                    deployment.status = "failed";
+                    deployment.finishedAt = new Date();
+                    await deployment.save();
+                    await logService.addLog(project._id, deployment._id, "ai-review",
+                        "Initial deployment blocked by AI review");
+                } else if (verdict === "manual_review") {
+                    deployment.status = "pending_review";
+                    await deployment.save();
+                    await logService.addLog(project._id, deployment._id, "ai-review",
+                        "Initial deployment requires manual review");
+                } else {
+                    // Proceed with deployment
+                    await logService.addLog(project._id, deployment._id, "ai-review",
+                        "AI review passed, proceeding with initial deployment");
+
+                    // Queue deployment job
+                    await axios.post(`${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/deploy/job`, job, {
+                        timeout: 10000,
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    await logService.addLog(project._id, deployment._id, "queue", "Initial deployment job queued");
+                }
+            } catch (aiError) {
+                await logService.addLog(project._id, deployment._id, "ai-review",
+                    `AI review failed: ${aiError.message}, proceeding with deployment`);
+
+                // Queue deployment despite AI review failure
+                await axios.post(`${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/deploy/job`, job, {
+                    timeout: 10000,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                await logService.addLog(project._id, deployment._id, "queue", "Initial deployment job queued");
+            }
+
+            logger.info('Initial deployment triggered successfully', {
+                ...logContext,
+                projectId: project._id,
+                deploymentId: deployment._id
+            });
+
+            // Return project with deployment info
+            return res.apiCreated({
+                ...project.toObject(),
+                initialDeployment: {
+                    _id: deployment._id,
+                    status: deployment.status
+                }
+            }, 'Project created and initial deployment started');
+
+        } catch (deployError) {
+            logger.error('Failed to trigger initial deployment', {
+                ...logContext,
+                projectId: project._id,
+                error: deployError.message
+            });
+
+            // Still return success for project creation, but note deployment failure
+            return res.apiCreated({
+                ...project.toObject(),
+                deploymentError: 'Initial deployment failed to start'
+            }, 'Project created successfully, but initial deployment failed');
+        }
     } catch (err) {
         logger.error('Failed to create project', {
             ...logContext,
@@ -323,15 +480,38 @@ const deleteProject = async (req, res) => {
             ? { _id: id }
             : { _id: id, ownerId: req.user._id };
 
-        const project = await Project.findOneAndDelete(query);
+        const project = await Project.findOne(query);
 
         if (!project) {
             logger.warn('Project not found for deletion', logContext);
             return res.apiNotFound('Project');
         }
 
+        // Cleanup Docker containers and images before deleting project
+        try {
+            logger.info('Cleaning up Docker resources for project', logContext);
+            const axios = require('axios');
+            const deploymentWorkerUrl = process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000';
+
+            await axios.delete(`${deploymentWorkerUrl}/api/deploy/cleanup/${id}`, {
+                data: { subdomain: project.subdomain },
+                timeout: 30000 // 30 second timeout for cleanup
+            });
+
+            logger.info('Docker resources cleaned up successfully', logContext);
+        } catch (dockerError) {
+            // Log the error but don't fail the project deletion
+            logger.warn('Failed to cleanup Docker resources, continuing with project deletion', {
+                ...logContext,
+                dockerError: dockerError.message
+            });
+        }
+
+        // Delete the project from database
+        await Project.findOneAndDelete(query);
+
         logger.info('Project deleted successfully', logContext);
-        return res.apiSuccess(null, 'Project deleted successfully');
+        return res.apiSuccess(null, 'Project and associated Docker resources deleted successfully');
     } catch (err) {
         logger.error('Failed to delete project', {
             ...logContext,

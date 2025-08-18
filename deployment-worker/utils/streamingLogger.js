@@ -115,12 +115,135 @@ class StreamingLogger {
      */
     emitLog(message, level = 'info', step = 'unknown') {
         const timestamp = new Date().toISOString();
+        
+        // Convert technical messages to user-friendly ones
+        const formatUserFriendlyMessage = (rawMessage, currentStep) => {
+            const msg = rawMessage.trim();
+            
+            // Git clone messages
+            if (msg.includes('Cloning into')) {
+                return 'Downloading your project code from repository...';
+            }
+            if (msg.includes('remote: Enumerating objects')) {
+                return 'Preparing to download project files...';
+            }
+            if (msg.includes('Receiving objects:') && msg.includes('%')) {
+                const match = msg.match(/(\d+)%/);
+                const percentage = match ? match[1] : '0';
+                return `Downloading project files... ${percentage}%`;
+            }
+            if (msg.includes('Resolving deltas:')) {
+                return 'Processing downloaded files...';
+            }
+            
+            // Docker build messages
+            if (msg.includes('Successfully built')) {
+                return 'Application built successfully!';
+            }
+            if (msg.includes('Successfully tagged')) {
+                return 'Application packaged and ready for deployment';
+            }
+            if (msg.startsWith('Step ') && msg.includes('FROM')) {
+                return 'Setting up build environment...';
+            }
+            if (msg.startsWith('Step ') && msg.includes('WORKDIR')) {
+                return 'Configuring workspace...';
+            }
+            if (msg.startsWith('Step ') && msg.includes('COPY')) {
+                return 'Copying application files...';
+            }
+            if (msg.startsWith('Step ') && msg.includes('RUN npm install')) {
+                return 'Installing project dependencies...';
+            }
+            if (msg.startsWith('Step ') && msg.includes('RUN yarn install')) {
+                return 'Installing project dependencies...';
+            }
+            if (msg.startsWith('Step ') && msg.includes('RUN npm run build')) {
+                return 'Building application for production...';
+            }
+            if (msg.startsWith('Step ') && msg.includes('RUN yarn build')) {
+                return 'Building application for production...';
+            }
+            if (msg.startsWith('Step ') && msg.includes('EXPOSE')) {
+                return 'Configuring network access...';
+            }
+            if (msg.startsWith('Step ') && msg.includes('CMD')) {
+                return 'Setting up application startup...';
+            }
+            if (msg.includes('---> Running in')) {
+                return 'Executing build step...';
+            }
+            if (msg.includes('Removing intermediate container')) {
+                return 'Cleaning up build artifacts...';
+            }
+            
+            // Docker run messages
+            if (msg.includes('docker run') && currentStep === 'deploy') {
+                return 'Starting your application container...';
+            }
+            if (msg.includes('Container') && msg.includes('started')) {
+                return 'Application is now running!';
+            }
+            
+            // npm/yarn output
+            if (msg.includes('npm WARN') || msg.includes('yarn warning')) {
+                return 'Installing dependencies (some warnings are normal)...';
+            }
+            if (msg.includes('added') && msg.includes('packages')) {
+                const match = msg.match(/added (\d+) packages/);
+                const count = match ? match[1] : 'multiple';
+                return `Installed ${count} dependencies successfully`;
+            }
+            
+            // Environment setup
+            if (msg.includes('Creating .env file')) {
+                return 'Setting up environment variables...';
+            }
+            if (msg.includes('Environment variables injected')) {
+                return 'Environment configuration applied';
+            }
+            
+            // Error handling
+            if (level === 'error') {
+                if (msg.includes('ENOENT') || msg.includes('No such file')) {
+                    return 'Missing required file - please check your project structure';
+                }
+                if (msg.includes('EACCES') || msg.includes('permission denied')) {
+                    return 'Permission error - deployment system needs access';
+                }
+                if (msg.includes('network') || msg.includes('timeout')) {
+                    return 'Network connectivity issue - retrying...';
+                }
+                return `Build error: ${msg}`;
+            }
+            
+            // Success messages
+            if (level === 'success') {
+                return `✅ ${msg}`;
+            }
+            
+            // Filter out very technical Docker output
+            if (msg.includes('sha256:') || msg.includes('digest:') || msg.length > 100) {
+                return null; // Skip overly technical messages
+            }
+            
+            // Return cleaned message for anything else
+            return msg;
+        };
+
+        const userFriendlyMessage = formatUserFriendlyMessage(message, step);
+        
+        // Skip null messages (filtered out technical noise)
+        if (userFriendlyMessage === null) {
+            return;
+        }
+
         const logEntry = {
             projectId: this.projectId,
             deploymentId: this.deploymentId,
             step,
             level,
-            message: message.trim(),
+            message: userFriendlyMessage,
             timestamp
         };
 
@@ -129,7 +252,7 @@ class StreamingLogger {
             this.socket.emit('deployment-log', logEntry);
         }
 
-        // Also log to console for debugging
+        // Also log to console for debugging (with original message)
         logger.info(`[${this.projectId}][${step}] ${message.trim()}`);
     }
 

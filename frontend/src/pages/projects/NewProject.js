@@ -165,17 +165,25 @@ const NewProject = () => {
         repoUrl: selectedRepo ? selectedRepo.html_url : 'https://github.com/example/repo',
         branch: selectedRepo ? selectedRepo.default_branch || 'main' : 'main'
       };
-      
+
       // Add description if available
       if (selectedRepo && selectedRepo.description) {
         projectData.description = selectedRepo.description;
       }
-      
+
       // Submit the project
       const response = await api.post('/api/projects', projectData);
 
+      const projectId = response.data.data._id;
+
+      // If there are env vars, submit them
+      const validEnvVars = formData.envVars.filter(env => env.key.trim() !== '');
+      if (validEnvVars.length > 0) {
+        await api.post(`/api/projects/${projectId}/env`, { envVars: validEnvVars });
+      }
+
       // Redirect to the project page
-      navigate(`/app/projects/${response.data.data._id}`);
+      navigate(`/app/projects/${projectId}`);
 
     } catch (error) {
       console.error('Error creating project:', error);
@@ -269,8 +277,8 @@ const NewProject = () => {
             value={formData.name}
             onChange={handleChange}
             className={`w-full p-3 border-2 ${fieldErrors.name
-                ? 'border-red-500'
-                : 'border-black dark:border-white focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-black focus:ring-black dark:focus:ring-white'
+              ? 'border-red-500'
+              : 'border-black dark:border-white focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-black focus:ring-black dark:focus:ring-white'
               } bg-white dark:bg-black text-black dark:text-white focus:outline-none`}
             placeholder="my-awesome-project"
           />
@@ -288,8 +296,8 @@ const NewProject = () => {
               value={formData.techStack}
               onChange={handleChange}
               className={`w-full p-3 border-2 ${fieldErrors.techStack
-                  ? 'border-red-500'
-                  : 'border-black dark:border-white focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-black focus:ring-black dark:focus:ring-white'
+                ? 'border-red-500'
+                : 'border-black dark:border-white focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-black focus:ring-black dark:focus:ring-white'
                 } bg-white dark:bg-black text-black dark:text-white focus:outline-none appearance-none`}
             >
               <option value="">Select a tech stack</option>

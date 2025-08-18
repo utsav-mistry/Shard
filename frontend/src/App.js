@@ -33,6 +33,7 @@ import ProjectDetail from './pages/projects/ProjectDetail';
 import NewProject from './pages/projects/NewProject';
 
 // Deployments pages
+import DeploymentsList from './pages/deployments/DeploymentsList';
 import DeploymentDetail from './pages/deployments/DeploymentDetail';
 import DeploymentProgress from './pages/deployments/DeploymentProgress';
 import DeploymentLogs from './pages/deployments/DeploymentLogs';
@@ -107,16 +108,18 @@ function App() {
                   <Route path="projects" element={<ProjectsList />} />
                   <Route path="projects/new" element={<NewProject />} />
                   <Route path="projects/import" element={<ImportRepository />} />
-                  <Route path="projects/:id" element={<ProjectDetail />}>
-                    <Route path="deployments/:deploymentId" element={<DeploymentDetail />} />
-                    <Route path="deployments/:deploymentId/progress" element={<DeploymentProgress />} />
-                    <Route path="deployments/:deploymentId/logs" element={<DeploymentLogs />} />
-                  </Route>
+                  <Route path="projects/:id" element={<ProjectDetail />} />
 
-                  {/* Standalone Deployment Routes */}
+                  {/* Deployment Routes */}
+                  <Route path="deployments" element={<DeploymentsList />} />
                   <Route path="deployments/:id" element={<DeploymentDetail />} />
                   <Route path="deployments/:id/progress" element={<DeploymentProgress />} />
                   <Route path="deployments/:id/logs" element={<DeploymentLogs />} />
+                  
+                  {/* Project-specific deployment routes */}
+                  <Route path="projects/:projectId/deployments/:deploymentId" element={<DeploymentDetail />} />
+                  <Route path="projects/:projectId/deployments/:deploymentId/progress" element={<DeploymentProgress />} />
+                  <Route path="projects/:projectId/deployments/:deploymentId/logs" element={<DeploymentLogs />} />
 
                   {/* Environment routes */}
                   <Route path="environment/:projectId" element={<EnvironmentVariables />} />

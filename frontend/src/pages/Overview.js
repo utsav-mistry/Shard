@@ -213,10 +213,11 @@ const Overview = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Projects */}
+      {/* Masonry Layout for Projects and Deployments */}
+      <div className="space-y-8">
+        {/* Recent Projects - Masonry Grid */}
         <div>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-black-900 dark:text-white-100">
               Recent Projects
             </h2>
@@ -242,25 +243,33 @@ const Overview = () => {
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
               {recentProjects.map((project) => (
                 <div
                   key={project._id}
-                  className="border-2 border-black-900 dark:border-white-100 rounded-none p-6 hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-200 cursor-pointer hover:scale-[1.01] active:scale-95 bg-white-100 dark:bg-black-900 shadow-sm"
+                  className="break-inside-avoid border-2 border-black-900 dark:border-white-100 rounded-none p-6 hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-200 cursor-pointer hover:scale-[1.01] active:scale-95 bg-white-100 dark:bg-black-900 shadow-sm mb-6"
                   onClick={() => navigate(`/app/projects/${project._id}`)}
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-bold text-black-900 dark:text-white-100 mb-1">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-bold text-black-900 dark:text-white-100 mb-1 truncate">
                         {project.name}
                       </h3>
-                      <p className="text-sm text-black-600 dark:text-white-400">
+                      <p className="text-sm text-black-600 dark:text-white-400 truncate">
                         {project.subdomain ? `${project.subdomain}.localhost` : project.repoUrl}
                       </p>
                     </div>
                     <div className="p-2 border-2 border-dotted border-gray-400 dark:border-gray-600 rounded-none shadow-sm">
-                      <ExternalLink className="w-5 h-5 text-black-900 dark:text-white-100" />
+                      <ExternalLink className="w-4 h-4 text-black-900 dark:text-white-100" />
                     </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center px-2 py-1 rounded-none text-xs font-bold border-2 bg-blue-50 text-blue-700 border-blue-400 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600">
+                      {project.framework?.toUpperCase() || 'UNKNOWN'}
+                    </span>
+                    <span className="text-xs text-black-600 dark:text-white-400 font-medium">
+                      {new Date(project.createdAt).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -268,9 +277,9 @@ const Overview = () => {
           )}
         </div>
 
-        {/* Recent Deployments */}
+        {/* Recent Deployments - Masonry Grid */}
         <div>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-black-900 dark:text-white-100">
               Recent Deployments
             </h2>
@@ -296,22 +305,27 @@ const Overview = () => {
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="columns-1 md:columns-2 lg:columns-4 gap-6 space-y-6">
               {recentDeployments.map((deployment) => (
                 <div
                   key={deployment._id}
-                  className="border-2 border-black-900 dark:border-white-100 rounded-none p-6 hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-200 cursor-pointer hover:scale-[1.01] active:scale-95 bg-white-100 dark:bg-black-900 shadow-sm"
+                  className="break-inside-avoid border-2 border-black-900 dark:border-white-100 rounded-none p-6 hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-200 cursor-pointer hover:scale-[1.01] active:scale-95 bg-white-100 dark:bg-black-900 shadow-sm mb-6"
                   onClick={() => navigate(`/app/deployments/${deployment._id}`)}
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-bold text-black-900 dark:text-white-100">
-                      {deployment.projectName || 'Unknown Project'}
+                    <h3 className="text-lg font-bold text-black-900 dark:text-white-100 truncate">
+                      {deployment._id?.substring(0, 6).toUpperCase() || 'DEPLOY'}
                     </h3>
                     {getStatusBadge(deployment.status)}
                   </div>
-                  <div className="flex items-center justify-between text-sm text-black-600 dark:text-white-400">
-                    <span className="font-medium">{deployment.commitHash?.substring(0, 8) || 'No commit'}</span>
-                    <span>{new Date(deployment.createdAt).toLocaleDateString()}</span>
+                  <div className="space-y-2">
+                    <div className="text-sm text-black-600 dark:text-white-400">
+                      <span className="font-medium">Project:</span> {deployment.projectName || 'Unknown'}
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-black-600 dark:text-white-400">
+                      <span className="font-medium">{deployment.commitHash?.substring(0, 8) || 'No commit'}</span>
+                      <span>{new Date(deployment.createdAt).toLocaleDateString()}</span>
+                    </div>
                   </div>
                 </div>
               ))}

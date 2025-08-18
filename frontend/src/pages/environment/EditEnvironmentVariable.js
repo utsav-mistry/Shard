@@ -27,7 +27,7 @@ const EditEnvironmentVariable = () => {
         setLoading(true);
         
         // Fetch environment variable details with standardized API path
-        const response = await api.get(`/api/env/id/${envId}`);
+        const response = await api.get(`/api/projects/${projectId}/env/${envId}`);
         
         // Handle standardized response
         if (response.data && response.data.success) {
@@ -85,7 +85,7 @@ const EditEnvironmentVariable = () => {
       setSaving(true);
       setError(null);
       
-      const response = await api.put(`/api/env/${envId}`, {
+      const response = await api.put(`/api/projects/${projectId}/env/${envId}`, {
         key: key.trim(),
         value: value.trim(),
         secret: isSecret

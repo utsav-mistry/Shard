@@ -22,12 +22,13 @@ const EnvironmentVariables = () => {
 
         // Fetch project details and environment variables in parallel
         const [projectResponse, envResponse] = await Promise.all([
-          navigate(`/app/projects/${projectId}`),
-          api.get(`/api/env/${projectId}`)
+          api.get(`/api/projects/${projectId}`),
+          api.get(`/api/projects/${projectId}/env`)
         ]);
 
-        // Handle standardized responses
-        if (projectResponse.data.success && envResponse.data.success) {
+        // Handle responses
+        if (projectResponse.data && projectResponse.data.success && 
+            envResponse.data && envResponse.data.success) {
           setProject(projectResponse.data.data);
           setEnvVars(envResponse.data.data || []);
           setLoading(false);
@@ -63,9 +64,9 @@ const EnvironmentVariables = () => {
     if (!envToDelete) return;
 
     try {
-      const response = await api.delete(`/api/env/${envToDelete._id}`);
+      const response = await api.delete(`/api/projects/${projectId}/env/${envToDelete._id}`);
 
-      // Handle standardized response
+      // Handle response
       if (response.data && response.data.success) {
         // Remove deleted env var from state
         setEnvVars(envVars.filter(env => env._id !== envToDelete._id));

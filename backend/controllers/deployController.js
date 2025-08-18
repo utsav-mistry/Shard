@@ -27,6 +27,12 @@ const createDeployment = async (req, res) => {
             return res.apiNotFound('Project');
         }
 
+        // Mark old deployments as inactive
+        await Deployment.updateMany(
+            { projectId: project._id, status: { $in: ['success', 'running', 'active'] } },
+            { status: 'inactive' }
+        );
+
         // Create Deployment record with additional metadata
         const deployment = await Deployment.create({
             projectId: project._id,
@@ -135,7 +141,7 @@ const createDeployment = async (req, res) => {
 
         // Step 2: Add job to worker queue (only if AI review passed or failed)
         try {
-            await axios.post(`${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/deploy`, job, {
+            await axios.post(`${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/deploy/job`, job, {
                 timeout: 10000,
                 headers: {
                     'Content-Type': 'application/json'
@@ -321,7 +327,7 @@ const createDeploymentFromProject = async ({
         // Send to deployment worker
         try {
             const response = await axios.post(
-                `${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/deploy`,
+                `${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/deploy/job`,
                 jobData,
                 { timeout: 10000 }
             );
@@ -363,7 +369,7 @@ const deleteDeployment = async (req, res) => {
         }
 
         // Check if user owns the project (and thus the deployment)
-        if (deployment.projectId.owner.toString() !== userId) {
+        if (deployment.projectId.ownerId.toString() !== userId) {
             return res.apiForbidden('You do not have permission to delete this deployment');
         }
 
@@ -376,10 +382,89 @@ const deleteDeployment = async (req, res) => {
         logger.info(`Deployment ${id} deleted by user ${userId}`);
 
         return res.apiSuccess(null, 'Deployment deleted successfully');
+    } catch (error) {
+        logger.error(`Error deleting deployment: ${error.message}`, { error });
+        return res.apiError('Failed to delete deployment', error);
+    }
+};
+
+// Redeploy a previous deployment
+const redeployDeployment = async (req, res) => {
+    try {
+        const { id } = req.params; // This is the deployment ID to redeploy
+
+        // Find the existing deployment
+        const existingDeployment = await Deployment.findById(id).populate('projectId');
+        if (!existingDeployment) {
+            return res.apiNotFound('Deployment not found');
+        }
+
+        const project = existingDeployment.projectId;
+
+        // Check ownership
+        if (project.ownerId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+            return res.apiForbidden('You do not have permission to redeploy this project');
+        }
+
+        // Create a new deployment record for the redeployment
+        const newDeployment = await Deployment.create({
+            projectId: project._id,
+            status: "pending",
+            branch: existingDeployment.branch,
+            commitHash: existingDeployment.commitHash,
+            commitMessage: `Redeploy of ${existingDeployment.commitHash.substring(0, 7)}`,
+            userEmail: req.user.email,
+            createdAt: new Date()
+        });
+
+        // Fetch env vars
+        const envVars = await envService.getEnvVars(project._id);
+        const envObject = {};
+        envVars.forEach(env => {
+            envObject[env.key] = env.value;
+        });
+
+        // Prepare job for deployment worker
+        const job = {
+            projectId: project._id,
+            deploymentId: newDeployment._id,
+            repoUrl: project.repoUrl,
+            stack: project.framework,
+            subdomain: project.subdomain,
+            branch: newDeployment.branch,
+            commitHash: newDeployment.commitHash,
+            envVars: envObject,
+            userEmail: req.user.email,
+            token: req.headers.authorization?.replace('Bearer ', '')
+        };
+
+        // Log and queue the job
+        await logService.addLog(project._id, newDeployment._id, "build", "Redeployment started");
+        
+        // No AI review on redeploy, just queue it
+        await axios.post(`${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/deploy/job`, job, {
+            timeout: 10000,
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        await logService.addLog(project._id, newDeployment._id, "queue", "Redeployment job queued");
+
+        // Update the new deployment status to 'queued'
+        newDeployment.status = 'queued';
+        await newDeployment.save();
+
+        logger.info(`Redeployment triggered for project ${project._id} by user ${req.user.email}`);
+        
+        return res.apiCreated({ 
+            _id: newDeployment._id,
+            deploymentId: newDeployment._id,
+            status: newDeployment.status,
+            projectId: project._id
+        }, "Redeployment started successfully");
 
     } catch (error) {
-        logger.error('Error deleting deployment:', error);
-        return res.apiServerError('Failed to delete deployment');
+        logger.error(`Error triggering redeployment: ${error.message}`, { error });
+        return res.apiServerError('Failed to trigger redeployment', error.message);
     }
 };
 
@@ -389,5 +474,6 @@ module.exports = {
     getDeployments,
     updateDeploymentStep,
     updateDeploymentStatus,
-    deleteDeployment
+    deleteDeployment,
+    redeployDeployment,
 };

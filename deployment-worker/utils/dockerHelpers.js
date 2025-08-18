@@ -194,4 +194,46 @@ const cleanupExistingContainer = async (containerName) => {
     }
 };
 
-module.exports = { deployContainer, cleanupExistingContainer, getCustomDomainUrl };
+const cleanupProjectContainers = async (projectId, subdomain) => {
+    try {
+        logger.info(`[Project ${projectId}] Starting cleanup of Docker resources`);
+        
+        // Stop and remove container by subdomain
+        try {
+            await execPromise(`docker rm -f ${subdomain}`);
+            logger.info(`[Project ${projectId}] Removed container: ${subdomain}`);
+        } catch (err) {
+            if (!err.message.includes("No such container")) {
+                logger.warn(`[Project ${projectId}] Failed to remove container ${subdomain}: ${err.message}`);
+            }
+        }
+
+        // Remove project-specific Docker image
+        const imageName = `shard-project-${projectId}`;
+        try {
+            await execPromise(`docker rmi ${imageName}`);
+            logger.info(`[Project ${projectId}] Removed image: ${imageName}`);
+        } catch (err) {
+            if (!err.message.includes("No such image")) {
+                logger.warn(`[Project ${projectId}] Failed to remove image ${imageName}: ${err.message}`);
+            }
+        }
+
+        // Clean up dangling images and volumes
+        try {
+            await execPromise(`docker image prune -f`);
+            await execPromise(`docker volume prune -f`);
+            logger.info(`[Project ${projectId}] Cleaned up dangling Docker resources`);
+        } catch (err) {
+            logger.warn(`[Project ${projectId}] Failed to cleanup dangling resources: ${err.message}`);
+        }
+
+        logger.info(`[Project ${projectId}] Docker cleanup completed successfully`);
+        return { success: true, message: 'Docker resources cleaned up successfully' };
+    } catch (error) {
+        logger.error(`[Project ${projectId}] Docker cleanup failed: ${error.message}`);
+        throw new Error(`Docker cleanup failed: ${error.message}`);
+    }
+};
+
+module.exports = { deployContainer, cleanupExistingContainer, cleanupProjectContainers, getCustomDomainUrl };

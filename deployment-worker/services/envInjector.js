@@ -75,7 +75,7 @@ module.exports = { injectEnv, fetchEnvVars };
 // Keeps env fetching logic centralized with env injection utilities
 async function fetchEnvVars(projectId, token, logPath) {
     try {
-        const response = await axios.get(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/env/${projectId}`, {
+                const response = await axios.get(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/projects/${projectId}/env`, {
             headers: { Authorization: `Bearer ${token}` },
             timeout: 10000
         });

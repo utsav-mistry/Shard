@@ -232,13 +232,13 @@ return (
           </span>
         </button>
         <Link
-          to="/deployments/new"
+          to="/app/projects/new"
           className="group relative inline-flex items-center px-4 py-2 bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 hover:text-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-white-100 hover:scale-[1.02] active:scale-95 rounded-none font-bold"
         >
           <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
           <span className="relative z-10 flex items-center transition-colors duration-200">
             <Plus className="h-4 w-4 mr-2" />
-            New Deployment
+            New Project
           </span>
         </Link>
       </div>
@@ -286,13 +286,13 @@ return (
           Get started by creating a new deployment.
         </p>
         <Link
-          to="/deployments/new"
+          to="/app/projects/new"
           className="group relative inline-flex items-center px-4 py-2 bg-black-900 text-white-100 dark:bg-white-100 dark:text-black-900 hover:text-black-900 dark:hover:text-white-100 font-bold hover:scale-105 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-white-100 rounded-none shadow-sm"
         >
           <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
           <span className="relative z-10 flex items-center transition-colors duration-200">
             <Plus className="h-4 w-4 mr-2" />
-            New Deployment
+            New Project
           </span>
         </Link>
       </div>
@@ -325,7 +325,7 @@ return (
                 <tr
                   key={deployment._id}
                   className="group hover:bg-black-900/5 dark:hover:bg-white-100/5 transition-colors cursor-pointer"
-                  onClick={() => navigate(`/deployments/${deployment._id}`)}
+                  onClick={() => navigate(`/app/projects`)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -382,7 +382,7 @@ return (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/deployments/${deployment._id}/progress`);
+                            navigate(`/app/deployments/${deployment._id}/progress`);
                           }}
                           className="group relative inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
                         >
@@ -393,7 +393,7 @@ return (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/deployments/${deployment._id}`);
+                          navigate(`/app/deployments/${deployment._id}`);
                         }}
                         className="group relative inline-flex items-center text-black-900 dark:text-white-100 hover:opacity-80 transition-opacity"
                       >

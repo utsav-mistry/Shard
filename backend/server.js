@@ -162,7 +162,8 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/deploy', deployRoutes);
 app.use('/api/deployments', deployRoutes); // Also mount at /api/deployments for frontend compatibility
 app.use('/api/admin', adminRoutes);
-app.use('/api/env', envRoutes);
+// Mount environment routes
+app.use('/api/projects/:projectId/env', envRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/github', githubRoutes);
 app.use('/api/notifications', notificationRoutes);
@@ -183,6 +184,11 @@ app.use(express.static('public', {
 // Set app locals
 app.locals.io = io;
 app.locals.log = log;
+
+// Helper function to broadcast deployment logs to subscribed clients
+const broadcastDeploymentLog = (deploymentId, logEntry) => {
+    io.to(`deployment-${deploymentId}`).emit('deployment-log', logEntry);
+};
 
 // Health dashboard route
 app.get('/dashboard', (req, res) => {
@@ -290,15 +296,13 @@ const getHealthMetrics = async () => {
 
 // Health metrics are now handled by the dedicated health route
 
-// Socket.IO connection for realtime health updates
+// Socket.IO connection for realtime health updates and deployment logs
 io.on('connection', (socket) => {
     const clientIp = socket.handshake.address;
     const clientId = socket.id;
 
     log.info(`Client connected: ${clientId} from ${clientIp}`);
     log.info(`Client transport: ${socket.conn.transport.name}`);
-    log.info(`Connection headers: ${JSON.stringify(socket.handshake.headers, null, 2)}`);
-    log.info(`Client transport state: ${JSON.stringify(socket.conn.transport.state)}`);
 
     // Log transport upgrade
     socket.conn.on('upgrade', () => {
@@ -310,14 +314,14 @@ io.on('connection', (socket) => {
         log.error(`Transport error for client ${clientId}:`, error);
     });
 
+    // HEALTH MONITORING FUNCTIONALITY
+    let healthInterval = null;
+
     // Send initial health data
     const sendHealthData = async () => {
         try {
-            log.info(`Sending health data to client ${clientId}`);
             const healthData = await getHealthMetrics();
-            socket.emit('health-data', healthData, (response) => {
-                log.info(`Received ACK from client ${clientId}:`, response);
-            });
+            socket.emit('health-data', healthData);
         } catch (error) {
             log.error(`Error sending health data to client ${clientId}:`, error);
             const errorData = {
@@ -341,19 +345,44 @@ io.on('connection', (socket) => {
         }
     };
 
-    // Send initial health data
-    sendHealthData();
+    // Handle health monitoring subscription
+    socket.on('subscribe-health', () => {
+        log.info(`Client ${clientId} subscribed to health updates`);
+        sendHealthData();
+        healthInterval = setInterval(sendHealthData, 5000);
+    });
 
-    // Set up realtime health updates every 5 seconds
-    const healthInterval = setInterval(sendHealthData, 5000);
+    // Handle health monitoring unsubscription
+    socket.on('unsubscribe-health', () => {
+        log.info(`Client ${clientId} unsubscribed from health updates`);
+        if (healthInterval) {
+            clearInterval(healthInterval);
+            healthInterval = null;
+        }
+    });
 
     // Handle client requesting health data
     socket.on('request-health', sendHealthData);
 
+    // DEPLOYMENT LOGS FUNCTIONALITY
+    // Handle deployment log subscription
+    socket.on('subscribe-deployment-logs', (deploymentId) => {
+        log.info(`Client ${clientId} subscribed to deployment logs for: ${deploymentId}`);
+        socket.join(`deployment-${deploymentId}`);
+    });
+
+    // Handle deployment log unsubscription
+    socket.on('unsubscribe-deployment-logs', (deploymentId) => {
+        log.info(`Client ${clientId} unsubscribed from deployment logs for: ${deploymentId}`);
+        socket.leave(`deployment-${deploymentId}`);
+    });
+
     // Clean up on disconnect
     socket.on('disconnect', () => {
         log.info(`Client disconnected: ${socket.id}`);
-        clearInterval(healthInterval);
+        if (healthInterval) {
+            clearInterval(healthInterval);
+        }
     });
 });
 

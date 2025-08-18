@@ -20,7 +20,7 @@ const DeploymentLogs = () => {
   const fetchData = async () => {
     try {
       // Fetch deployment details first
-      const deploymentResponse = await api.get(`/api/deploy/${id}`);
+      const deploymentResponse = await api.get(`/api/deployments/${id}`);
       const deploymentData = deploymentResponse.data.success ? deploymentResponse.data.data : deploymentResponse.data;
       setDeployment(deploymentData);
       
@@ -58,7 +58,7 @@ const DeploymentLogs = () => {
         clearInterval(refreshIntervalRef.current);
       }
     };
-  }, [id, fetchData]);
+  }, [id]);
 
   // Set up auto-refresh
   useEffect(() => {
@@ -76,7 +76,7 @@ const DeploymentLogs = () => {
         clearInterval(refreshIntervalRef.current);
       }
     };
-  }, [autoRefresh, deployment?.status, id, fetchData]);
+  }, [autoRefresh, deployment?.status]);
 
   // Scroll to bottom when logs update
   useEffect(() => {
@@ -383,7 +383,7 @@ const DeploymentLogs = () => {
       {/* Actions */}
       <div className="flex justify-between items-center">
         <Link
-          to={`/deployments/${id}`}
+          to={`/app/deployments/${id}`}
           className="inline-flex items-center px-4 py-2 border border-black-300 dark:border-black-600 shadow-sm text-sm font-medium rounded-md text-black-700 dark:text-black-200 bg-white dark:bg-black-700 hover:bg-black-50 dark:hover:bg-black-650 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-black-800"
         >
           Back to Deployment
@@ -393,7 +393,7 @@ const DeploymentLogs = () => {
           <button
             onClick={async () => {
               try {
-                await api.post(`/deploy/retry/${deployment._id}`, {});
+                await api.post(`/api/deployments/retry/${deployment._id}`, {});
                 navigate('/app/deployments');
               } catch (err) {
                 console.error('Error retrying deployment:', err);
