@@ -42,11 +42,18 @@ const injectEnv = async (projectPath, envVars, projectId) => {
         const envContent = validEnvVars
             .map(env => {
                 const key = env.key.trim();
-                const value = String(env.value)
-                    .replace(/\n/g, "\\n")
-                    .replace(/"/g, '\\"')
-                    .replace(/\$/g, '\\$');
-                return `${key}="${value}"`;
+                let value = String(env.value);
+                
+                // Only add quotes if the value contains spaces or special characters
+                if (value.includes(' ') || value.includes('\n') || value.includes('"') || value.includes('$')) {
+                    value = value
+                        .replace(/\n/g, "\\n")
+                        .replace(/"/g, '\\"')
+                        .replace(/\$/g, '\\$');
+                    return `${key}="${value}"`;
+                } else {
+                    return `${key}=${value}`;
+                }
             })
             .join("\n");
 
