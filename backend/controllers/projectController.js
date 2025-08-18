@@ -175,8 +175,7 @@ const getProjects = async (req, res) => {
                     .sort(sortOptions)
                     .skip(skip)
                     .limit(limitNum)
-                    .populate('ownerId', 'name email')
-                    .lean(),
+                    .populate('ownerId', 'name email'),
                 Project.countDocuments(query)
             ]);
         } catch (dbError) {

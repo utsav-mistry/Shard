@@ -56,12 +56,12 @@ const DeploymentProgress = () => {
   useEffect(() => {
     fetchData();
     
-    // Auto-refresh for active deployments
+    // Auto-refresh for active deployments - reduced frequency
     const interval = setInterval(() => {
       if (deployment && (deployment.status === 'pending' || deployment.status === 'running')) {
         fetchData();
       }
-    }, 3000);
+    }, 10000); // Changed from 3000ms to 10000ms (10 seconds)
 
     return () => clearInterval(interval);
   }, [id, deployment?.status]);
@@ -194,7 +194,7 @@ const DeploymentProgress = () => {
           <div className="flex items-center space-x-2">
             {deployment.status === 'success' && (
               <a
-                href={`https://${project.subdomain}.shard.dev`}
+                href={project.url || `http://localhost:3000`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"

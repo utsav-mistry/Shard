@@ -6,6 +6,40 @@ const Project = require('../models/Project');
 const { cache } = require('../services/cacheService');
 
 /**
+ * Get GitHub connection status for the current user
+ */
+exports.getStatus = (req, res) => {
+    try {
+        const { githubIntegrationToken, githubIntegrationUsername, githubIntegrationId } = req.user;
+        
+        if (!githubIntegrationToken || !githubIntegrationUsername) {
+            return res.json({
+                success: true,
+                data: {
+                    connected: false
+                }
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: {
+                connected: true,
+                username: githubIntegrationUsername,
+                id: githubIntegrationId,
+                avatar: req.user.avatar || `https://github.com/${githubIntegrationUsername}.png`
+            }
+        });
+    } catch (error) {
+        console.error('Error getting GitHub status:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get GitHub status'
+        });
+    }
+};
+
+/**
  * Initiate GitHub OAuth flow
  */
 exports.initiateAuth = (req, res) => {
@@ -31,7 +65,7 @@ exports.initiateAuth = (req, res) => {
             }
         } catch (error) {
             logger.error('State validation failed:', error);
-            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/integrations/github?error=auth_required`);
+            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/app/integrations/github?error=auth_required`);
         }
         
         const authUrl = new URL('https://github.com/login/oauth/authorize');
@@ -62,7 +96,7 @@ exports.handleCallback = async (req, res) => {
         const stateData = cache.get(`github:state:${state}`);
         if (!stateData || !stateData.userId) {
             logger.error('Invalid or expired state:', { state, stateData });
-            return res.redirect(`${frontendUrl}/integrations/github?error=invalid_state`);
+            return res.redirect(`${frontendUrl}/app/integrations/github?error=invalid_state`);
         }
         
         const userId = stateData.userId;
@@ -74,31 +108,24 @@ exports.handleCallback = async (req, res) => {
         
         // Update user with GitHub credentials
         const User = require('../models/User');
-        if (stateData.userId) {
-            await User.findByIdAndUpdate(stateData.userId, {
-                githubAccessToken: accessToken,
-                githubUsername: githubUser.login,
-                githubId: githubUser.id.toString(),
-                avatar: githubUser.avatar_url || undefined
-            });
-        }
+        await User.findByIdAndUpdate(userId, {
+            githubIntegrationToken: accessToken,
+            githubIntegrationUsername: githubUser.login,
+            githubIntegrationId: githubUser.id.toString(),
+            avatar: githubUser.avatar_url
+        });
         
-        // Store session data for immediate use
-        const sessionData = {
-            githubAccessToken: accessToken,
-            githubUsername: githubUser.login,
-            githubId: githubUser.id,
-            userId: stateData.userId,
-        };
-        
-        // Store in cache for 1 hour
-        cache.set(`github:session:${state}`, sessionData, 3600);
+        logger.info('Updated user with GitHub integration credentials:', {
+            userId,
+            githubIntegrationUsername: githubUser.login,
+            githubIntegrationId: githubUser.id
+        });
         
         // Redirect to frontend with success state
-        res.redirect(`${frontendUrl}/integrations/github/callback?state=${state}&success=true`);
+        res.redirect(`${frontendUrl}/app/integrations/github?success=true`);
     } catch (error) {
         logger.error('GitHub OAuth callback failed:', error);
-        res.redirect(`${frontendUrl}/integrations/github?error=auth_failed`);
+        res.redirect(`${frontendUrl}/app/integrations/github?error=auth_failed`);
     }
 };
 
@@ -356,3 +383,48 @@ function getCustomDomain(framework, subdomain) {
     
     return `http://localhost:${ports.backend}`;
 }
+
+/**
+ * Handle GitHub integration callback (separate from auth login)
+ */
+exports.handleIntegrationCallback = async (req, res) => {
+    const { code, state } = req.query;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    
+    try {
+        // Verify state for integration flow
+        const stateData = cache.get(`github:integration:${state}`);
+        if (!stateData || !stateData.userId) {
+            logger.error('Invalid or expired integration state:', { state, stateData });
+            return res.redirect(`${frontendUrl}/app/integrations?error=invalid_state`);
+        }
+        
+        const userId = stateData.userId;
+        cache.del(`github:integration:${state}`); // Clean up state after use
+        
+        // Exchange code for access token
+        const accessToken = await githubService.getAccessToken(code);
+        const githubUser = await githubService.getGitHubUser(accessToken);
+        
+        // Update user with GitHub credentials
+        const User = require('../models/User');
+        await User.findByIdAndUpdate(userId, {
+            githubIntegrationToken: accessToken,
+            githubIntegrationUsername: githubUser.login,
+            githubIntegrationId: githubUser.id.toString(),
+            avatar: githubUser.avatar_url
+        });
+        
+        logger.info('Updated user with GitHub integration credentials:', {
+            userId,
+            githubIntegrationUsername: githubUser.login,
+            githubIntegrationId: githubUser.id
+        });
+        
+        // Redirect to integrations page with success
+        res.redirect(`${frontendUrl}/app/integrations?github_connected=true`);
+    } catch (error) {
+        logger.error('GitHub integration callback failed:', error);
+        res.redirect(`${frontendUrl}/app/integrations?error=integration_failed`);
+    }
+};

@@ -31,10 +31,10 @@ const ImportRepository = () => {
 
     const fetchRepositories = async () => {
         try {
-            const response = await api.get('/api/github/repos');
+            const response = await api.get('/api/integrations/github/repositories');
 
             if (response.data.success) {
-                setRepos(response.data.data || response.data.repositories || []);
+                setRepos(response.data.data?.repositories || response.data.data || []);
             } else {
                 setError(response.data.message || 'Failed to fetch repositories');
             }
@@ -166,7 +166,7 @@ const ImportRepository = () => {
                     </div>
                 )}
 
-                <div className="grid lg:grid-cols-2 gap-8">
+                <div>
                     {/* Repository List */}
                     <div>
                         <div className="mb-4">

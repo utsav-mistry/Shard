@@ -63,7 +63,7 @@ export default function Support() {
     },
     {
       question: "How do I deploy my application?",
-      answer: "Go to the Deployments page and click on 'New Deployment'. Select your project, configure the settings, and follow the deployment wizard. You can connect your GitHub repository for automatic deployments."
+      answer: "Go to the Deployments page and click on 'New Deployment'. Select your project, configure the settings, and follow the deployment wizard. Connect your GitHub repository and manually trigger deployments when ready."
     },
     {
       question: "What payment methods are accepted?",

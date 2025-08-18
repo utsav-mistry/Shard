@@ -17,6 +17,8 @@ router.post('/', async (req, res) => {
             branch,
             stack,
             subdomain,
+            userEmail,
+            token,
             envVars,
             buildCommand,
             startCommand,
@@ -24,10 +26,10 @@ router.post('/', async (req, res) => {
         } = req.body;
 
         // Validate required fields
-        if (!deploymentId || !projectId || !repoUrl || !stack || !subdomain) {
+        if (!deploymentId || !projectId || !repoUrl || !stack || !subdomain || !token) {
             return res.status(400).json({
                 success: false,
-                message: 'Missing required fields: deploymentId, projectId, repoUrl, stack, subdomain'
+                message: 'Missing required fields: deploymentId, projectId, repoUrl, stack, subdomain, token'
             });
         }
 
@@ -41,6 +43,8 @@ router.post('/', async (req, res) => {
             branch: branch || 'main',
             stack,
             subdomain,
+            userEmail: userEmail || 'user@example.com',
+            token,
             envVars: envVars || {},
             buildCommand: buildCommand || 'npm install && npm run build',
             startCommand: startCommand || 'npm start',

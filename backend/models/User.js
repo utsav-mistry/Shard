@@ -21,8 +21,8 @@ const UserSchema = new mongoose.Schema(
             default: 'user',
         },
         
-        // OAuth fields (optional)
-        githubId: {
+        // OAuth Authentication fields (for login)
+        githubAuthId: {
             type: String,
             sparse: true,
             unique: true,
@@ -35,10 +35,15 @@ const UserSchema = new mongoose.Schema(
         avatar: {
             type: String,
         },
-        githubAccessToken: {
+        
+        // GitHub Integration fields (for repository access)
+        githubIntegrationToken: {
             type: String,
         },
-        githubUsername: {
+        githubIntegrationUsername: {
+            type: String,
+        },
+        githubIntegrationId: {
             type: String,
         },
         
@@ -80,7 +85,7 @@ const UserSchema = new mongoose.Schema(
 
 // Indexes for better query performance
 UserSchema.index({ role: 1 }); // For admin queries
-UserSchema.index({ githubId: 1 }, { sparse: true }); // For GitHub OAuth
+UserSchema.index({ githubAuthId: 1 }, { sparse: true }); // For GitHub Authentication
 UserSchema.index({ googleId: 1 }, { sparse: true }); // For Google OAuth
 UserSchema.index({ createdAt: -1 }); // For user registration analytics
 

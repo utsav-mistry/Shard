@@ -11,12 +11,21 @@ const Integrations = () => {
 
     useEffect(() => {
         checkIntegrations();
+        
+        // Check for GitHub connection success from URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('github_connected') === 'true') {
+            setGithubConnected(true);
+            checkIntegrations(); // Refresh status
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
     }, []);
 
     const checkIntegrations = async () => {
         try {
             // Check GitHub integration status
-            const response = await api.get('/integrations/github/status');
+            const response = await api.get('/api/integrations/github/status');
             const status = response.data?.data;
             if (status?.connected) {
                 setGithubConnected(true);
@@ -34,7 +43,7 @@ const Integrations = () => {
         setLoading(true);
         try {
             // Get GitHub integration URL from backend
-            const response = await api.get('/integrations/github/connect');
+            const response = await api.get('/api/integrations/github/connect');
             if (response.data?.data?.authUrl) {
                 window.location.href = response.data.data.authUrl;
             } else {
@@ -55,8 +64,8 @@ const Integrations = () => {
             connected: githubConnected,
             user: githubUser,
             connectAction: connectGitHub,
-            manageAction: () => navigate('/app/integrations/github'),
-            features: ['Repository import', 'Automatic deployments', 'Branch protection']
+            manageAction: () => navigate('/app/integrations'),
+            features: ['Repository import', 'Manual deployments', 'Branch protection']
         }
         // Future integrations can be added here
     ];

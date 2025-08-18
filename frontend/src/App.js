@@ -113,6 +113,11 @@ function App() {
                     <Route path="deployments/:deploymentId/logs" element={<DeploymentLogs />} />
                   </Route>
 
+                  {/* Standalone Deployment Routes */}
+                  <Route path="deployments/:id" element={<DeploymentDetail />} />
+                  <Route path="deployments/:id/progress" element={<DeploymentProgress />} />
+                  <Route path="deployments/:id/logs" element={<DeploymentLogs />} />
+
                   {/* Environment routes */}
                   <Route path="environment/:projectId" element={<EnvironmentVariables />} />
                   <Route path="environment/:projectId/new" element={<NewEnvironmentVariable />} />

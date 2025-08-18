@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/axiosConfig';
-import { AlertTriangle, ArrowLeft, Github, Search, ChevronDown, X, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Github, Search, ChevronDown, X, Plus, Trash2, Folder } from 'lucide-react';
 
 const NewProject = () => {
   const navigate = useNavigate();
@@ -13,12 +13,19 @@ const NewProject = () => {
   const [selectedRepo, setSelectedRepo] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
-    stack: '',
-    rootDir: '',
-    envVars: [],
+    techStack: '',
+    rootDir: './',
+    envVars: [{ key: '', value: '', secret: false }]
   });
+
+  const [repoStructure, setRepoStructure] = useState([{ name: 'Root', path: './', type: 'dir' }]);
+  const [loadingStructure, setLoadingStructure] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({
+    name: '',
+    techStack: ''
+  });
 
   useEffect(() => {
     if (githubRepos.length > 0) {
@@ -35,7 +42,7 @@ const NewProject = () => {
     setError(null);
     try {
       const response = await api.get('/api/integrations/github/repositories');
-      const repos = response.data.data.repositories || response.data.data || [];
+      const repos = response.data.data?.repositories || response.data.data || [];
       setGithubRepos(repos);
       setFilteredRepos(repos);
     } catch (err) {
@@ -50,15 +57,60 @@ const NewProject = () => {
     }
   };
 
-  const handleSelectRepo = (repo) => {
+  const fetchRepoStructure = async (repo) => {
+    setLoadingStructure(true);
+    setError(null);
+
+    try {
+      const response = await api.get(`/api/integrations/github/repositories/${repo.name}/contents`);
+
+      // Always include the root directory
+      const directories = [
+        { name: 'Root', path: './', type: 'dir' },
+        ...(response.data.data || []).filter(item => item.type === 'dir')
+      ];
+
+      setRepoStructure(directories);
+
+      // Set default root directory if not set
+      if (!formData.rootDir) {
+        setFormData(prev => ({ ...prev, rootDir: './' }));
+      }
+
+    } catch (error) {
+      console.error('Failed to fetch repository structure:', error);
+
+      // Default to root directory on error
+      setError('Failed to load directory structure. Using root directory.');
+      setRepoStructure([{ name: 'Root', path: './', type: 'dir' }]);
+      setFormData(prev => ({ ...prev, rootDir: './' }));
+
+    } finally {
+      setLoadingStructure(false);
+    }
+  };
+
+  const handleSelectRepo = async (repo) => {
     setSelectedRepo(repo);
     setFormData(prev => ({ ...prev, name: repo.name }));
+    await fetchRepoStructure(repo);
     setStep('configure_project');
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    // Clear error when user types
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
   };
 
   const addEnvVar = () => {
@@ -76,31 +128,59 @@ const NewProject = () => {
     }));
   };
 
+  const validateForm = () => {
+    const errors = {};
+    let isValid = true;
+
+    if (!formData.name.trim()) {
+      errors.name = 'Project name is required';
+      isValid = false;
+    }
+
+    if (!formData.techStack) {
+      errors.techStack = 'Please select a tech stack';
+      isValid = false;
+    }
+
+    setFieldErrors(errors);
+    return isValid;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !selectedRepo.url || !formData.stack) {
-      return setError('Project name and technology stack are required.');
-    }
     setLoading(true);
-    setError(null);
+    setError('');
+
+    // Validate form
+    if (!validateForm()) {
+      setLoading(false);
+      return;
+    }
+
     try {
+      // Prepare the project data according to backend validation schema
       const projectData = {
-        name: formData.name,
-        repoUrl: selectedRepo.url,
-        stack: formData.stack,
-        rootDir: formData.rootDir,
+        name: formData.name.trim(),
+        framework: formData.techStack,
+        repoUrl: selectedRepo ? selectedRepo.html_url : 'https://github.com/example/repo',
+        branch: selectedRepo ? selectedRepo.default_branch || 'main' : 'main'
       };
-      const response = await api.post('/api/projects', projectData);
-      const projectId = response.data.data._id;
-
-      if (formData.envVars.length > 0) {
-        const validEnvVars = formData.envVars.filter(env => env.key.trim());
-        await api.post(`/api/env/${projectId}/bulk`, { envVars: validEnvVars });
+      
+      // Add description if available
+      if (selectedRepo && selectedRepo.description) {
+        projectData.description = selectedRepo.description;
       }
+      
+      // Submit the project
+      const response = await api.post('/api/projects', projectData);
 
-      navigate(`/app/projects/${projectId}/deployments`);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create project.');
+      // Redirect to the project page
+      navigate(`/app/projects/${response.data.data._id}`);
+
+    } catch (error) {
+      console.error('Error creating project:', error);
+      setError(error.response?.data?.message || 'Failed to create project');
+    } finally {
       setLoading(false);
     }
   };
@@ -131,7 +211,7 @@ const NewProject = () => {
               placeholder="Search repositories..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-black focus:ring-black dark:focus:ring-white"
+              className="w-full pl-12 pr-4 py-3 border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-black focus:ring-black dark:focus:ring-white"
             />
           </div>
           <div className="border-2 border-black dark:border-white max-h-96 overflow-y-auto">
@@ -188,42 +268,72 @@ const NewProject = () => {
             name="name"
             value={formData.name}
             onChange={handleChange}
-            className="w-full p-3 border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-black focus:ring-black dark:focus:ring-white"
-            required
+            className={`w-full p-3 border-2 ${fieldErrors.name
+                ? 'border-red-500'
+                : 'border-black dark:border-white focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-black focus:ring-black dark:focus:ring-white'
+              } bg-white dark:bg-black text-black dark:text-white focus:outline-none`}
+            placeholder="my-awesome-project"
           />
+          {fieldErrors.name && (
+            <p className="mt-1 text-sm text-red-500">{fieldErrors.name}</p>
+          )}
         </div>
 
         <div>
           <label htmlFor="stack" className="block text-lg font-bold text-black dark:text-white mb-2">Framework Preset</label>
-          <select
-            id="stack"
-            name="stack"
-            value={formData.stack}
-            onChange={handleChange}
-            className="w-full p-3 border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-black focus:ring-black dark:focus:ring-white"
-            required
-          >
-            <option value="">Select a framework</option>
-            <option value="mern">MERN</option>
-            <option value="django">Django</option>
-            <option value="flask">Flask</option>
-            <option value="nextjs">Next.js</option>
-            <option value="react">React (Vite)</option>
-            <option value="static">Static HTML</option>
-          </select>
+          <div className="relative">
+            <select
+              id="techStack"
+              name="techStack"
+              value={formData.techStack}
+              onChange={handleChange}
+              className={`w-full p-3 border-2 ${fieldErrors.techStack
+                  ? 'border-red-500'
+                  : 'border-black dark:border-white focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-black focus:ring-black dark:focus:ring-white'
+                } bg-white dark:bg-black text-black dark:text-white focus:outline-none appearance-none`}
+            >
+              <option value="">Select a tech stack</option>
+              <option value="mern">MERN Stack (MongoDB, Express, React, Node.js)</option>
+              <option value="django">Django (Python)</option>
+              <option value="flask">Flask (Python)</option>
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              <ChevronDown className="w-5 h-5 text-gray-500" />
+            </div>
+          </div>
+          {fieldErrors.techStack && (
+            <p className="mt-1 text-sm text-red-500">{fieldErrors.techStack}</p>
+          )}
         </div>
 
         <div>
           <label htmlFor="rootDir" className="block text-lg font-bold text-black dark:text-white mb-2">Root Directory</label>
-          <input
-            type="text"
-            id="rootDir"
-            name="rootDir"
-            placeholder="./"
-            value={formData.rootDir}
-            onChange={handleChange}
-            className="w-full p-3 border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-black focus:ring-black dark:focus:ring-white"
-          />
+          <div className="relative">
+            <select
+              id="rootDir"
+              name="rootDir"
+              value={formData.rootDir}
+              onChange={handleChange}
+              className="w-full p-3 border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-black focus:ring-black dark:focus:ring-white appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loadingStructure}
+            >
+              {loadingStructure ? (
+                <option>Loading directories...</option>
+              ) : (
+                repoStructure.map((dir, index) => (
+                  <option key={index} value={dir.path}>
+                    {dir.name} {dir.path !== './' ? `(${dir.path})` : ''}
+                  </option>
+                ))
+              )}
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              <ChevronDown className="w-5 h-5 text-gray-500" />
+            </div>
+          </div>
+          {repoStructure.length === 0 && !loadingStructure && (
+            <p className="mt-1 text-sm text-gray-500">No subdirectories found. Using root directory.</p>
+          )}
         </div>
       </div>
 
@@ -240,14 +350,14 @@ const NewProject = () => {
                 placeholder="KEY"
                 value={env.key}
                 onChange={(e) => updateEnvVar(index, 'key', e.target.value)}
-                className="flex-1 p-2 border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white"
+                className="flex-1 p-2 border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-black focus:ring-black dark:focus:ring-white"
               />
               <input
                 type={env.secret ? 'password' : 'text'}
                 placeholder="VALUE"
                 value={env.value}
                 onChange={(e) => updateEnvVar(index, 'value', e.target.value)}
-                className="flex-1 p-2 border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white"
+                className="flex-1 p-2 border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-black focus:ring-black dark:focus:ring-white"
               />
               <button type="button" onClick={() => removeEnvVar(index)} className="p-2 text-gray-500 hover:text-red-500">
                 <Trash2 className="w-5 h-5" />

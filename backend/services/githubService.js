@@ -95,49 +95,109 @@ const getGitHubUser = async (accessToken) => {
  * List user's repositories with pagination
  */
 const listUserRepos = async (accessToken, { page = 1, perPage = 30 } = {}) => {
+    if (!accessToken) {
+        throw new Error('GitHub access token is required');
+    }
+    
     const cacheKey = `github:repos:${accessToken.substring(0, 10)}:${page}:${perPage}`;
     
     try {
-        // Check cache
+        // Check cache first with a shorter TTL for repositories (1 minute)
         const cachedRepos = await cacheService.get(cacheKey);
         if (cachedRepos) {
             return cachedRepos;
         }
+        // Check cache
 
         const client = createGitHubClient(accessToken);
-        const response = await client.get('/user/repos', {
-            params: {
-                sort: 'updated',
-                direction: 'desc',
-                per_page: perPage,
-                page,
-            },
-        });
-
-        const repos = response.data.map(repo => ({
-            id: repo.id,
-            name: repo.name,
-            fullName: repo.full_name,
-            private: repo.private,
-            description: repo.description,
-            url: repo.html_url,
-            defaultBranch: repo.default_branch,
-            owner: repo.owner.login,
-            createdAt: repo.created_at,
-            updatedAt: repo.updated_at,
-            pushedAt: repo.pushed_at,
-            size: repo.size,
-            language: repo.language,
-            forks: repo.forks_count,
-            stars: repo.stargazers_count,
-            watchers: repo.watchers_count,
-            openIssues: repo.open_issues_count,
-        }));
-
-        // Cache for 5 minutes
-        await cacheService.set(cacheKey, repos, 300);
+        let allRepos = [];
+        let hasMore = true;
+        let currentPage = parseInt(page);
+        const perPageCount = Math.min(parseInt(perPage), 100); // GitHub max is 100
         
-        return repos;
+        // Fetch all pages if needed (GitHub API is 1-indexed)
+        while (hasMore) {
+            const response = await client.get('/user/repos', {
+                params: {
+                    sort: 'updated',
+                    direction: 'desc',
+                    per_page: perPageCount,
+                    page: currentPage,
+                    affiliation: 'owner,collaborator,organization_member',
+                    type: 'all'
+                },
+                // Add timeout and retry logic
+                timeout: 10000,
+                maxRedirects: 3,
+                validateStatus: (status) => status < 500
+            });
+
+            if (!response.data || response.data.length === 0) {
+                hasMore = false;
+                break;
+            }
+
+            // Transform the response to include only needed fields
+            const repos = response.data.map(repo => ({
+                id: repo.id,
+                name: repo.name,
+                full_name: repo.full_name,
+                private: repo.private,
+                owner: {
+                    login: repo.owner.login,
+                    id: repo.owner.id,
+                    avatar_url: repo.owner.avatar_url,
+                    html_url: repo.owner.html_url
+                },
+                html_url: repo.html_url,
+                description: repo.description,
+                fork: repo.fork,
+                url: repo.url,
+                created_at: repo.created_at,
+                updated_at: repo.updated_at,
+                pushed_at: repo.pushed_at,
+                git_url: repo.git_url,
+                ssh_url: repo.ssh_url,
+                clone_url: repo.clone_url,
+                default_branch: repo.default_branch,
+                permissions: repo.permissions,
+                // Add additional useful fields
+                size: repo.size,
+                language: repo.language,
+                has_issues: repo.has_issues,
+                has_projects: repo.has_projects,
+                has_downloads: repo.has_downloads,
+                has_wiki: repo.has_wiki,
+                has_pages: repo.has_pages,
+                archived: repo.archived,
+                disabled: repo.disabled,
+                open_issues_count: repo.open_issues_count,
+                license: repo.license ? {
+                    key: repo.license.key,
+                    name: repo.license.name,
+                    spdx_id: repo.license.spdx_id,
+                    url: repo.license.url
+                } : null
+            }));
+
+            allRepos = [...allRepos, ...repos];
+            
+            // If we got fewer repos than requested, we've reached the end
+            if (repos.length < perPageCount) {
+                hasMore = false;
+            } else {
+                currentPage++;
+                // Safety check to prevent infinite loops
+                if (allRepos.length >= 1000) { // GitHub's hard limit is 1000 results
+                    hasMore = false;
+                }
+            }
+        }
+
+        // Cache the response for 1 minute
+        await cacheService.set(cacheKey, allRepos, 60);
+
+        return allRepos;
     } catch (err) {
         logger.error('Failed to list GitHub repositories:', {
             error: err.response?.data || err.message,

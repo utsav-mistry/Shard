@@ -10,7 +10,8 @@ const ProjectsList = () => {
   // Filter projects based on search term
   const filteredProjects = projects.filter(project => 
     project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.repoUrl.toLowerCase().includes(searchTerm.toLowerCase())
+    project.repoUrl.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (project.subdomain && project.subdomain.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   // Stack badge with enhanced design system
@@ -52,100 +53,117 @@ const ProjectsList = () => {
   }
 
   return (
-    <div className="p-8">
-      {/* Vercel-style header */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6 bg-white-100 dark:bg-black-900 min-h-screen p-6 relative">
+      {/* Grid Background */}
+      <div className="fixed inset-0 opacity-[0.02] dark:opacity-[0.05] pointer-events-none">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `
+            linear-gradient(to right, #000 1px, transparent 1px),
+            linear-gradient(to bottom, #000 1px, transparent 1px)
+          `,
+          backgroundSize: '24px 24px'
+        }}></div>
+      </div>
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white-100 dark:bg-black-900 p-6 border-2 border-black-900 dark:border-white-100 rounded-none shadow-lg shadow-black/10 dark:shadow-white/10 relative z-10">
         <div>
-          <h1 className="text-2xl font-bold text-black-900 dark:text-white-100">Projects</h1>
-          <p className="text-black-600 dark:text-white-400 mt-1">
+          <h1 className="text-3xl font-extrabold text-black-900 dark:text-white-100">Projects</h1>
+          <p className="mt-2 text-lg text-black-600 dark:text-white-400">
             Manage and deploy your projects
           </p>
         </div>
-        <Link
-          to="/app/projects/new"
-          className="group relative inline-flex items-center px-4 py-2 text-sm font-bold bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 hover:text-black-900 dark:hover:text-white-100 rounded-none border-2 border-black-900 dark:border-white-100 hover:scale-105 transition-all duration-200 shadow-sm overflow-hidden"
-        >
-          <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-          <span className="relative z-10 flex items-center transition-colors duration-200">
-            <Plus className="mr-2 h-4 w-4" />
-            New Project
-          </span>
-        </Link>
+        <div className="mt-4 sm:mt-0">
+          <Link
+            to="/app/projects/new"
+            className="group relative inline-flex items-center justify-center px-6 py-3 text-base font-medium rounded-none shadow-sm bg-black-900 text-white-100 hover:text-black-900 dark:bg-white-100 dark:text-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-2 dark:border-white-100"
+          >
+            <span className="absolute inset-0 w-full h-full bg-white-100 transition-all duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0 dark:bg-black-900"></span>
+            <span className="relative z-10 flex items-center">
+              <Plus className="w-5 h-5 mr-2" />
+              New Project
+            </span>
+          </Link>
+        </div>
       </div>
 
-      {/* Search with consistent design system */}
-      <div className="relative max-w-md mb-6">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search className="h-4 w-4 text-black-900 dark:text-white-100" />
+      {/* Search with enhanced styling */}
+      <div className="relative max-w-md bg-white-100 dark:bg-black-900 p-4 border-2 border-black-900 dark:border-white-100 rounded-none shadow-lg shadow-black/10 dark:shadow-white/10 relative z-10">
+        <div className="absolute inset-y-0 left-0 pl-7 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-black-600 dark:text-white-400" />
         </div>
         <input
           type="text"
           placeholder="Search projects..."
-          className="block w-full pl-10 pr-4 py-2 border-2 border-black-900 dark:border-white-100 rounded-none bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 placeholder-black-600 dark:placeholder-white-400 focus:outline-none focus:ring-2 focus:ring-black-500 dark:focus:ring-white-500 text-sm font-medium shadow-sm transition-all duration-200"
+          className="block w-full pl-12 pr-4 py-3 border-2 border-black-900 dark:border-white-100 rounded-none bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 placeholder-black-600 dark:placeholder-white-400 focus:outline-none focus:ring-2 focus:ring-black-500 dark:focus:ring-white-500 text-base font-medium shadow-sm transition-all duration-200"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
-      {/* Vercel-style projects grid */}
+      {/* Projects grid with enhanced styling */}
       {filteredProjects.length === 0 ? (
-        <div className="text-center py-12">
-          <Server className="mx-auto h-12 w-12 text-black-400 dark:text-white-400 mb-4" />
-          <h3 className="text-lg font-medium text-black-900 dark:text-white-100 mb-2">No projects found</h3>
-          <p className="text-black-600 dark:text-white-400 mb-6">
+        <div className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none p-12 text-center shadow-lg shadow-black/10 dark:shadow-white/10 relative z-10">
+          <div className="p-4 border-2 border-dotted border-gray-400 dark:border-gray-600 rounded-none mb-6 inline-block">
+            <Server className="h-12 w-12 text-black-600 dark:text-white-400" />
+          </div>
+          <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-3">No projects found</h3>
+          <p className="text-base text-black-600 dark:text-white-400 mb-8 max-w-md mx-auto">
             {searchTerm 
-              ? 'No projects match your search. Try a different term.'
-              : 'Get started by creating your first project.'}
+              ? 'No projects match your search. Try a different term or create a new project.'
+              : 'Get started by creating your first project and begin deploying your applications.'}
           </p>
           <Link
             to="/app/projects/new"
-            className="group relative inline-flex items-center px-4 py-2 text-sm font-bold bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 hover:text-black-900 dark:hover:text-white-100 rounded-none border-2 border-black-900 dark:border-white-100 hover:scale-105 transition-all duration-200 shadow-sm overflow-hidden"
+            className="group relative inline-flex items-center justify-center px-6 py-3 text-base font-medium rounded-none shadow-sm bg-black-900 text-white-100 hover:text-black-900 dark:bg-white-100 dark:text-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-2 dark:border-white-100"
           >
-            <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-            <span className="relative z-10 flex items-center transition-colors duration-200">
-              <Plus className="mr-2 h-4 w-4" />
-              New Project
+            <span className="absolute inset-0 w-full h-full bg-white-100 transition-all duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0 dark:bg-black-900"></span>
+            <span className="relative z-10 flex items-center">
+              <Plus className="w-5 h-5 mr-2" />
+              Create Your First Project
             </span>
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 relative z-10">
           {filteredProjects.map((project) => (
             <div 
               key={project._id} 
               className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none p-6 hover:shadow-xl hover:shadow-black/20 dark:hover:shadow-white/20 hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer group shadow-lg shadow-black/10 dark:shadow-white/10"
               onClick={() => window.location.href = `/app/projects/${project._id}`}
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-black-900 dark:text-white-100 group-hover:text-black-700 dark:group-hover:text-white-200 transition-colors">
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xl font-bold text-black-900 dark:text-white-100 group-hover:text-black-700 dark:group-hover:text-white-200 transition-colors mb-2 truncate">
                     {project.name}
                   </h3>
-                  <p className="text-sm text-black-600 dark:text-white-400 mt-1 truncate font-medium">
-                    {project.repoUrl}
+                  <p className="text-sm text-black-600 dark:text-white-400 font-medium truncate">
+                    {project.subdomain ? `${project.subdomain}.localhost` : project.repoUrl}
                   </p>
                 </div>
-                <ExternalLink className="h-4 w-4 text-black-900 dark:text-white-100 group-hover:text-black-700 dark:group-hover:text-white-200 transition-colors flex-shrink-0" />
+                <div className="p-2 border-2 border-dotted border-gray-400 dark:border-gray-600 rounded-none group-hover:border-black-900 dark:group-hover:border-white-100 transition-all duration-200">
+                  <ExternalLink className="h-4 w-4 text-black-900 dark:text-white-100" />
+                </div>
               </div>
               
-              <div className="flex items-center justify-between mb-4">
-                {getStackBadge(project.stack)}
-                <span className="text-xs text-black-600 dark:text-white-400 font-medium">
+              <div className="flex items-center justify-between mb-6">
+                {getStackBadge(project.framework)}
+                <span className="text-xs text-black-600 dark:text-white-400 font-medium px-2 py-1 border border-gray-300 dark:border-gray-700 rounded-none">
                   {new Date(project.createdAt).toLocaleDateString()}
                 </span>
               </div>
               
-              <div className="flex space-x-2">
+              <div className="flex space-x-3">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     window.location.href = `/app/deployments/new/${project._id}`;
                   }}
-                  className="group relative flex-1 inline-flex items-center justify-center px-3 py-1.5 text-xs font-bold bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 hover:text-black-900 dark:hover:text-white-100 rounded-none border-2 border-black-900 dark:border-white-100 hover:scale-105 transition-all duration-200 overflow-hidden"
+                  className="group relative flex-1 inline-flex items-center justify-center px-4 py-2.5 text-sm font-bold bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 hover:text-black-900 dark:hover:text-white-100 rounded-none border-2 border-black-900 dark:border-white-100 transition-all duration-200 overflow-hidden"
                 >
                   <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-                  <span className="relative z-10 flex items-center transition-colors duration-200">
-                    <Zap className="w-3 h-3 mr-1" />
+                  <span className="relative z-10 flex items-center">
+                    <Zap className="w-4 h-4 mr-2" />
                     Deploy
                   </span>
                 </button>
@@ -154,11 +172,11 @@ const ProjectsList = () => {
                     e.stopPropagation();
                     window.location.href = `/app/environment/${project._id}`;
                   }}
-                  className="group relative flex-1 inline-flex items-center justify-center px-3 py-1.5 text-xs font-bold border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900 rounded-none transition-all duration-200 overflow-hidden hover:scale-105"
+                  className="group relative flex-1 inline-flex items-center justify-center px-4 py-2.5 text-sm font-bold border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900 rounded-none transition-all duration-200 overflow-hidden"
                 >
                   <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
                   <span className="relative z-10 flex items-center">
-                    <Server className="w-3 h-3 mr-1" />
+                    <Server className="w-4 h-4 mr-2" />
                     Settings
                   </span>
                 </button>

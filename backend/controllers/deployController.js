@@ -135,7 +135,7 @@ const createDeployment = async (req, res) => {
 
         // Step 2: Add job to worker queue (only if AI review passed or failed)
         try {
-            await axios.post(`${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/jobs`, job, {
+            await axios.post(`${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/deploy`, job, {
                 timeout: 10000,
                 headers: {
                     'Content-Type': 'application/json'
@@ -158,9 +158,11 @@ const createDeployment = async (req, res) => {
         }
 
         return res.apiCreated({ 
+            _id: deployment._id,
             deploymentId: deployment._id,
             status: deployment.status,
-            projectName: project.name
+            projectName: project.name,
+            projectId: project._id
         }, "Deployment started successfully");
     } catch (err) {
         console.error("Deployment error:", err);
@@ -173,19 +175,30 @@ const getDeployments = async (req, res) => {
         // Admin can see all deployments, users only their own
         let query = {};
         if (req.user.role !== 'admin') {
-            // Get user's projects first
-            const userProjects = await Project.find({ ownerId: req.user._id }).select('_id');
-            const projectIds = userProjects.map(p => p._id);
-            query = { projectId: { $in: projectIds } };
+            try {
+                // Get user's projects first
+                const userProjects = await Project.find({ ownerId: req.user._id }).select('_id');
+                const projectIds = userProjects.map(p => p._id);
+                query = { projectId: { $in: projectIds } };
+            } catch (projectErr) {
+                logger.error("Error fetching user projects:", projectErr);
+                return res.apiServerError("Error fetching user projects", projectErr.message);
+            }
         }
 
         const deployments = await Deployment.find(query)
             .populate("projectId", "name subdomain")
             .sort({ createdAt: -1 });
 
+        logger.info(`Fetched ${deployments.length} deployments for user ${req.user._id}`);
         return res.apiSuccess(deployments, "Deployments fetched successfully");
     } catch (err) {
-        console.error("Error fetching deployments:", err);
+        logger.error("Error fetching deployments:", {
+            error: err.message,
+            stack: err.stack,
+            userId: req.user._id,
+            userRole: req.user.role
+        });
         return res.apiServerError("Error fetching deployments", err.message);
     }
 };
@@ -297,6 +310,8 @@ const createDeploymentFromProject = async ({
             branch,
             stack: project.framework,
             subdomain: project.subdomain,
+            userEmail: req.user.email,
+            token: req.headers.authorization?.replace('Bearer ', ''),
             envVars: [...(project.settings.envVars || []), ...envVars],
             buildCommand: project.settings.buildCommand,
             startCommand: project.settings.startCommand,
@@ -335,10 +350,44 @@ const createDeploymentFromProject = async ({
     }
 };
 
+// Delete deployment
+const deleteDeployment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+
+        // Find the deployment and check ownership
+        const deployment = await Deployment.findById(id).populate('projectId');
+        if (!deployment) {
+            return res.apiNotFound('Deployment');
+        }
+
+        // Check if user owns the project (and thus the deployment)
+        if (deployment.projectId.owner.toString() !== userId) {
+            return res.apiForbidden('You do not have permission to delete this deployment');
+        }
+
+        // Delete associated logs
+        await logService.deleteLogsByDeployment(id);
+
+        // Delete the deployment
+        await Deployment.findByIdAndDelete(id);
+
+        logger.info(`Deployment ${id} deleted by user ${userId}`);
+
+        return res.apiSuccess(null, 'Deployment deleted successfully');
+
+    } catch (error) {
+        logger.error('Error deleting deployment:', error);
+        return res.apiServerError('Failed to delete deployment');
+    }
+};
+
 module.exports = {
     createDeployment,
     createDeploymentFromProject,
     getDeployments,
     updateDeploymentStep,
-    updateDeploymentStatus
+    updateDeploymentStatus,
+    deleteDeployment
 };

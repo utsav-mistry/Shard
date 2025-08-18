@@ -15,12 +15,15 @@ const LogSchema = new mongoose.Schema(
         type: {
             type: String,
             enum: [
-                "setup",     // cloning, initialization
-                "config",    // env vars and secrets
-                "deploy",    // container build/start
-                "runtime",   // live logs
-                "error",     // any failure
-                "complete"   // success
+                "setup",       // cloning, initialization
+                "config",      // env vars and secrets
+                "build",       // building/compiling
+                "deploy",      // container build/start
+                "runtime",     // live logs
+                "error",       // any failure
+                "complete",    // success
+                "ai-review",   // AI code review
+                "queue"        // job queuing
             ],
             required: true,
         },

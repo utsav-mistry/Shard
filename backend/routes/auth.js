@@ -62,7 +62,20 @@ router.get('/profile', authenticate, async (req, res) => {
         if (!user) {
             return res.apiNotFound('User');
         }
-        return res.apiSuccess({ user }, 'Profile fetched successfully');
+        
+        // Return user data in the format expected by frontend AuthContext
+        const userResponse = {
+            id: user._id,
+            email: user.email,
+            name: user.name,
+            avatar: user.avatar,
+            role: user.role,
+            githubAuthId: user.githubAuthId,
+            googleId: user.googleId,
+            createdAt: user.createdAt
+        };
+        
+        return res.apiSuccess({ user: userResponse }, 'Profile fetched successfully');
     } catch (err) {
         console.error('Profile fetch error:', err);
         return res.apiServerError('Failed to fetch profile', err.message);
@@ -77,10 +90,10 @@ router.post('/disconnect-github', authenticate, async (req, res) => {
             return res.apiNotFound('User');
         }
         
-        // Clear GitHub integration data
-        user.githubAccessToken = undefined;
-        user.githubUsername = undefined;
-        user.githubId = undefined;
+        // Clear GitHub integration data (keep auth separate)
+        user.githubIntegrationToken = undefined;
+        user.githubIntegrationUsername = undefined;
+        user.githubIntegrationId = undefined;
         await user.save();
         
         return res.apiSuccess({}, 'GitHub disconnected successfully');

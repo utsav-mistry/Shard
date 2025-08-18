@@ -13,7 +13,7 @@ const generateToken = (user) => {
             email: user.email,
             name: user.name,
             avatar: user.avatar,
-            githubId: user.githubId,
+            githubAuthId: user.githubAuthId,
             googleId: user.googleId
         },
         process.env.JWT_SECRET,

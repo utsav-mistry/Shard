@@ -71,7 +71,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       href: '/app/integrations',
       icon: <Package className="w-5 h-5" />,
       children: [
-        { name: 'GitHub', href: '/app/integrations/github' },
+        { name: 'GitHub', href: '/app/integrations/' },
       ]
     }
   ];

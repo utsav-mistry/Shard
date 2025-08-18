@@ -13,6 +13,7 @@ const ProjectDetail = () => {
   const [error, setError] = useState(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deploymentToDelete, setDeploymentToDelete] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
@@ -20,41 +21,60 @@ const ProjectDetail = () => {
       try {
         setLoading(true);
 
-        // Fetch project details using the correct /api/ prefixed endpoint
-        const projectResponse = await api.get(`/api/projects/${id}`);
-
-        // Fetch project deployments using the correct endpoint
-        const deploymentsResponse = await api.get('/api/deploy');
-
-        // Fetch project environment variables using the correct endpoint
-        const envVarsResponse = await api.get(`/api/env/${id}`);
-
-        // Handle standardized response format
-        if (projectResponse.data.success) {
-          setProject(projectResponse.data.data);
-        } else {
-          throw new Error(projectResponse.data.message || 'Failed to load project');
+        // Fetch project details first - this is critical
+        try {
+          const projectResponse = await api.get(`/api/projects/${id}`);
+          if (projectResponse.data.success) {
+            setProject(projectResponse.data.data);
+          } else {
+            throw new Error(projectResponse.data.message || 'Failed to load project');
+          }
+        } catch (projectErr) {
+          console.error('Error fetching project:', projectErr);
+          setError(projectErr.message || 'Failed to load project data');
+          setLoading(false);
+          return;
         }
 
-        if (deploymentsResponse.data.success) {
-          // Filter deployments for this project and sort by creation date (newest first)
-          const projectDeployments = deploymentsResponse.data.data
-            .filter(deployment => deployment.projectId === id)
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-          setDeployments(projectDeployments);
-        } else {
-          throw new Error(deploymentsResponse.data.message || 'Failed to load deployments');
+        // Fetch deployments - non-critical, continue if fails
+        try {
+          const deploymentsResponse = await api.get('/api/deployments');
+          if (deploymentsResponse.data.success) {
+            const allDeployments = deploymentsResponse.data.data || [];
+            const projectDeployments = allDeployments
+              .filter(deployment => {
+                const deploymentProjectId = deployment.projectId?._id || deployment.projectId;
+                return deploymentProjectId === id || deploymentProjectId?.toString() === id;
+              })
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            setDeployments(projectDeployments);
+          } else {
+            console.error('Failed to load deployments:', deploymentsResponse.data);
+            setDeployments([]);
+          }
+        } catch (deployErr) {
+          console.error('Error fetching deployments:', deployErr);
+          setDeployments([]);
         }
 
-        if (envVarsResponse.data.success) {
-          setEnvVars(envVarsResponse.data.data || []);
-        } else {
-          throw new Error(envVarsResponse.data.message || 'Failed to load environment variables');
+        // Fetch environment variables - non-critical, continue if fails
+        try {
+          const envVarsResponse = await api.get(`/api/env/${id}`);
+          if (envVarsResponse.data.success) {
+            setEnvVars(envVarsResponse.data.data || []);
+          } else {
+            console.error('Failed to load environment variables:', envVarsResponse.data);
+            setEnvVars([]);
+          }
+        } catch (envErr) {
+          console.error('Error fetching environment variables:', envErr);
+          setEnvVars([]);
         }
+
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching project data:', err);
-        setError('Failed to load project data');
+        console.error('Unexpected error in fetchProjectData:', err);
+        setError('An unexpected error occurred while loading project data');
         setLoading(false);
       }
     };
@@ -133,10 +153,6 @@ const ProjectDetail = () => {
       // Create new deployment
       const response = await api.post('/api/deploy', {
         projectId: id,
-        repoUrl: project.repoUrl,
-        stack: project.stack,
-        subdomain: project.subdomain,
-        userEmail: 'user@example.com', // Replace with actual user email
         branch: 'main' // Default branch, could be configurable
       });
 
@@ -151,6 +167,35 @@ const ProjectDetail = () => {
       setError('Failed to trigger deployment');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle deployment deletion
+  const handleDeleteDeployment = async (deploymentId) => {
+    setDeploymentToDelete(deploymentId);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDeleteDeployment = async () => {
+    if (!deploymentToDelete) return;
+
+    try {
+      setDeleteLoading(true);
+      const response = await api.delete(`/api/deploy/${deploymentToDelete}`);
+      
+      if (response.data.success) {
+        // Remove deployment from local state
+        setDeployments(deployments.filter(d => d._id !== deploymentToDelete));
+        setDeploymentToDelete(null);
+        setDeleteModalOpen(false);
+      } else {
+        setError('Failed to delete deployment');
+      }
+    } catch (err) {
+      console.error('Error deleting deployment:', err);
+      setError('Failed to delete deployment');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -195,7 +240,7 @@ const ProjectDetail = () => {
           <div>
             <h1 className="text-2xl font-bold text-black-900 dark:text-white-100">{project.name}</h1>
             <p className="text-black-600 dark:text-white-400 text-sm mt-1 font-medium">
-              {project.repoUrl}
+              {project.subdomain ? `${project.subdomain}.localhost` : project.repoUrl}
             </p>
           </div>
         </div>
@@ -272,7 +317,7 @@ const ProjectDetail = () => {
       {activeTab === 'overview' && (
         <div className="space-y-8">
           {/* Project Info Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none p-6 shadow-sm">
               <div className="flex items-center">
                 <Globe className="h-5 w-5 text-black-900 dark:text-white-100 mr-2" />
@@ -280,12 +325,12 @@ const ProjectDetail = () => {
               </div>
               <div className="mt-2">
                 <a
-                  href={`https://${project.subdomain}.shard.dev`}
+                  href={project.subdomain ? `http://${project.subdomain}.localhost:${project.framework === 'mern' ? '12001' : project.framework === 'django' ? '13000' : '14000'}` : `http://localhost:3000`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all font-medium"
                 >
-                  {project.subdomain}.shard.dev
+                  {project.subdomain ? `${project.subdomain}.localhost` : 'localhost:3000'}
                 </a>
               </div>
             </div>
@@ -296,7 +341,7 @@ const ProjectDetail = () => {
                 <h3 className="text-sm font-bold text-black-900 dark:text-white-100">Framework</h3>
               </div>
               <div className="mt-2">
-                <span className="text-sm text-black-600 dark:text-white-400 font-medium capitalize">{project.stack}</span>
+                <span className="text-sm text-black-600 dark:text-white-400 font-medium capitalize">{project.framework}</span>
               </div>
             </div>
 
@@ -308,6 +353,93 @@ const ProjectDetail = () => {
               <div className="mt-2">
                 <span className="text-sm text-black-600 dark:text-white-400 font-medium">
                   {deployments.length > 0 ? new Date(deployments[0].createdAt).toLocaleDateString() : 'Never'}
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none p-6 shadow-sm">
+              <div className="flex items-center">
+                <Globe className="h-5 w-5 text-black-900 dark:text-white-100 mr-2" />
+                <h3 className="text-sm font-bold text-black-900 dark:text-white-100">Status</h3>
+              </div>
+              <div className="mt-2">
+                <span className="inline-flex items-center px-2 py-1 rounded-none text-xs font-bold border-2 bg-green-50 text-green-700 border-green-400 shadow-green-100/50 dark:bg-green-900/30 dark:text-green-300 dark:border-green-600">
+                  {project.status?.toUpperCase() || 'ACTIVE'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Project Details */}
+          <div className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none p-6 shadow-lg shadow-black/10 dark:shadow-white/10">
+            <h3 className="text-lg font-bold text-black-900 dark:text-white-100 mb-4">Project Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Owner</h4>
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-black-900 dark:bg-white-100 rounded-none flex items-center justify-center">
+                    <span className="text-white-100 dark:text-black-900 text-sm font-bold">
+                      {project.ownerId?.name?.charAt(0) || 'U'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-black-900 dark:text-white-100">{project.ownerId?.name || 'Unknown'}</p>
+                    <p className="text-xs text-black-600 dark:text-white-400">{project.ownerId?.email || 'No email'}</p>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Repository</h4>
+                <a
+                  href={project.repoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all font-medium break-all"
+                >
+                  {project.repoUrl}
+                </a>
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Subdomain</h4>
+                <p className="text-sm text-black-600 dark:text-white-400 font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 border border-gray-300 dark:border-gray-700 rounded-none">
+                  {project.subdomain || 'Not assigned'}
+                </p>
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Created</h4>
+                <p className="text-sm text-black-600 dark:text-white-400 font-medium">
+                  {new Date(project.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Build Settings */}
+          <div className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none p-6 shadow-lg shadow-black/10 dark:shadow-white/10">
+            <h3 className="text-lg font-bold text-black-900 dark:text-white-100 mb-4">Build Configuration</h3>
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Build Command</h4>
+                <p className="text-sm text-black-600 dark:text-white-400 font-mono bg-gray-100 dark:bg-gray-800 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-none">
+                  {project.settings?.buildCommand || 'npm install && npm run build'}
+                </p>
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Start Command</h4>
+                <p className="text-sm text-black-600 dark:text-white-400 font-mono bg-gray-100 dark:bg-gray-800 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-none">
+                  {project.settings?.startCommand || 'npm start'}
+                </p>
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Deploy Mode</h4>
+                <span className="inline-flex items-center px-2 py-1 rounded-none text-xs font-bold border-2 bg-blue-50 text-blue-700 border-blue-400 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600">
+                  MANUAL ONLY
                 </span>
               </div>
             </div>
@@ -390,18 +522,27 @@ const ProjectDetail = () => {
                         {deployment.finishedAt ? new Date(deployment.finishedAt).toLocaleString() : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <Link
-                          to={`/app/projects/${id}/deployments/${deployment._id}`}
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all mr-4 font-bold"
-                        >
-                          View
-                        </Link>
-                        <Link
-                          to={`/app/projects/${id}/deployments/${deployment._id}/logs`}
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all font-bold"
-                        >
-                          Logs
-                        </Link>
+                        <div className="flex items-center space-x-3">
+                          <Link
+                            to={`/app/deployments/${deployment._id}`}
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all font-bold"
+                          >
+                            View
+                          </Link>
+                          <Link
+                            to={`/app/deployments/${deployment._id}/logs`}
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all font-bold"
+                          >
+                            Logs
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteDeployment(deployment._id)}
+                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 border-b-2 border-transparent hover:border-red-600 dark:hover:border-red-400 transition-all font-bold"
+                            title="Delete deployment"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -488,8 +629,62 @@ const ProjectDetail = () => {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {deleteModalOpen && (
+      {/* Delete Deployment Confirmation Modal */}
+      {deleteModalOpen && deploymentToDelete && (
+        <div className="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 dark:bg-gray-900 opacity-75"></div>
+            </div>
+
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 sm:mx-0 sm:h-10 sm:w-10">
+                    <Trash2 className="h-6 w-6 text-red-600 dark:text-red-400" />
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">
+                      Delete deployment
+                    </h3>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Are you sure you want to delete this deployment? All deployment data including logs will be permanently removed. This action cannot be undone.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
+                  onClick={confirmDeleteDeployment}
+                  disabled={deleteLoading}
+                >
+                  {deleteLoading ? 'Deleting...' : 'Delete'}
+                </button>
+                <button
+                  type="button"
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => {
+                    setDeleteModalOpen(false);
+                    setDeploymentToDelete(null);
+                  }}
+                  disabled={deleteLoading}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Project Confirmation Modal */}
+      {deleteModalOpen && !deploymentToDelete && (
         <div className="fixed z-10 inset-0 overflow-y-auto">
           <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity" aria-hidden="true">

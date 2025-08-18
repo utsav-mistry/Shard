@@ -376,7 +376,7 @@ const DatabaseRecordModal = ({ isOpen, onClose, onSubmit, record = null, tableNa
             className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
             required={['name', 'email', 'repoUrl', 'framework', 'subdomain', 'ownerId', 'projectId'].includes(key) && !isEditing}
             placeholder={
-              key === 'subdomain' ? 'my-app (will be my-app.shard.dev)' : 
+              key === 'subdomain' ? 'my-app (will be localhost:port)' : 
               key === 'commitHash' ? 'Git commit hash or "latest"' :
               key === 'ownerId' || key === 'projectId' || key === 'userId' || key === 'deploymentId' ? 'MongoDB ObjectId (24 hex characters)' :
               key === 'port' ? '3000' :

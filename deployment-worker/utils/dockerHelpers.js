@@ -15,24 +15,24 @@ const PORT_CONFIG = {
 const usedContainers = new Set();
 
 const deployContainer = async (localPath, stack, subdomain, projectId, deploymentId, socket = null) => {
-    const imageName = `shard-${subdomain}`;
+    const imageName = `shard-project-${projectId}`;
     const dockerfilePath = path.join(__dirname, "..", "dockerfiles", `Dockerfile.${stack}`);
     const envFilePath = path.join(localPath, ".env");
 
     // Use streaming logger if socket is provided
     if (socket) {
         const streamLogger = new StreamingLogger(socket, projectId, deploymentId);
-        
+
         try {
             // Cleanup existing container first
             await streamLogger.cleanupContainer(subdomain);
-            
+
             // Build Docker image with streaming
             await streamLogger.buildDockerImage(localPath, dockerfilePath, imageName);
-            
+
             // Determine port mapping
             const ports = getPortMapping(stack, subdomain);
-            
+
             // Check environment file
             const envFileExists = fs.existsSync(envFilePath);
             if (envFileExists) {
@@ -42,32 +42,47 @@ const deployContainer = async (localPath, stack, subdomain, projectId, deploymen
             } else {
                 streamLogger.emitLog('No environment variables found - proceeding without .env file', 'info', 'deploy');
             }
-            
+
             // Run container with streaming
             const containerOptions = {
                 ports: ports,
                 envFile: envFileExists ? envFilePath : null,
                 memory: '512m'
             };
-            
+
             await streamLogger.runDockerContainer(imageName, subdomain, containerOptions);
-            
+
             // Log success information
             streamLogger.emitLog(`Container running for ${subdomain} at:`, 'success', 'deploy');
             ports.forEach(p => {
-                streamLogger.emitLog(`→ http://localhost:${p.host}`, 'success', 'deploy');
+                streamLogger.emitLog(`→ http://${subdomain}.localhost:${p.host}`, 'success', 'deploy');
             });
-            
+
             return { success: true, ports };
-            
+
         } catch (error) {
             throw new Error(`Docker deployment failed: ${error.message}`);
         }
     } else {
         // Fallback to original method for backward compatibility
         logger.info(`[Project ${projectId}] Building Docker image: ${imageName}`);
+
+        // Skip cleanup for project-based images to enable reuse
+        if (!imageName.includes('shard-project-')) {
+            await execPromise(`docker rmi ${imageName}`).catch(() =>
+                logger.info(`[Project ${projectId}] No existing image to remove for ${imageName}`)
+            );
+        } else {
+            logger.info(`[Project ${projectId}] Reusing existing project image: ${imageName}`);
+        }
+
         await execPromise(`docker build -f ${dockerfilePath} -t ${imageName} ${localPath}`);
         logger.info(`[Project ${projectId}] Image built: ${imageName}`);
+
+        // Clean up dangling images
+        await execPromise(`docker image prune -f`).catch(() =>
+            logger.info(`[Project ${projectId}] Failed to clean dangling images`)
+        );
 
         // Cleanup existing container
         await execPromise(`docker rm -f ${subdomain}`).catch(() =>
@@ -90,15 +105,15 @@ const deployContainer = async (localPath, stack, subdomain, projectId, deploymen
             logger.info(`[Project ${projectId}] No environment variables found - proceeding without .env file`);
         }
 
-        // Run container with or without environment variables
-        const dockerCmd = `docker run -d --memory=512m --name ${subdomain} ${portArgs} ${envFileArg} ${imageName}`.trim();
+        // Run container with restart policy and environment variables
+        const dockerCmd = `docker run -d --memory=512m --restart=unless-stopped --name ${subdomain} ${portArgs} ${envFileArg} ${imageName}`.trim();
         const result = await execPromise(dockerCmd);
 
         logger.info(`[Project ${projectId}] Container running for ${subdomain} at:`);
-        ports.forEach(p => logger.info(`[Project ${projectId}] → http://localhost:${p.host}`));
+        ports.forEach(p => logger.info(`[Project ${projectId}] → http://${subdomain}.localhost:${p.host}`));
 
         captureRuntimeLogs(subdomain, projectId, deploymentId);
-        
+
         return result;
     }
 };
@@ -106,8 +121,8 @@ const deployContainer = async (localPath, stack, subdomain, projectId, deploymen
 const getPortMapping = (stack, subdomain) => {
     if (stack === "mern") {
         return [
-            { container: 12000, host: PORT_CONFIG.mern.frontend },
-            { container: 12001, host: PORT_CONFIG.mern.backend }
+            { container: 12000, host: PORT_CONFIG.mern.backend },
+            { container: 12001, host: PORT_CONFIG.mern.frontend }
         ];
     }
     if (stack === "django") {
@@ -121,15 +136,15 @@ const getPortMapping = (stack, subdomain) => {
 
 const getCustomDomainUrl = (stack, subdomain) => {
     const ports = getPortMapping(stack, subdomain);
-    
+
     if (stack === "mern" && ports.length > 1) {
-        // For MERN, return frontend URL
+        // For MERN, return frontend URL with subdomain
         const frontendPort = ports.find(p => p.host === PORT_CONFIG.mern.frontend);
-        return `http://localhost:${frontendPort.host}`;
+        return `http://${subdomain}.localhost:${frontendPort.host}`;
     }
-    
-    // For other stacks, return backend URL
-    return `http://localhost:${ports[0].host}`;
+
+    // For other stacks, return backend URL with subdomain
+    return `http://${subdomain}.localhost:${ports[0].host}`;
 };
 
 const captureRuntimeLogs = (containerName, projectId, deploymentId) => {

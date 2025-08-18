@@ -90,13 +90,27 @@ const Profile = () => {
                 setAvatar(userData.avatar || '');
 
                 // Update connected accounts based on user data
-                setConnectedAccounts([
-                    {
-                        provider: 'github',
-                        connected: !!userData.githubUsername,
-                        email: userData.githubUsername ? `${userData.githubUsername}@github.com` : ''
-                    },
-                ]);
+                // Check GitHub connection status
+                try {
+                    const githubStatusRes = await api.get('/api/integrations/github/status');
+                    const githubStatus = githubStatusRes.data?.data;
+                    setConnectedAccounts([
+                        {
+                            provider: 'github',
+                            connected: githubStatus?.connected || false,
+                            email: githubStatus?.username ? `${githubStatus.username}@github.com` : ''
+                        },
+                    ]);
+                } catch (error) {
+                    console.error('Failed to check GitHub status:', error);
+                    setConnectedAccounts([
+                        {
+                            provider: 'github',
+                            connected: false,
+                            email: ''
+                        },
+                    ]);
+                }
             }
         } catch (error) {
             console.error('Failed to fetch user profile:', error);
@@ -138,6 +152,26 @@ const Profile = () => {
                 setAvatar(reader.result);
             };
             reader.readAsDataURL(file);
+        }
+    };
+
+    const handleAccountAction = async (account) => {
+        if (account.provider === 'github') {
+            if (account.connected) {
+                // Disconnect GitHub
+                try {
+                    await api.post('/api/integrations/github/disconnect');
+                    toast.success('GitHub disconnected successfully');
+                    // Refresh the connection status
+                    fetchUserProfile();
+                } catch (error) {
+                    console.error('GitHub disconnect error:', error);
+                    toast.error('Failed to disconnect GitHub');
+                }
+            } else {
+                // Connect GitHub - redirect to integrations page
+                window.location.href = '/app/integrations';
+            }
         }
     };
 
@@ -341,6 +375,7 @@ const Profile = () => {
                                                 </div>
                                                 <button
                                                     type="button"
+                                                    onClick={() => handleAccountAction(account)}
                                                     className={`group relative inline-flex items-center px-3 py-1.5 border-2 text-xs font-bold rounded-none transition-all duration-200 overflow-hidden ${account.connected
                                                         ? 'border-red-600 text-red-600 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900'
                                                         : 'border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900'

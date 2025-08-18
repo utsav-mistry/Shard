@@ -2,19 +2,22 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system deps (only if needed)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy only requirements first (for Docker cache)
-COPY requirements.txt .
-
-RUN pip install --upgrade pip && pip install -r requirements.txt
-
-# Now copy the rest of the project
+# Copy entire project (with nested structure)
 COPY . .
 
+# Change directory to inner project where manage.py lives
+WORKDIR /app/sample_project
+
+# Install requirements
+RUN pip install --upgrade pip && \
+    pip install -r ../requirements.txt
+
+# Collect static files (if needed)
+RUN python manage.py collectstatic --noinput || true
+
+# Expose port used by Django server
 EXPOSE 8000
 
+# Note: Project-specific environment variables are injected at runtime via --env-file flag
+# Run the Django server
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

@@ -104,7 +104,7 @@ const processJobWithStreaming = async (job, socket = null) => {
         }
 
         // === Step 1: Clone Repository ===
-        await logStep(projectId, deploymentId, "setup", "Cloning repository");
+        await logStep(projectId, deploymentId, "setup", "Cloning repository", token);
 
         if (streamLogger) {
             streamLogger.emitLog(`Cloning repository: ${repoUrl}`, 'info', 'clone');
@@ -121,10 +121,10 @@ const processJobWithStreaming = async (job, socket = null) => {
             commitDate: repoInfo.date
         }, token);
 
-        await logStep(projectId, deploymentId, "setup", `Repository cloned - ${repoInfo.commitMessage.substring(0, 50)}...`);
+        await logStep(projectId, deploymentId, "setup", `Repository cloned - ${repoInfo.commitMessage.substring(0, 50)}...`, token);
 
         // === Step 2: AI Review ===
-        await logStep(projectId, deploymentId, "setup", "Starting AI code review");
+        await logStep(projectId, deploymentId, "setup", "Starting AI code review", token);
 
         if (streamLogger) {
             streamLogger.emitLog("🤖 Starting AI code review", 'info', 'ai-review');
@@ -138,7 +138,7 @@ const processJobWithStreaming = async (job, socket = null) => {
 
         if (verdict === "deny") {
             const denyMessage = `AI denied deployment: ${severity_breakdown?.security || 0} security, ${severity_breakdown?.error || 0} errors`;
-            await logStep(projectId, deploymentId, "error", denyMessage);
+            await logStep(projectId, deploymentId, "error", denyMessage, token);
 
             if (streamLogger) {
                 streamLogger.emitLog(`ERROR: ${denyMessage}`, 'error', 'ai-review');
@@ -152,7 +152,7 @@ const processJobWithStreaming = async (job, socket = null) => {
 
         if (verdict === "manual_review") {
             const manualMessage = `AI flagged for manual review: ${issueCount} issues found (${linter_count} linter, ${ai_count} AI)`;
-            await logStep(projectId, deploymentId, "warning", manualMessage);
+            await logStep(projectId, deploymentId, "warning", manualMessage, token);
 
             if (streamLogger) {
                 streamLogger.emitLog(`WARNING: ${manualMessage}`, 'warning', 'ai-review');
@@ -165,14 +165,14 @@ const processJobWithStreaming = async (job, socket = null) => {
         }
 
         const passMessage = `AI review passed: ${issueCount} minor issues found`;
-        await logStep(projectId, deploymentId, "setup", passMessage);
+        await logStep(projectId, deploymentId, "setup", passMessage, token);
 
         if (streamLogger) {
             streamLogger.emitLog(`SUCCESS: ${passMessage}`, 'success', 'ai-review');
         }
 
         // === Step 3: Fetch and Inject Environment Variables ===
-        await logStep(projectId, deploymentId, "config", "Fetching environment variables");
+        await logStep(projectId, deploymentId, "config", "Fetching environment variables", token);
 
         if (streamLogger) {
             streamLogger.emitLog("Configuring environment variables", 'info', 'config');
@@ -183,14 +183,14 @@ const processJobWithStreaming = async (job, socket = null) => {
 
         if (envResult.skipped) {
             const skipMessage = "No environment variables - proceeding without .env file";
-            await logStep(projectId, deploymentId, "config", skipMessage);
+            await logStep(projectId, deploymentId, "config", skipMessage, token);
 
             if (streamLogger) {
                 streamLogger.emitLog(`ℹ️ ${skipMessage}`, 'info', 'config');
             }
         } else {
             const configMessage = `Environment configured: ${envResult.variablesCount} variables`;
-            await logStep(projectId, deploymentId, "config", configMessage);
+            await logStep(projectId, deploymentId, "config", configMessage, token);
 
             if (streamLogger) {
                 streamLogger.emitLog(`SUCCESS: ${configMessage}`, 'success', 'config');
@@ -198,7 +198,7 @@ const processJobWithStreaming = async (job, socket = null) => {
         }
 
         // === Step 4: Build and Run Container ===
-        await logStep(projectId, deploymentId, "deploy", "Starting container deployment");
+        await logStep(projectId, deploymentId, "deploy", "Starting container deployment", token);
 
         if (streamLogger) {
             streamLogger.emitLog("Starting Docker deployment", 'info', 'deploy');
@@ -214,7 +214,7 @@ const processJobWithStreaming = async (job, socket = null) => {
 
         // === Step 5: Finalize ===
         const successMessage = "Deployment successful";
-        await logStep(projectId, deploymentId, "complete", successMessage);
+        await logStep(projectId, deploymentId, "complete", successMessage, token);
 
         if (streamLogger) {
             streamLogger.emitLog(`SUCCESS: ${successMessage}`, 'success', 'complete');

@@ -33,9 +33,13 @@ GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 GOOGLE_REDIRECT_URI=http://localhost:5000/api/auth/google/callback
 
-# GitHub OAuth
-GITHUB_CLIENT_ID=your-github-client-id
-GITHUB_CLIENT_SECRET=your-github-client-secret
+# GitHub OAuth - Authentication App (for user login)
+GITHUB_CLIENT_ID=your-github-auth-client-id
+GITHUB_CLIENT_SECRET=your-github-auth-client-secret
+
+# GitHub OAuth - Integration App (for repository access)
+GITHUB_INTEGRATION_CLIENT_ID=your-github-integration-client-id
+GITHUB_INTEGRATION_CLIENT_SECRET=your-github-integration-client-secret
 
 # External Services
 AI_SERVICE_URL=http://localhost:8000
@@ -185,10 +189,20 @@ SMTP_FROM=noreply@yourapp.com
    - Authorization callback URL: `http://localhost:5000/api/auth/github/callback`
 4. Click "Register application"
 
-**Step 2: Get Credentials**
-1. Copy the "Client ID"
-2. Click "Generate a new client secret"
-3. Copy the "Client Secret" immediately (it won't be shown again)
+### 2. GitHub Integration App (Shard-Integrations)
+This app handles repository access for deployments:
+
+1. Create another OAuth App with these details:
+   - **Application name**: `Shard-Integrations`
+   - **Homepage URL**: `http://localhost:3000` (or your domain)
+   - **Authorization callback URL**: `http://localhost:5000/api/integrations/github/callback`
+2. Copy the Client ID and Client Secret to your `.env` file as:
+   - `GITHUB_INTEGRATION_CLIENT_ID=your-integration-app-client-id`
+   - `GITHUB_INTEGRATION_CLIENT_SECRET=your-integration-app-client-secret`
+
+**Important**: The two apps have different callback URLs and serve different purposes:
+- Auth app: User authentication with minimal scopes
+- Integration app: Repository access with `repo` scope
 
 ### 7. External Services
 

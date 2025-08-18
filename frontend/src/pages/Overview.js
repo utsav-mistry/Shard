@@ -18,16 +18,37 @@ const Overview = () => {
     try {
       setLoading(true);
       const [projectsRes, deploymentsRes, profileRes] = await Promise.all([
-        api.get('/projects'),
-        api.get('/deployments'),
-        api.get('/auth/profile')
+        api.get('/api/projects'),
+        api.get('/api/deployments'),
+        api.get('/api/auth/profile')
       ]);
 
-      setProjects(projectsRes.data?.projects || []);
-      setDeployments(deploymentsRes.data?.deployments || []);
+      // Handle projects response (paginated format)
+      if (projectsRes.data?.success) {
+        const projectsData = projectsRes.data.data || [];
+        setProjects(Array.isArray(projectsData) ? projectsData : []);
+      } else {
+        console.error('Failed to fetch projects:', projectsRes.data);
+        setProjects([]);
+      }
+
+      // Handle deployments response (standard format)
+      if (deploymentsRes.data?.success) {
+        const deploymentsData = deploymentsRes.data.data || [];
+        setDeployments(Array.isArray(deploymentsData) ? deploymentsData : []);
+      } else {
+        console.error('Failed to fetch deployments:', deploymentsRes.data);
+        setDeployments([]);
+      }
       
-      const user = profileRes.data?.data?.user || profileRes.data?.user;
-      setGithubConnected(!!user?.githubUsername);
+      // Check GitHub connection status
+      try {
+        const githubStatusRes = await api.get('/api/integrations/github/status');
+        setGithubConnected(githubStatusRes.data?.data?.connected || false);
+      } catch (error) {
+        console.error('Failed to check GitHub status:', error);
+        setGithubConnected(false);
+      }
     } catch (error) {
       console.error('Failed to fetch overview data:', error);
     } finally {
@@ -177,7 +198,7 @@ const Overview = () => {
                   Connect your GitHub account
                 </h3>
                 <p className="text-sm text-black-600 dark:text-white-400">
-                  Import repositories and enable automatic deployments
+                  Import repositories for manual deployments
                 </p>
               </div>
             </div>
@@ -234,7 +255,7 @@ const Overview = () => {
                         {project.name}
                       </h3>
                       <p className="text-sm text-black-600 dark:text-white-400">
-                        {project.repoUrl}
+                        {project.subdomain ? `${project.subdomain}.localhost` : project.repoUrl}
                       </p>
                     </div>
                     <div className="p-2 border-2 border-dotted border-gray-400 dark:border-gray-600 rounded-none shadow-sm">

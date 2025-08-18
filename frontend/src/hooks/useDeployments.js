@@ -46,8 +46,8 @@ const useDeployments = (projectId = null) => {
   useEffect(() => {
     fetchDeployments();
 
-    // Set up polling every 30 seconds for real-time updates
-    const interval = setInterval(fetchDeployments, 30000);
+    // Set up polling every 60 seconds for real-time updates (reduced from 30)
+    const interval = setInterval(fetchDeployments, 60000);
 
     return () => clearInterval(interval);
   }, [fetchDeployments]);

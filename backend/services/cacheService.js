@@ -25,9 +25,9 @@ class CacheService {
     /**
      * Get value by key
      * @param {string} key
-     * @returns {Promise<*>}
+     * @returns {*}
      */
-    async get(key) {
+    get(key) {
         try {
             const value = this.cache.get(key);
             if (value === undefined) {
@@ -47,9 +47,9 @@ class CacheService {
      * @param {string} key
      * @param {*} value
      * @param {number} [ttl] - Time to live in seconds (overrides default if provided)
-     * @returns {Promise<boolean>}
+     * @returns {boolean}
      */
-    async set(key, value, ttl) {
+    set(key, value, ttl) {
         try {
             const success = ttl 
                 ? this.cache.set(key, value, ttl)
@@ -70,9 +70,9 @@ class CacheService {
     /**
      * Delete value by key
      * @param {string} key
-     * @returns {Promise<number>} Number of deleted keys
+     * @returns {number} Number of deleted keys
      */
-    async del(key) {
+    del(key) {
         try {
             const deleted = this.cache.del(key);
             if (deleted > 0) {

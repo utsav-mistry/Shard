@@ -159,7 +159,18 @@ class StreamingLogger {
      * Build Docker image with real-time streaming
      */
     async buildDockerImage(contextPath, dockerfilePath, imageName) {
-        this.emitLog(`Starting Docker build: ${imageName}`, 'info', 'build');
+        // Check if project image already exists
+        const imageExists = await this.checkImageExists(imageName);
+        
+        if (imageExists && imageName.includes('shard-project-')) {
+            this.emitLog(`Using existing project image: ${imageName}`, 'success', 'build');
+            return { success: true, imageName, reused: true };
+        }
+        
+        this.emitLog(`Building Docker image: ${imageName}`, 'info', 'build');
+        
+        // Clean up old images with the same name first
+        await this.cleanupOldImages(imageName);
         
         const args = ['build', '-f', dockerfilePath, '-t', imageName, contextPath];
         
@@ -171,10 +182,67 @@ class StreamingLogger {
             });
             
             this.emitLog(`Docker image built successfully: ${imageName}`, 'success', 'build');
-            return { success: true, imageName };
+            
+            // Clean up dangling images after successful build
+            await this.cleanupDanglingImages();
+            
+            return { success: true, imageName, reused: false };
         } catch (error) {
             this.emitLog(`Docker build failed: ${error.message}`, 'error', 'build');
             throw error;
+        }
+    }
+
+    /**
+     * Check if Docker image exists
+     */
+    async checkImageExists(imageName) {
+        try {
+            await this.executeCommand('docker', ['image', 'inspect', imageName], {
+                step: 'check',
+                timeout: 10000
+            });
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * Clean up old images with the same name (skip for project-based images)
+     */
+    async cleanupOldImages(imageName) {
+        // Don't clean up project images - reuse them for efficiency
+        if (imageName.includes('shard-project-')) {
+            this.emitLog(`Reusing existing project image: ${imageName}`, 'info', 'build');
+            return;
+        }
+        
+        try {
+            this.emitLog(`Cleaning up old images for: ${imageName}`, 'info', 'cleanup');
+            await this.executeCommand('docker', ['rmi', imageName], {
+                step: 'cleanup',
+                timeout: 30000
+            });
+        } catch (error) {
+            // Ignore errors - image might not exist
+            this.emitLog(`No existing image to clean up: ${imageName}`, 'info', 'cleanup');
+        }
+    }
+
+    /**
+     * Clean up dangling images
+     */
+    async cleanupDanglingImages() {
+        try {
+            this.emitLog(`Cleaning up dangling images`, 'info', 'cleanup');
+            await this.executeCommand('docker', ['image', 'prune', '-f'], {
+                step: 'cleanup',
+                timeout: 60000
+            });
+            this.emitLog(`Dangling images cleaned up`, 'success', 'cleanup');
+        } catch (error) {
+            this.emitLog(`Failed to clean dangling images: ${error.message}`, 'warning', 'cleanup');
         }
     }
 
@@ -186,8 +254,8 @@ class StreamingLogger {
         
         const { ports = [], envFile, memory = '512m' } = options;
         
-        // Build docker run command
-        const args = ['run', '-d', `--memory=${memory}`, '--name', containerName];
+        // Build docker run command with restart policy
+        const args = ['run', '-d', `--memory=${memory}`, '--restart=unless-stopped', '--name', containerName];
         
         // Add port mappings
         ports.forEach(({ host, container }) => {
@@ -209,6 +277,15 @@ class StreamingLogger {
             
             this.emitLog(`Container started successfully: ${containerName}`, 'success', 'deploy');
             
+            // Wait a moment for container to fully start
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Verify container is running
+            const isRunning = await this.verifyContainerRunning(containerName);
+            if (!isRunning) {
+                throw new Error(`Container ${containerName} failed to start or exited immediately`);
+            }
+            
             // Start streaming runtime logs
             this.streamRuntimeLogs(containerName);
             
@@ -216,6 +293,22 @@ class StreamingLogger {
         } catch (error) {
             this.emitLog(`Container deployment failed: ${error.message}`, 'error', 'deploy');
             throw error;
+        }
+    }
+
+    /**
+     * Verify container is running
+     */
+    async verifyContainerRunning(containerName) {
+        try {
+            await this.executeCommand('docker', ['ps', '-q', '-f', `name=${containerName}`], {
+                step: 'verify',
+                timeout: 10000
+            });
+            return true;
+        } catch (error) {
+            this.emitLog(`Container verification failed: ${error.message}`, 'error', 'verify');
+            return false;
         }
     }
 

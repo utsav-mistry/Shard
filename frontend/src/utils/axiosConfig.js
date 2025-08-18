@@ -68,8 +68,8 @@ api.interceptors.response.use(
       return Promise.reject(new Error('Unable to connect to the server. Please check your internet connection and try again.'));
     }
 
-    // Handle 401 Unauthorized errors
-    if (error.response?.status === 401) {
+    // Handle 401 Unauthorized errors (including JWT malformed)
+    if (error.response?.status === 401 || error.message?.includes('jwt malformed')) {
       // If we're already on the login page, don't redirect again
       if (!window.location.pathname.includes('login')) {
         localStorage.removeItem('token');

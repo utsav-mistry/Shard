@@ -51,10 +51,7 @@ const ProjectSchema = new mongoose.Schema(
             default: 'active',
         },
         settings: {
-            autoDeploy: {
-                type: Boolean,
-                default: false,
-            },
+            // Auto-deploy feature removed - deployments are manual only
             buildCommand: {
                 type: String,
                 default: 'npm install && npm run build',
@@ -90,7 +87,9 @@ const ProjectSchema = new mongoose.Schema(
             virtuals: true,
             transform: function (doc, ret) {
                 delete ret.__v;
-                delete ret.settings.envVars; // Don't expose env vars by default
+                if (ret.settings && ret.settings.envVars) {
+                    delete ret.settings.envVars; // Don't expose env vars by default
+                }
                 return ret;
             }
         },
@@ -98,7 +97,9 @@ const ProjectSchema = new mongoose.Schema(
             virtuals: true,
             transform: function (doc, ret) {
                 delete ret.__v;
-                delete ret.settings.envVars; // Don't expose env vars by default
+                if (ret.settings && ret.settings.envVars) {
+                    delete ret.settings.envVars; // Don't expose env vars by default
+                }
                 return ret;
             }
         },
@@ -109,7 +110,7 @@ const ProjectSchema = new mongoose.Schema(
 ProjectSchema.index({ ownerId: 1, name: 1 }, { unique: true });
 ProjectSchema.index({ status: 1, lastDeployedAt: -1 });
 
-// Virtual for project URL (localhost for college project)
+// Virtual for project URL with subdomain.localhost:port format
 ProjectSchema.virtual('url').get(function () {
     const PORT_CONFIG = {
         mern: { backend: 12000, frontend: 12001 },
@@ -118,13 +119,13 @@ ProjectSchema.virtual('url').get(function () {
     };
     
     const ports = PORT_CONFIG[this.framework?.toLowerCase()];
-    if (!ports) return `http://localhost:3000`;
+    if (!ports) return `http://${this.subdomain || 'app'}.localhost:3000`;
     
     if (this.framework?.toLowerCase() === 'mern' && ports.frontend) {
-        return `http://localhost:${ports.frontend}`;
+        return `http://${this.subdomain || 'app'}.localhost:${ports.frontend}`;
     }
     
-    return `http://localhost:${ports.backend}`;
+    return `http://${this.subdomain || 'app'}.localhost:${ports.backend}`;
 });
 
 // Pre-save hook to validate subdomain uniqueness
@@ -183,8 +184,7 @@ ProjectSchema.statics.findByOwner = async function (ownerId, useCache = true) {
     }
 
     const projects = await this.find({ ownerId, status: { $ne: 'deleted' } })
-        .sort({ updatedAt: -1 })
-        .lean();
+        .sort({ updatedAt: -1 });
 
     // Cache for 5 minutes
     if (projects.length > 0) {
@@ -205,7 +205,7 @@ ProjectSchema.statics.getById = async function (projectId, useCache = true) {
         }
     }
 
-    const project = await this.findById(projectId).lean();
+    const project = await this.findById(projectId);
 
     if (project) {
         // Cache for 1 hour

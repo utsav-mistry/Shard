@@ -58,7 +58,7 @@ const httpServer = createServer(app);
 // Configure CORS for Express
 const corsOptions = {
     origin: [
-        'http://localhost:3000', 
+        'http://localhost:3000',
         'http://127.0.0.1:3000',
         'http://localhost:5000',  // For OAuth callbacks
         'http://127.0.0.1:5000'   // For OAuth callbacks
@@ -99,12 +99,16 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting
+// Rate limiting - more lenient for development
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
+    max: 500, // increased from 100 to 500 requests per windowMs
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    skip: (req) => {
+        // Skip rate limiting for deployment worker and AI service
+        return req.ip === '127.0.0.1' || req.ip === '::1' || req.headers['user-agent']?.includes('axios');
+    }
 });
 app.use(apiLimiter);
 
@@ -156,6 +160,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/integrations', require('./routes/integrations'));
 app.use('/api/projects', projectRoutes);
 app.use('/api/deploy', deployRoutes);
+app.use('/api/deployments', deployRoutes); // Also mount at /api/deployments for frontend compatibility
 app.use('/api/admin', adminRoutes);
 app.use('/api/env', envRoutes);
 app.use('/api/logs', logsRoutes);

@@ -20,19 +20,27 @@ const DeploymentLogs = () => {
   const fetchData = async () => {
     try {
       // Fetch deployment details first
-      const deploymentResponse = await api.get(`/deploy/${id}`);
-      const deploymentData = deploymentResponse.data;
+      const deploymentResponse = await api.get(`/api/deploy/${id}`);
+      const deploymentData = deploymentResponse.data.success ? deploymentResponse.data.data : deploymentResponse.data;
       setDeployment(deploymentData);
+      
+      // Only fetch project if we have a valid projectId
+      if (!deploymentData.projectId) {
+        console.warn('No projectId found in deployment data:', deploymentData);
+        setError('Deployment missing project information');
+        setLoading(false);
+        return;
+      }
       
       // Fetch project details and logs in parallel
       const [projectResponse, logsResponse] = await Promise.all([
-        api.get(`/projects/${deploymentData.projectId}`),
-        api.get(`/logs/${id}`)
+        api.get(`/api/projects/${deploymentData.projectId}`),
+        api.get(`/api/logs/${id}`)
       ]);
       
-      setProject(projectResponse.data);
+      setProject(projectResponse.data.success ? projectResponse.data.data : projectResponse.data);
       
-      setLogs(logsResponse.data);
+      setLogs(logsResponse.data.success ? logsResponse.data.data : logsResponse.data);
       setLoading(false);
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -57,7 +65,7 @@ const DeploymentLogs = () => {
     if (autoRefresh && (deployment?.status === 'pending' || deployment?.status === 'running')) {
       refreshIntervalRef.current = setInterval(() => {
         fetchData();
-      }, 5000); // Refresh every 5 seconds
+      }, 15000); // Refresh every 15 seconds (reduced from 5)
     } else if (refreshIntervalRef.current) {
       clearInterval(refreshIntervalRef.current);
       refreshIntervalRef.current = null;

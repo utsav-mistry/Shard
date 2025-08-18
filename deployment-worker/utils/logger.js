@@ -75,17 +75,23 @@ logger.stream = {
 };
 
 // Helper function to log deployment steps
-const logStep = async (projectId, deploymentId, step, message) => {
+const logStep = async (projectId, deploymentId, step, message, token = null) => {
   const logMessage = `[Project: ${projectId}] [Deployment: ${deploymentId}] ${step.toUpperCase()}: ${message}`;
   logger.info(logMessage);
   
-  // If we have a deployment ID, update the deployment status in the database
-  if (deploymentId) {
+  // If we have a deployment ID and token, update the deployment status in the database
+  if (deploymentId && token) {
     try {
       await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deploy/update-step`, {
         deploymentId,
         step,
         message
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 5000
       });
     } catch (error) {
       logger.error(`Failed to update deployment step: ${error.message}`);

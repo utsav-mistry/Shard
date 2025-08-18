@@ -9,32 +9,19 @@ const GitHubCallback = () => {
     const [message, setMessage] = useState('Processing GitHub authentication...');
 
     useEffect(() => {
-        const handleCallback = async () => {
-            const state = searchParams.get('state');
-            const success = searchParams.get('success');
-            const error = searchParams.get('error');
-
-            if (error) {
-                setStatus('error');
-                setMessage(getErrorMessage(error));
-                setTimeout(() => navigate('/app/integrations/github'), 3000);
-                return;
-            }
-
-            if (success && state) {
-                setStatus('success');
-                setMessage('GitHub connected successfully! Redirecting...');
-                setTimeout(() => navigate('/app/integrations/github'), 2000);
-                return;
-            }
-
-            // If no clear success/error, assume error
+        const { code, state, error } = Object.fromEntries([...searchParams]);
+        
+        if (error) {
             setStatus('error');
-            setMessage('Invalid authentication response');
+            setMessage(getErrorMessage(error));
             setTimeout(() => navigate('/app/integrations/github'), 3000);
-        };
+            return;
+        }
 
-        handleCallback();
+        // The backend will handle the OAuth flow and redirect back to the integrations page
+        // We just need to show a loading state and let the backend handle the rest
+        const frontendUrl = window.location.origin;
+        window.location.href = `/api/integrations/github/callback?${searchParams.toString()}`;
     }, [searchParams, navigate]);
 
     const getErrorMessage = (error) => {

@@ -292,11 +292,11 @@ const LandingPage = () => {
               </div>
               <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-4">Git Integration</h3>
               <p className="text-black-600 dark:text-white-400 mb-4">
-                Seamless integration with GitHub and GitLab. Deploy directly from your repositories with automatic builds on push.
+                Seamless integration with GitHub and GitLab. Deploy directly from your repositories with manual control.
               </p>
               <ul className="text-sm text-black-500 dark:text-white-300 space-y-2">
                 <li>• GitHub & GitLab integration</li>
-                <li>• Automatic deployments</li>
+                <li>• Manual deployments</li>
                 <li>• Branch-based environments</li>
               </ul>
             </div>

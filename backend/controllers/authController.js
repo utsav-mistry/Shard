@@ -108,7 +108,7 @@ const loginUser = async (req, res) => {
             name: user.name,
             avatar: user.avatar,
             role: user.role,
-            githubId: user.githubId,
+            githubAuthId: user.githubAuthId,
             googleId: user.googleId
         };
 
@@ -122,6 +122,7 @@ const loginUser = async (req, res) => {
 // GitHub OAuth Callback
 const githubOAuthCallback = async (req, res) => {
     const code = req.query.code || req.body.code;
+    const state = req.query.state;
     const error = req.query.error;
 
     if (error) {
@@ -131,6 +132,18 @@ const githubOAuthCallback = async (req, res) => {
 
     if (!code) {
         return res.status(400).send('Authorization code is required');
+    }
+
+    // Check if this is an integration request (not a login request)
+    if (state) {
+        const { cache } = require('../services/cacheService');
+        const stateData = cache.get(`github:integration:${state}`);
+        
+        if (stateData && stateData.userId) {
+            // This is an integration request, delegate to integration controller
+            const integrationsController = require('./integrationsController');
+            return integrationsController.handleGitHubIntegrationCallback(req, res);
+        }
     }
 
     try {
@@ -155,22 +168,25 @@ const githubOAuthCallback = async (req, res) => {
             };
 
             user = new User({
-                githubId: gitHubUser.id,
+                githubAuthId: gitHubUser.id.toString(),
                 email: gitHubUser.email || `${gitHubUser.login}@github.com`,
                 name: gitHubUser.name || generateReadableName(gitHubUser.login),
                 avatar: gitHubUser.avatar_url,
-                isEmailVerified: !!gitHubUser.email_verified
+                isVerified: !!gitHubUser.email
             });
             await user.save();
-        } else if (!user.githubId) {
+        } else if (!user.githubAuthId) {
             // Link GitHub to existing account
-            user.githubId = gitHubUser.id;
+            user.githubAuthId = gitHubUser.id.toString();
             if (!user.avatar) user.avatar = gitHubUser.avatar_url;
             await user.save();
         }
 
         const token = generateToken(user);
-        const frontendUrl = new URL(process.env.FRONTEND_URL || 'http://localhost:3000');
+        // Ensure FRONTEND_URL doesn't end with a slash to prevent double slashes
+        let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        frontendUrl = frontendUrl.endsWith('/') ? frontendUrl.slice(0, -1) : frontendUrl;
+        const frontendBase = new URL(frontendUrl);
         
         // Set HTTP-only cookie for better security
         res.cookie('token', token, {
@@ -180,18 +196,102 @@ const githubOAuthCallback = async (req, res) => {
             maxAge: (process.env.JWT_COOKIE_EXPIRE || 7) * 24 * 60 * 60 * 1000 // Default to 7 days if not set
         });
 
-        // Redirect to frontend with token in URL (for clients that can't access cookies)
-        const redirectUrl = new URL('/auth/callback', frontendUrl);
+        // Construct the redirect URL without double slashes
+        const redirectUrl = new URL(`${frontendBase.origin}/auth/callback`);
         redirectUrl.searchParams.set('token', token);
         redirectUrl.searchParams.set('provider', 'github');
         
         return res.redirect(redirectUrl.toString());
     } catch (err) {
         console.error('GitHub OAuth error:', err);
-        const frontendUrl = new URL(process.env.FRONTEND_URL || 'http://localhost:3000');
-        const errorUrl = new URL('/login', frontendUrl);
+        let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        frontendUrl = frontendUrl.endsWith('/') ? frontendUrl.slice(0, -1) : frontendUrl;
+        const errorUrl = new URL(`${frontendUrl}/login`);
         errorUrl.searchParams.set('error', 'github_oauth_failed');
         return res.redirect(errorUrl.toString());
+    }
+};
+
+// GitHub OAuth Callback - AUTHENTICATION ONLY
+const githubOAuthCallbackAuth = async (req, res) => {
+    const code = req.query.code || req.body.code;
+    const error = req.query.error;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+    if (error) {
+        console.error('GitHub OAuth authentication error:', error);
+        return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(error)}`);
+    }
+
+    if (!code) {
+        console.error('No authorization code provided for GitHub auth');
+        return res.redirect(`${frontendUrl}/login?error=no_code`);
+    }
+
+    try {
+        // Use regular GitHub service for authentication
+        const accessToken = await githubService.getAccessToken(code);
+        if (!accessToken) {
+            throw new Error('Failed to obtain GitHub access token');
+        }
+
+        const gitHubUser = await githubService.getGitHubUser(accessToken);
+        if (!gitHubUser) {
+            throw new Error('Failed to get GitHub user information');
+        }
+
+        // Find user by GitHub Auth ID (separate from integration)
+        let user = await User.findOne({ 
+            $or: [
+                { githubAuthId: gitHubUser.id.toString() },
+                { email: gitHubUser.email || `${gitHubUser.login}@github.com` }
+            ]
+        });
+
+        if (!user) {
+            // Create new user for GitHub authentication
+            const generateReadableName = (login) => {
+                return login
+                    .split(/[-_]/)
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+            };
+
+            user = new User({
+                githubAuthId: gitHubUser.id.toString(),
+                email: gitHubUser.email || `${gitHubUser.login}@github.com`,
+                name: gitHubUser.name || generateReadableName(gitHubUser.login),
+                avatar: gitHubUser.avatar_url,
+                isVerified: !!gitHubUser.email,
+                lastLogin: new Date()
+            });
+            await user.save();
+            console.log('Created new user via GitHub auth:', { userId: user._id, name: user.name });
+        } else {
+            // Update existing user's GitHub auth info
+            if (!user.githubAuthId) {
+                user.githubAuthId = gitHubUser.id.toString();
+            }
+            if (!user.avatar && gitHubUser.avatar_url) {
+                user.avatar = gitHubUser.avatar_url;
+            }
+            user.lastLogin = new Date();
+            await user.save();
+            console.log('Updated existing user via GitHub auth:', { userId: user._id, name: user.name });
+        }
+
+        const token = generateToken(user);
+        const frontendBase = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const frontendUrl = frontendBase.endsWith('/') ? frontendBase.slice(0, -1) : frontendBase;
+        
+        // Redirect to frontend with authentication token
+        res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+        
+    } catch (error) {
+        console.error('GitHub OAuth authentication error:', error);
+        const frontendBase = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const frontendUrl = frontendBase.endsWith('/') ? frontendBase.slice(0, -1) : frontendBase;
+        res.redirect(`${frontendUrl}/login?error=auth_failed&message=${encodeURIComponent(error.message)}`);
     }
 };
 
@@ -207,10 +307,10 @@ const githubOAuthCallbackLogin = async (req, res) => {
         const accessToken = await githubService.getAccessToken(code);
         const gitHubUser = await githubService.getGitHubUser(accessToken);
 
-        // Find user by GitHub ID or email
+        // Find user by GitHub Auth ID or email
         let user = await User.findOne({ 
             $or: [
-                { githubId: gitHubUser.id },
+                { githubAuthId: gitHubUser.id.toString() },
                 { email: gitHubUser.email || `${gitHubUser.login}@github.com` }
             ]
         });
@@ -225,18 +325,16 @@ const githubOAuthCallbackLogin = async (req, res) => {
             };
 
             user = new User({
-                githubId: gitHubUser.id,
+                githubAuthId: gitHubUser.id.toString(),
                 email: gitHubUser.email || `${gitHubUser.login}@github.com`,
                 name: gitHubUser.name || generateReadableName(gitHubUser.login),
                 avatar: gitHubUser.avatar_url,
-                githubUsername: gitHubUser.login,
                 isVerified: !!gitHubUser.email
             });
             await user.save();
-        } else if (!user.githubId) {
+        } else if (!user.githubAuthId) {
             // Link GitHub to existing account
-            user.githubId = gitHubUser.id;
-            user.githubUsername = gitHubUser.login;
+            user.githubAuthId = gitHubUser.id.toString();
             if (!user.avatar) user.avatar = gitHubUser.avatar_url;
             await user.save();
         }
@@ -364,26 +462,29 @@ const googleOAuthCallbackRedirect = async (req, res) => {
         } else if (!user.googleId) {
             user.googleId = googleUser.id;
             if (!user.avatar) user.avatar = googleUser.picture;
-            await user.save();
         }
 
         user.lastLogin = new Date();
         await user.save();
 
-        const token = generateToken(user);
+        const token = jwt.sign(
+            { 
+                id: user._id, 
+                email: user.email, 
+                role: user.role,
+                name: user.name
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+        );
 
-        res.cookie('token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: (process.env.JWT_COOKIE_EXPIRE || 7) * 24 * 60 * 60 * 1000,
-        });
-
-        const frontendBase = new URL(process.env.FRONTEND_URL || 'http://localhost:3000');
-        const redirectUrl = new URL('/auth/callback', frontendBase);
-        redirectUrl.searchParams.set('token', token);
-        redirectUrl.searchParams.set('provider', 'google');
-        return res.redirect(redirectUrl.toString());
+        console.log('Google authentication successful, redirecting with token');
+        
+        // Redirect to frontend with authentication token
+        const frontendBase = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const frontendUrl = frontendBase.endsWith('/') ? frontendBase.slice(0, -1) : frontendBase;
+        res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+        
     } catch (err) {
         console.error('Google OAuth GET callback error:', err);
         const frontendUrl = new URL(process.env.FRONTEND_URL || 'http://localhost:3000');
@@ -408,7 +509,7 @@ const getUserProfile = async (req, res) => {
             name: user.name,
             avatar: user.avatar,
             role: user.role,
-            githubId: user.githubId,
+            githubAuthId: user.githubAuthId,
             googleId: user.googleId,
             createdAt: user.createdAt
         };
@@ -443,7 +544,7 @@ const updateUserProfile = async (req, res) => {
             name: user.name,
             avatar: user.avatar,
             role: user.role,
-            githubId: user.githubId,
+            githubAuthId: user.githubAuthId,
             googleId: user.googleId
         };
 

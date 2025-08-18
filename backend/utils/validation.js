@@ -13,7 +13,15 @@ const envVarSchema = Joi.object({
 });
 
 const deploymentSchema = Joi.object({
-    projectId: Joi.string().hex().length(24).required()
+    projectId: Joi.string().hex().length(24).required(),
+    branch: Joi.string().min(1).max(100).optional().default('main'),
+    commitHash: Joi.string().max(100).optional(),
+    message: Joi.string().max(500).optional(),
+    environmentVariables: Joi.array().items(Joi.object({
+        key: Joi.string().required(),
+        value: Joi.string().required(),
+        isSecret: Joi.boolean().optional().default(false)
+    })).optional().default([])
 });
 
 // Validation middleware

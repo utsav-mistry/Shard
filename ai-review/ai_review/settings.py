@@ -48,7 +48,6 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -146,6 +145,17 @@ CORS_ALLOWED_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+# Disable CSRF for API endpoints
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:9000",
+    "http://127.0.0.1:9000",
+    "http://localhost:5000",
+    "http://127.0.0.1:5000",
+]
+
+# Exempt specific views from CSRF
+CSRF_EXEMPT_URLS = [r'^/review/.*$']
 
 # Error page handlers
 HANDLER404 = 'app.views.custom_404'

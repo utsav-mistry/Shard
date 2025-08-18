@@ -31,13 +31,13 @@ const GitHubIntegration = () => {
 
     const checkGitHubConnection = async () => {
         try {
-            const response = await api.get('/auth/profile');
-            const user = response.data?.data?.user || response.data?.user;
-            if (user?.githubUsername) {
+            const response = await api.get('/api/integrations/github/status');
+            const status = response.data?.data;
+            if (status?.connected) {
                 setIsConnected(true);
                 setGithubUser({
-                    username: user.githubUsername,
-                    avatar: user.avatar
+                    username: status.username,
+                    avatar: status.avatar
                 });
             } else {
                 setIsConnected(false);
@@ -55,42 +55,12 @@ const GitHubIntegration = () => {
         setError('');
         
         try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                throw new Error('Not authenticated');
-            }
-            
-            // Generate a unique state
-            const state = Math.random().toString(36).substring(2, 15) + 
-                         Math.random().toString(36).substring(2, 15);
-            
-            // Store the token in cache with the state
-            try {
-                // Save state with token for verification
-                await api.post('/api/cache/set', {
-                    key: `github:state:${state}`,
-                    value: JSON.stringify({ 
-                        token,
-                        timestamp: Date.now()
-                    }),
-                    ttl: 600 // 10 minutes
-                });
-                
-                // Get the base URL from environment variables or use the current origin
-                const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-                
-                // Redirect to GitHub OAuth with the correct backend URL and state
-                window.location.href = `${backendUrl}/api/github/auth?state=${encodeURIComponent(state)}`;
-                
-            } catch (cacheError) {
-                console.error('Failed to cache state:', cacheError);
-                // Fallback to simple state parameter with token
-                const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-                const state = btoa(JSON.stringify({ 
-                    token,
-                    timestamp: Date.now()
-                }));
-                window.location.href = `${backendUrl}/api/github/auth?state=${encodeURIComponent(state)}`;
+            // Get the GitHub integration URL from the backend
+            const response = await api.get('/api/integrations/github/connect');
+            if (response.data?.data?.authUrl) {
+                window.location.href = response.data.data.authUrl;
+            } else {
+                throw new Error('Failed to get GitHub integration URL');
             }
         } catch (error) {
             console.error('GitHub connection error:', error);
@@ -101,18 +71,26 @@ const GitHubIntegration = () => {
 
     const disconnectGitHub = async () => {
         try {
-            await api.post('/auth/disconnect-github', {});
+            setLoading(true);
+            setError('');
+            await api.post('/api/integrations/github/disconnect', {});
             setIsConnected(false);
             setGithubUser(null);
             setSuccess('GitHub disconnected successfully');
+            toast.success('GitHub disconnected successfully');
         } catch (error) {
-            setError('Failed to disconnect GitHub');
+            console.error('GitHub disconnect error:', error);
+            const errorMsg = error.response?.data?.message || 'Failed to disconnect GitHub';
+            setError(errorMsg);
+            toast.error(errorMsg);
+        } finally {
+            setLoading(false);
         }
     };
 
     const fetchRepos = async () => {
         try {
-            const res = await api.get('/github/repos');
+            const res = await api.get('/api/integrations/github/repositories');
             return res.data?.data || res.data; // support either shape
         } catch (e) {
             console.error('Failed to fetch repos:', e);
@@ -285,9 +263,9 @@ const GitHubIntegration = () => {
                     </div>
 
                     <div className="p-6 border-2 border-black-900 dark:border-white-100 rounded-none bg-white-100 dark:bg-black-700 shadow-md hover:shadow-lg transition-shadow">
-                        <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-3">Automated Deployment</h3>
+                        <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-3">Manual Deployment</h3>
                         <p className="text-black-600 dark:text-white-400 mb-4 font-medium">
-                            Deploy your projects with AI-powered code review
+                            Deploy your projects manually with AI-powered code review
                         </p>
                         <ul className="space-y-2 text-sm font-medium">
                             <li className="flex items-center gap-2">
