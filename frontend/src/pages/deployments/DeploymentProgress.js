@@ -101,9 +101,9 @@ const DeploymentProgress = () => {
     if (raw.includes('RUN') && step === 'build') return 'Running build commands...';
     if (raw.includes('EXPOSE') && step === 'build') return 'Configuring network access...';
 
-    if (level === 'error') return `❌ ${raw}`;
-    if (level === 'success') return `✅ ${raw}`;
-    if (level === 'warning') return `⚠️ ${raw}`;
+    if (level === 'error') return `${raw}`;
+    if (level === 'success') return `${raw}`;
+    if (level === 'warning') return `${raw}`;
 
     return raw
       .replace(/^Step \d+\/\d+ : /, '')

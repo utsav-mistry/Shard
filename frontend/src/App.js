@@ -36,15 +36,12 @@ import NewProject from './pages/projects/NewProject';
 import DeploymentsList from './pages/deployments/DeploymentsList';
 import DeploymentDetail from './pages/deployments/DeploymentDetail';
 import DeploymentProgress from './pages/deployments/DeploymentProgress';
-import DeploymentLogs from './pages/deployments/DeploymentLogs';
 
 // Environment pages
 import EnvironmentVariables from './pages/environment/EnvironmentVariables';
 import NewEnvironmentVariable from './pages/environment/NewEnvironmentVariable';
 import EditEnvironmentVariable from './pages/environment/EditEnvironmentVariable';
 
-// Logs pages
-import LogsList from './pages/logs/LogsList';
 
 // Settings page
 import Settings from './pages/Settings';
@@ -114,20 +111,16 @@ function App() {
                   <Route path="deployments" element={<DeploymentsList />} />
                   <Route path="deployments/:id" element={<DeploymentDetail />} />
                   <Route path="deployments/:id/progress" element={<DeploymentProgress />} />
-                  <Route path="deployments/:id/logs" element={<DeploymentLogs />} />
                   
                   {/* Project-specific deployment routes */}
                   <Route path="projects/:projectId/deployments/:deploymentId" element={<DeploymentDetail />} />
                   <Route path="projects/:projectId/deployments/:deploymentId/progress" element={<DeploymentProgress />} />
-                  <Route path="projects/:projectId/deployments/:deploymentId/logs" element={<DeploymentLogs />} />
 
                   {/* Environment routes */}
                   <Route path="environment/:projectId" element={<EnvironmentVariables />} />
                   <Route path="environment/:projectId/new" element={<NewEnvironmentVariable />} />
                   <Route path="environment/:projectId/edit/:variableId" element={<EditEnvironmentVariable />} />
 
-                  {/* Logs route */}
-                  <Route path="logs" element={<LogsList />} />
 
                   {/* Profile route */}
                   <Route path="profile" element={<Profile />} />

@@ -225,7 +225,7 @@ export default function ApiReference() {
                     deploymentId: 'dep_123456789',
                     status: 'queued',
                     url: 'https://deploy-preview-123--shard-example.netlify.app',
-                    logs: 'https://api.shard.dev/deployments/dep_123456789/logs'
+                    progress_url: 'https://shard.dev/app/deployments/dep_123456789'
                 }, null, 2)
             },
             {

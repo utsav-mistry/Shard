@@ -576,12 +576,6 @@ const ProjectDetail = () => {
                           >
                             View
                           </Link>
-                          <Link
-                            to={`/app/deployments/${deployment._id}/logs`}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all font-bold"
-                          >
-                            Logs
-                          </Link>
                           <button
                             onClick={() => handleDeleteDeployment(deployment._id)}
                             className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 border-b-2 border-transparent hover:border-red-600 dark:hover:border-red-400 transition-all font-bold"

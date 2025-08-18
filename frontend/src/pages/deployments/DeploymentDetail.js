@@ -299,13 +299,6 @@ const DeploymentDetail = () => {
             {/* Actions */}
             <div className="flex flex-wrap gap-4">
               <Link
-                to={`/app/deployments/${deployment._id}/logs`}
-                className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden hover:scale-[1.02] active:scale-95"
-              >
-                <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0"></span>
-                <span className="relative z-10">View Logs</span>
-              </Link>
-              <Link
                 to={`/app/deployments/${deployment._id}/progress`}
                 className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden hover:scale-[1.02] active:scale-95"
               >
@@ -315,8 +308,13 @@ const DeploymentDetail = () => {
               <button
                 onClick={async () => {
                   try {
-                    await api.post(`/api/deployments/${deployment._id}/redeploy`, {});
-                    navigate('app/deployments');
+                    const response = await api.post(`/api/deployments/${deployment._id}/redeploy`, {});
+                    if (response.data && response.data.success) {
+                      const newDeploymentId = response.data.data._id;
+                      navigate(`/app/deployments/${newDeploymentId}`);
+                    } else {
+                      throw new Error(response.data?.message || 'Failed to get new deployment details');
+                    }
                   } catch (err) {
                     console.error('Error redeploying:', err);
                     setError('Failed to redeploy');
@@ -334,8 +332,13 @@ const DeploymentDetail = () => {
                 <button
                   onClick={async () => {
                     try {
-                      await api.post(`/api/deployments/retry/${deployment._id}`, {});
-                      navigate('app/deployments');
+                      const response = await api.post(`/api/deployments/retry/${deployment._id}`, {});
+                      if (response.data && response.data.success) {
+                        const newDeploymentId = response.data.data._id;
+                        navigate(`/app/deployments/${newDeploymentId}`);
+                      } else {
+                        throw new Error(response.data?.message || 'Failed to get new deployment details');
+                      }
                     } catch (err) {
                       console.error('Error retrying deployment:', err);
                       setError('Failed to retry deployment');
