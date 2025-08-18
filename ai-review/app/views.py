@@ -158,18 +158,21 @@ class CodeReviewView(View):
             # Collect code files for analysis
             if repo_path and os.path.exists(repo_path):
                 # Use provided repo path directly
-                files = collect_code_files_from_path(repo_path)
+                file_data = collect_code_files_from_path(repo_path)
             else:
                 # Use project ID to find repo in standard location
-                files = collect_code_files(project_id)
+                file_data = collect_code_files(project_id)
             
-            if not files:
+            if not file_data:
                 return JsonResponse({
                     'verdict': 'allow',
                     'reason': 'No code files found to analyze',
                     'issue_count': 0,
                     'issues': []
                 })
+            
+            # Extract file paths from the file data
+            files = [f['file_path'] for f in file_data if 'file_path' in f]
             
             logger.info(f"Analyzing {len(files)} files for project {project_id}")
             

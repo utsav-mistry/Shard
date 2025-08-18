@@ -1,340 +1,285 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Zap, Github, ExternalLink, Clock, CheckCircle, AlertCircle, Activity } from 'lucide-react';
-import api from '../utils/axiosConfig';
+// Overview.js
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ExternalLink } from "lucide-react";
+import api from "../utils/axiosConfig";
 
-const Overview = () => {
+/* --- IntersectionObserver hook for reveal animations --- */
+function useReveal(options = { root: null, rootMargin: "0px", threshold: 0.15 }) {
+  const refs = useRef([]);
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.dataset.reveal = "true";
+        }
+      });
+    }, options);
+
+    refs.current.forEach((r) => r && observer.observe(r));
+    return () => {
+      refs.current.forEach((r) => r && observer.unobserve(r));
+      observer.disconnect();
+    };
+  }, [options]);
+
+  const setRef = (el, idx) => {
+    refs.current[idx] = el;
+  };
+
+  return { setRef };
+}
+
+export default function Overview() {
   const navigate = useNavigate();
+
+  const [displayName, setDisplayName] = useState("Welcome");
   const [projects, setProjects] = useState([]);
   const [deployments, setDeployments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [githubConnected, setGithubConnected] = useState(false);
 
+  // Fetch user + data
   useEffect(() => {
-    fetchOverviewData();
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const [profileRes, projectsRes, deploymentsRes] = await Promise.allSettled([
+          api.get("/api/auth/profile"),
+          api.get("/api/projects"),
+          api.get("/api/deployments"),
+        ]);
+
+        if (profileRes.status === "fulfilled" && profileRes.value.data?.data?.user) {
+          const { user } = profileRes.value.data.data;
+          const { name, email } = user;
+
+          if (name && name !== 'User') {
+            setDisplayName(`Welcome, ${name}`);
+          } else if (email) {
+            setDisplayName(`Welcome, ${email.split("@")[0]}`);
+          } else {
+            setDisplayName("Welcome");
+          }
+        }
+
+        if (projectsRes.status === "fulfilled" && projectsRes.value.data?.success) {
+          setProjects(projectsRes.value.data.data || []);
+        }
+        if (deploymentsRes.status === "fulfilled" && deploymentsRes.value.data?.success) {
+          setDeployments(deploymentsRes.value.data.data || []);
+        }
+      } catch (err) {
+        console.error("Error loading overview", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
   }, []);
 
-  const fetchOverviewData = async () => {
-    try {
-      setLoading(true);
-      const [projectsRes, deploymentsRes, profileRes] = await Promise.all([
-        api.get('/api/projects'),
-        api.get('/api/deployments'),
-        api.get('/api/auth/profile')
-      ]);
-
-      // Handle projects response (paginated format)
-      if (projectsRes.data?.success) {
-        const projectsData = projectsRes.data.data || [];
-        setProjects(Array.isArray(projectsData) ? projectsData : []);
-      } else {
-        console.error('Failed to fetch projects:', projectsRes.data);
-        setProjects([]);
-      }
-
-      // Handle deployments response (standard format)
-      if (deploymentsRes.data?.success) {
-        const deploymentsData = deploymentsRes.data.data || [];
-        setDeployments(Array.isArray(deploymentsData) ? deploymentsData : []);
-      } else {
-        console.error('Failed to fetch deployments:', deploymentsRes.data);
-        setDeployments([]);
-      }
-      
-      // Check GitHub connection status
-      try {
-        const githubStatusRes = await api.get('/api/integrations/github/status');
-        setGithubConnected(githubStatusRes.data?.data?.connected || false);
-      } catch (error) {
-        console.error('Failed to check GitHub status:', error);
-        setGithubConnected(false);
-      }
-    } catch (error) {
-      console.error('Failed to fetch overview data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      pending: {
-        bg: 'bg-white-100 dark:bg-black-800',
-        text: 'text-black-900 dark:text-white-100',
-        border: 'border-2 border-black-900 dark:border-white-100',
-        icon: <Clock className="w-3 h-3 mr-1" />,
-        label: 'Pending'
-      },
-      running: {
-        bg: 'bg-white-100 dark:bg-black-800',
-        text: 'text-black-900 dark:text-white-100',
-        border: 'border-2 border-black-900 dark:border-white-100',
-        icon: <Activity className="w-3 h-3 mr-1" />,
-        label: 'Running'
-      },
-      completed: {
-        bg: 'bg-black-900 dark:bg-white-100',
-        text: 'text-white-100 dark:text-black-900',
-        border: 'border-2 border-black-900 dark:border-white-100',
-        icon: <CheckCircle className="w-3 h-3 mr-1" />,
-        label: 'Completed'
-      },
-      failed: {
-        bg: 'bg-white-100 dark:bg-black-800',
-        text: 'text-black-900 dark:text-white-100',
-        border: 'border-2 border-black-900 dark:border-white-100',
-        icon: <AlertCircle className="w-3 h-3 mr-1" />,
-        label: 'Failed'
-      }
-    };
-
-    const config = statusConfig[status] || statusConfig.pending;
-
-    return (
-      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-none ${config.bg} ${config.text} ${config.border}`}>
-        {config.icon}
-        {config.label}
-      </span>
-    );
-  };
-
-  const recentProjects = projects.slice(0, 3);
-  const recentDeployments = deployments.slice(0, 5);
+  const { setRef } = useReveal();
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-black-900 dark:border-white-100 border-t-transparent"></div>
+      <div className="flex items-center justify-center min-h-[400px] bg-white dark:bg-black">
+        <div className="animate-spin border-2 border-black dark:border-white border-t-transparent h-8 w-8" />
       </div>
     );
   }
 
+  const recentProjects = projects.slice(0, 3);
+
   return (
-    <div className="space-y-6 bg-white-100 dark:bg-black-900 min-h-screen p-6 relative">
-      {/* Grid Background */}
-      <div className="fixed inset-0 opacity-[0.02] dark:opacity-[0.05] pointer-events-none">
-        <div className="absolute inset-0" style={{
+    <div className="relative min-h-screen bg-white dark:bg-black text-black dark:text-white">
+      {/* Grid background */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
           backgroundImage: `
-            linear-gradient(to right, #000 1px, transparent 1px),
-            linear-gradient(to bottom, #000 1px, transparent 1px)
+            repeating-linear-gradient(to right, rgba(0,0,0,0.16) 0 1px, transparent 1px 32px),
+            repeating-linear-gradient(to bottom, rgba(0,0,0,0.16) 0 1px, transparent 1px 32px)
           `,
-          backgroundSize: '24px 24px'
-        }}></div>
-      </div>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white-100 dark:bg-black-900 p-6 border-2 border-black-900 dark:border-white-100 rounded-none shadow-lg shadow-black/10 dark:shadow-white/10 relative z-10">
-        <div>
-          <h1 className="text-3xl font-extrabold text-black-900 dark:text-white-100">Overview</h1>
-          <p className="mt-2 text-lg text-black-600 dark:text-white-400">
-            Welcome back! Here's what's happening with your projects.
-          </p>
-        </div>
-        <div className="mt-4 sm:mt-0 flex space-x-3">
-          <button
-            onClick={() => navigate('/app/projects/new')}
-            className="group relative inline-flex items-center justify-center px-6 py-3 text-base font-medium rounded-none shadow-sm bg-black-900 text-white-100 hover:text-black-900 dark:bg-white-100 dark:text-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-2 dark:border-white-100"
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0 hidden dark:block"
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(to right, rgba(255,255,255,0.16) 0 1px, transparent 1px 32px),
+            repeating-linear-gradient(to bottom, rgba(255,255,255,0.16) 0 1px, transparent 1px 32px)
+          `,
+        }}
+      />
+
+      {/* Reveal animation styles */}
+      <style>{`
+        [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity 700ms ease, transform 700ms ease; }
+        [data-reveal="true"] { opacity: 1; transform: translateY(0); }
+      `}</style>
+
+      <main className="relative z-10">
+        {/* Greeting */}
+        <section ref={(el) => setRef(el, 0)} data-reveal className="py-16 flex items-center px-10">
+          <div className="max-w-3xl">
+            <h1 className="text-5xl font-extrabold">{displayName}</h1>
+            <p className="mt-4 text-lg text-gray-700 dark:text-gray-300">
+              This is your deployment hub. Scroll to discover features, workflows, and architecture —
+              designed with engineers in mind.
+            </p>
+          </div>
+        </section>
+
+        {/* Static info (lightweight intro from README/DOCS) */}
+        <section className="px-10 -mt-4">
+          <div
+            ref={(el) => setRef(el, 100)}
+            data-reveal
+            className="p-8 bg-gray-50 dark:bg-gray-900 border-2 border-black dark:border-white shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)] max-w-4xl"
           >
-            <span className="absolute inset-0 w-full h-full bg-white-100 transition-all duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0 dark:bg-black-900"></span>
-            <span className="relative z-10 flex items-center">
-              <Plus className="w-5 w-5 mr-2" />
-              New Project
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <button
-          onClick={() => navigate('/app/projects/new')}
-          className="group relative flex flex-col items-center justify-center p-8 border-2 border-black-900 dark:border-white-100 rounded-none bg-white-100 dark:bg-black-900 hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-lg shadow-black/10 dark:shadow-white/10 hover:shadow-xl hover:shadow-black/20 dark:hover:shadow-white/20"
-        >
-          <div className="text-center">
-            <div className="mb-4 p-3 border-2 border-dotted border-gray-400 dark:border-gray-600 group-hover:border-black-900 dark:group-hover:border-white-100 rounded-none group-hover:bg-black-900 group-hover:text-white-100 dark:group-hover:bg-white-100 dark:group-hover:text-black-900 transition-all duration-200 shadow-sm">
-              <Plus className="text-black-900 dark:text-white-100 group-hover:text-white-100 dark:group-hover:text-black-900" />
-            </div>
-            <h3 className="text-lg font-bold text-black-900 dark:text-white-100 mb-2">New Project</h3>
-            <p className="text-sm text-black-600 dark:text-white-400">Create a new project from scratch</p>
+            <p className="text-gray-700 dark:text-gray-300">
+              Shard is a deployment platform with AI code review for MERN, Django, and Flask.
+            </p>
+            <ul className="mt-3 list-disc pl-5 text-gray-700 dark:text-gray-300 space-y-1">
+              <li>One‑click deployments from GitHub with real‑time progress.</li>
+              <li>Secure environment management with encryption and runtime injection.</li>
+              <li>AI‑powered code review with static analysis and detailed insights.</li>
+              <li>Live site links, status tracking, and health checks out‑of‑the‑box.</li>
+            </ul>
           </div>
-        </button>
+        </section>
 
-        <button
-          onClick={() => navigate('/app/projects/import')}
-          className="group relative flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-400 dark:border-gray-600 hover:border-black-900 dark:hover:border-white-100 rounded-none bg-white-100 dark:bg-black-900 hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-lg shadow-black/5 dark:shadow-white/5 hover:shadow-xl hover:shadow-black/10 dark:hover:shadow-white/10"
-        >
-          <div className="text-center">
-            <div className="mb-4 p-3 border-2 border-dotted border-gray-300 dark:border-gray-700 group-hover:border-black-900 dark:group-hover:border-white-100 rounded-none group-hover:bg-black-900 group-hover:text-white-100 dark:group-hover:bg-white-100 dark:group-hover:text-black-900 transition-all duration-200 shadow-sm">
-              <Github className="w-8 h-8 text-black-900 dark:text-white-100 group-hover:text-white-100 dark:group-hover:text-black-900" />
-            </div>
-            <h3 className="text-lg font-bold text-black-900 dark:text-white-100 mb-2">Import Repository</h3>
-            <p className="text-sm text-black-600 dark:text-white-400">Deploy from GitHub</p>
-          </div>
-        </button>
-
-        <button
-          onClick={() => navigate('/app/deployments/new')}
-          className="group relative flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-400 dark:border-gray-600 hover:border-black-900 dark:hover:border-white-100 rounded-none bg-white-100 dark:bg-black-900 hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-lg shadow-black/5 dark:shadow-white/5 hover:shadow-xl hover:shadow-black/10 dark:hover:shadow-white/10"
-        >
-          <div className="text-center">
-            <div className="mb-4 p-3 border-2 border-dotted border-gray-300 dark:border-gray-700 group-hover:border-black-900 dark:group-hover:border-white-100 rounded-none group-hover:bg-black-900 group-hover:text-white-100 dark:group-hover:bg-white-100 dark:group-hover:text-black-900 transition-all duration-200 shadow-sm">
-              <Zap className="w-8 h-8 text-black-900 dark:text-white-100 group-hover:text-white-100 dark:group-hover:text-black-900" />
-            </div>
-            <h3 className="text-lg font-bold text-black-900 dark:text-white-100 mb-2">Deploy</h3>
-            <p className="text-sm text-black-600 dark:text-white-400">Deploy existing project</p>
-          </div>
-        </button>
-      </div>
-
-      {/* GitHub Integration Banner */}
-      {!githubConnected && (
-        <div className="mb-8 p-6 bg-gray-50 dark:bg-gray-900 border-2 border-black-900 dark:border-white-100 rounded-none shadow-lg shadow-black/10 dark:shadow-white/10 relative z-10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="p-2 border-2 border-black-900 dark:border-white-100 rounded-none mr-4 shadow-sm">
-                <Github className="w-6 h-6 text-black-900 dark:text-white-100" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-black-900 dark:text-white-100 mb-1">
-                  Connect your GitHub account
-                </h3>
-                <p className="text-sm text-black-600 dark:text-white-400">
-                  Import repositories for manual deployments
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => navigate('/app/integrations/github')}
-              className="group relative inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-none shadow-sm bg-black-900 text-white-100 hover:text-black-900 dark:bg-white-100 dark:text-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-2 dark:border-white-100"
+        {/* Quick stats */}
+        <section className="px-10 py-16 grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {[
+            { label: "Projects", value: projects.length },
+            { label: "Deployments", value: deployments.length },
+            { label: "Frameworks", value: "Flask / MERN / Django" },
+          ].map((stat, i) => (
+            <div
+              key={i}
+              ref={(el) => setRef(el, i + 1)}
+              data-reveal
+              className="p-6 bg-gray-50 dark:bg-gray-900 border-2 border-black dark:border-white shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)]"
             >
-              <span className="absolute inset-0 w-full h-full bg-white-100 transition-all duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0 dark:bg-black-900"></span>
-              <span className="relative z-10">Connect</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Masonry Layout for Projects and Deployments */}
-      <div className="space-y-8">
-        {/* Recent Projects - Masonry Grid */}
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-black-900 dark:text-white-100">
-              Recent Projects
-            </h2>
-            <button
-              onClick={() => navigate('/app/projects')}
-              className="text-sm font-medium text-black-600 dark:text-white-400 hover:text-black-900 dark:hover:text-white-100 transition-colors hover:underline"
-            >
-              View all →
-            </button>
-          </div>
-
-          {recentProjects.length === 0 ? (
-            <div className="border-2 border-black-900 dark:border-white-100 rounded-none p-8 text-center bg-white-100 dark:bg-black-900 shadow-lg shadow-black/10 dark:shadow-white/10 relative z-10">
-              <p className="text-lg text-black-600 dark:text-white-400 mb-4">
-                No projects yet
-              </p>
-              <button
-                onClick={() => navigate('/app/projects/new')}
-                className="group relative inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-none shadow-sm bg-black-900 text-white-100 hover:text-black-900 dark:bg-white-100 dark:text-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-2 dark:border-white-100"
-              >
-                <span className="absolute inset-0 w-full h-full bg-white-100 transition-all duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0 dark:bg-black-900"></span>
-                <span className="relative z-10">Create your first project</span>
-              </button>
+              <div className="text-sm opacity-75">{stat.label}</div>
+              <div className="text-2xl font-bold">{stat.value}</div>
             </div>
-          ) : (
-            <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-              {recentProjects.map((project) => (
-                <div
-                  key={project._id}
-                  className="break-inside-avoid border-2 border-black-900 dark:border-white-100 rounded-none p-6 hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-200 cursor-pointer hover:scale-[1.01] active:scale-95 bg-white-100 dark:bg-black-900 shadow-sm mb-6"
-                  onClick={() => navigate(`/app/projects/${project._id}`)}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-bold text-black-900 dark:text-white-100 mb-1 truncate">
-                        {project.name}
-                      </h3>
-                      <p className="text-sm text-black-600 dark:text-white-400 truncate">
-                        {project.subdomain ? `${project.subdomain}.localhost` : project.repoUrl}
-                      </p>
-                    </div>
-                    <div className="p-2 border-2 border-dotted border-gray-400 dark:border-gray-600 rounded-none shadow-sm">
-                      <ExternalLink className="w-4 h-4 text-black-900 dark:text-white-100" />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center px-2 py-1 rounded-none text-xs font-bold border-2 bg-blue-50 text-blue-700 border-blue-400 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600">
-                      {project.framework?.toUpperCase() || 'UNKNOWN'}
-                    </span>
-                    <span className="text-xs text-black-600 dark:text-white-400 font-medium">
-                      {new Date(project.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
+          ))}
+        </section>
+
+        {/* Features (text-based, fewer cards) */}
+        <section className="px-10 py-16">
+          <div ref={(el) => setRef(el, 10)} data-reveal>
+            <h3 className="text-2xl font-bold mb-4">Core capabilities</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-gray-700 dark:text-gray-300">
+              <ul className="space-y-2 list-disc pl-5">
+                <li>Deploy from GitHub with framework detection, build caching, and reliable rollbacks.</li>
+                <li>AI code review + static analysis (ESLint, Pylint, Bandit) to surface issues early.</li>
+                <li>Encrypted environment variables with project‑scoped configs and audit trails.</li>
+              </ul>
+              <ul className="space-y-2 list-disc pl-5">
+                <li>Real‑time logs, status tracking, notifications, and health checks.</li>
+                <li>Security best practices: JWT auth, OAuth (GitHub/Google), rate limiting, CORS, headers.</li>
+                <li>Supported stacks: MERN, Django, Flask with framework‑specific Dockerfiles.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* How it works (timeline) */}
+        <section className="px-10 py-8">
+          <div ref={(el) => setRef(el, 30)} data-reveal className="max-w-4xl">
+            <h3 className="text-2xl font-bold mb-4">How it works</h3>
+            <div className="relative pl-8 border-l-2 border-black dark:border-white space-y-8">
+              {[
+                { t: "Connect GitHub", d: "Authorize access and select a repository." },
+                { t: "Import & configure env", d: "Create a project and add encrypted environment variables." },
+                { t: "Trigger deployment", d: "Start a build with one click from the dashboard." },
+                { t: "AI review & build", d: "Static analysis + AI code review inform the deployment decision." },
+                { t: "Live logs & health", d: "Follow logs in real time; access the running app with health checks." },
+              ].map((s, idx) => (
+                <div key={idx} className="relative">
+                  <span className="absolute -left-[11px] top-1 w-2.5 h-2.5 bg-black dark:bg-white border-2 border-black dark:border-white"></span>
+                  <h4 className="font-semibold">{idx + 1}. {s.t}</h4>
+                  <p className="text-gray-700 dark:text-gray-300">{s.d}</p>
                 </div>
               ))}
             </div>
-          )}
-        </div>
-
-        {/* Recent Deployments - Masonry Grid */}
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-black-900 dark:text-white-100">
-              Recent Deployments
-            </h2>
-            <button
-              onClick={() => navigate('/app/deployments')}
-              className="text-sm font-medium text-black-600 dark:text-white-400 hover:text-black-900 dark:hover:text-white-100 transition-colors hover:underline"
-            >
-              View all →
-            </button>
           </div>
+        </section>
 
-          {recentDeployments.length === 0 ? (
-            <div className="border-2 border-black-900 dark:border-white-100 rounded-none p-8 text-center bg-white-100 dark:bg-black-900 shadow-sm">
-              <p className="text-lg text-black-600 dark:text-white-400 mb-4">
-                No deployments yet
-              </p>
+        {/* Architecture summary (no card) */}
+        <section className="px-10 py-12">
+          <div ref={(el) => setRef(el, 50)} data-reveal>
+            <h3 className="text-2xl font-bold mb-2">Architecture at a glance</h3>
+            <p className="text-gray-700 dark:text-gray-300 mb-3">Microservices built for reliability and speed:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-gray-700 dark:text-gray-300">
+              <div><span className="font-semibold">Frontend:</span> React dashboard with real‑time monitoring.</div>
+              <div><span className="font-semibold">Backend API:</span> Node/Express + MongoDB with JWT & OAuth.</div>
+              <div><span className="font-semibold">Deployment Worker:</span> Docker orchestration, env injection, log streaming.</div>
+              <div><span className="font-semibold">AI Review:</span> Django service for static analysis and AI insights.</div>
+            </div>
+          </div>
+        </section>
+
+        {/* Recent projects */}
+        <section className="px-10 py-16 border-t border-gray-200 dark:border-gray-800">
+          <h3 className="text-2xl font-bold mb-6">Recent Projects</h3>
+          {recentProjects.length === 0 ? (
+            <div className="p-8 bg-gray-50 dark:bg-gray-900 border-2 border-black dark:border-white shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)]">
+              <p className="mb-4">No projects yet.</p>
               <button
-                onClick={() => navigate('/app/deployments/new')}
-                className="group relative inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-none shadow-sm bg-black-900 text-white-100 hover:text-black-900 dark:bg-white-100 dark:text-black-900 dark:hover:text-white-100 transition-all duration-200 overflow-hidden border-2 border-black-900 dark:border-2 dark:border-white-100"
+                onClick={() => navigate("/app/projects/new")}
+                className="px-4 py-2 bg-black text-white dark:bg-white dark:text-black border-2 border-black dark:border-white hover:scale-105 transition-transform"
               >
-                <span className="absolute inset-0 w-full h-full bg-white-100 transition-all duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0 dark:bg-black-900"></span>
-                <span className="relative z-10">Create your first deployment</span>
+                Create Project
               </button>
             </div>
           ) : (
-            <div className="columns-1 md:columns-2 lg:columns-4 gap-6 space-y-6">
-              {recentDeployments.map((deployment) => (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {recentProjects.map((p, idx) => (
                 <div
-                  key={deployment._id}
-                  className="break-inside-avoid border-2 border-black-900 dark:border-white-100 rounded-none p-6 hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-200 cursor-pointer hover:scale-[1.01] active:scale-95 bg-white-100 dark:bg-black-900 shadow-sm mb-6"
-                  onClick={() => navigate(`/app/deployments/${deployment._id}`)}
+                  key={p._id}
+                  ref={(el) => setRef(el, 20 + idx)}
+                  data-reveal
+                  onClick={() => navigate(`/app/projects/${p._id}`)}
+                  className="cursor-pointer p-6 bg-gray-50 dark:bg-gray-900 border-2 border-black dark:border-white shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)] hover:-translate-y-1 transition-transform"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-bold text-black-900 dark:text-white-100 truncate">
-                      {deployment._id?.substring(0, 6).toUpperCase() || 'DEPLOY'}
-                    </h3>
-                    {getStatusBadge(deployment.status)}
+                    <h4 className="font-bold truncate">{p.name}</h4>
+                    <ExternalLink className="w-4 h-4" />
                   </div>
-                  <div className="space-y-2">
-                    <div className="text-sm text-black-600 dark:text-white-400">
-                      <span className="font-medium">Project:</span> {deployment.projectName || 'Unknown'}
-                    </div>
-                    <div className="flex items-center justify-between text-sm text-black-600 dark:text-white-400">
-                      <span className="font-medium">{deployment.commitHash?.substring(0, 8) || 'No commit'}</span>
-                      <span>{new Date(deployment.createdAt).toLocaleDateString()}</span>
-                    </div>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 truncate mb-2">
+                    {p.subdomain ? `${p.subdomain}.localhost` : p.repoUrl}
+                  </p>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="px-2 py-1 border-2 border-black dark:border-white bg-white dark:bg-black">
+                      {p.framework?.toUpperCase() || "UNKNOWN"}
+                    </span>
+                    <span>{new Date(p.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
-      </div>
+        </section>
+
+        {/* Final CTA */}
+        <section className="py-20 px-8">
+          <div className="max-w-4xl mx-auto text-center border-2 border-black dark:border-white bg-gray-50 dark:bg-gray-900 text-black dark:text-white p-12 shadow-[-10px_10px_0_rgba(0,0,0,0.9)] dark:shadow-[-10px_10px_0_rgba(255,255,255,0.6)]">
+            <h3 className="text-3xl md:text-4xl font-extrabold mb-4">Ready to ship?</h3>
+            <p className="mb-6 text-lg opacity-85">Create a project and deploy in minutes.</p>
+            <button
+              onClick={() => navigate("/app/projects/new")}
+              className="px-6 py-3 bg-white text-black dark:bg-black dark:text-white border-2 border-current font-semibold hover:scale-105 transition-transform"
+            >
+              Create New Project →
+            </button>
+          </div>
+        </section>
+      </main>
     </div>
   );
-};
-
-export default Overview;
+}
