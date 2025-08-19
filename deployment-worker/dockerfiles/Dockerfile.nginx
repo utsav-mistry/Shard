@@ -1,0 +1,31 @@
+FROM nginx:alpine
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Copy main nginx.conf
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+
+# Create directories for dynamic configuration
+RUN mkdir -p /var/log/nginx /etc/nginx/dynamic
+
+# Create default proxy mappings file
+RUN echo '# Auto-generated proxy mappings' > /etc/nginx/dynamic/proxy-mappings.conf && \
+    echo '# This file is dynamically updated by the deployment worker' >> /etc/nginx/dynamic/proxy-mappings.conf && \
+    echo '' >> /etc/nginx/dynamic/proxy-mappings.conf && \
+    echo 'map $host $backend_port {' >> /etc/nginx/dynamic/proxy-mappings.conf && \
+    echo '    default 0;' >> /etc/nginx/dynamic/proxy-mappings.conf && \
+    echo '}' >> /etc/nginx/dynamic/proxy-mappings.conf && \
+    echo '' >> /etc/nginx/dynamic/proxy-mappings.conf && \
+    echo 'map $host $frontend_port {' >> /etc/nginx/dynamic/proxy-mappings.conf && \
+    echo '    default 0;' >> /etc/nginx/dynamic/proxy-mappings.conf && \
+    echo '}' >> /etc/nginx/dynamic/proxy-mappings.conf
+
+# Expose ports for different tech stacks
+EXPOSE 12000 13000 14000
+
+# Health check (Flask port as reference)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:14000/health || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

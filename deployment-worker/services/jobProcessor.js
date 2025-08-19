@@ -10,7 +10,7 @@ const { injectEnv, fetchEnvVars } = require('./envInjector.js');
 const { deployContainer, cleanupExistingContainer } = require('../utils/dockerHelpers.js');
 const { analyzeRepo } = require('./analyzeCode.js');
 const { cloneRepo } = require('./repoCloner.js');
-
+const { checkDockerStatus } = require('../utils/dockerChecker.js');
 
 // Function to update deployment with AI review results
 const updateDeploymentWithAIResults = async (deploymentId, aiResults, token) => {
@@ -88,6 +88,11 @@ const processJob = async (job) => {
     const logPath = path.join(CONFIG.LOG_DIR, `${deploymentId}.log`);
 
     try {
+        // Check Docker status before starting deployment
+        const dockerAvailable = await checkDockerStatus();
+        if (!dockerAvailable) {
+            throw new Error("Docker daemon is not running. Please start Docker Desktop or Docker daemon and try again.");
+        }
         // Send deployment started notification
         await sendDeploymentNotification(userEmail, projectId, deploymentId, "started");
 
@@ -169,7 +174,7 @@ const processJob = async (job) => {
 
         // Log the custom domain URL
         const PORT_CONFIG = {
-            mern: { backend: 12000, frontend: 12001 },
+            mern: { backend: 12000 },
             django: { backend: 13000 },
             flask: { backend: 14000 },
         };

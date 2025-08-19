@@ -262,6 +262,9 @@ const createProject = async (req, res) => {
             // Start AI review process
             await logService.addLog(project._id, deployment._id, "ai-review", "Starting AI code review");
 
+            let shouldDeploy = false;
+            let deploymentReason = "";
+
             try {
                 const aiReviewResponse = await axios.post(
                     `${process.env.AI_SERVICE_URL || 'http://localhost:8000'}/review/`,
@@ -285,23 +288,20 @@ const createProject = async (req, res) => {
                     await logService.addLog(project._id, deployment._id, "ai-review",
                         "Initial deployment requires manual review");
                 } else {
-                    // Proceed with deployment
-                    await logService.addLog(project._id, deployment._id, "ai-review",
-                        "AI review passed, proceeding with initial deployment");
-
-                    // Queue deployment job
-                    await axios.post(`${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/deploy/job`, job, {
-                        timeout: 10000,
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-
-                    await logService.addLog(project._id, deployment._id, "queue", "Initial deployment job queued");
+                    // AI review passed - proceed with deployment
+                    shouldDeploy = true;
+                    deploymentReason = "AI review passed, proceeding with initial deployment";
                 }
             } catch (aiError) {
-                await logService.addLog(project._id, deployment._id, "ai-review",
-                    `AI review failed: ${aiError.message}, proceeding with deployment`);
+                // AI review failed - proceed with deployment anyway
+                shouldDeploy = true;
+                deploymentReason = `AI review failed: ${aiError.message}, proceeding with deployment`;
+            }
 
-                // Queue deployment despite AI review failure
+            // Queue deployment job only once if needed
+            if (shouldDeploy) {
+                await logService.addLog(project._id, deployment._id, "ai-review", deploymentReason);
+
                 await axios.post(`${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/deploy/job`, job, {
                     timeout: 10000,
                     headers: { 'Content-Type': 'application/json' }
@@ -581,11 +581,60 @@ const deleteProject = async (req, res) => {
             });
         }
 
-        // Delete the project from database
+        // Cascade delete related records
+        logger.info('Starting cascade deletion of related records', logContext);
+        
+        // 1. Delete environment variables
+        try {
+            const EnvVar = require('../models/EnvVar');
+            const deletedEnvVars = await EnvVar.deleteMany({ projectId: id });
+            logger.info('Environment variables deleted', {
+                ...logContext,
+                deletedCount: deletedEnvVars.deletedCount
+            });
+        } catch (envError) {
+            logger.warn('Failed to delete environment variables', {
+                ...logContext,
+                error: envError.message
+            });
+        }
+
+        // 2. Delete deployments and their logs
+        try {
+            const Deployment = require('../models/Deployment');
+            const Logs = require('../models/Logs');
+            
+            // Find all deployments for this project
+            const deployments = await Deployment.find({ projectId: id });
+            const deploymentIds = deployments.map(d => d._id);
+            
+            if (deploymentIds.length > 0) {
+                // Delete logs for all deployments
+                const deletedLogs = await Logs.deleteMany({ 
+                    deploymentId: { $in: deploymentIds } 
+                });
+                
+                // Delete deployments
+                const deletedDeployments = await Deployment.deleteMany({ projectId: id });
+                
+                logger.info('Deployments and logs deleted', {
+                    ...logContext,
+                    deletedDeployments: deletedDeployments.deletedCount,
+                    deletedLogs: deletedLogs.deletedCount
+                });
+            }
+        } catch (deploymentError) {
+            logger.warn('Failed to delete deployments and logs', {
+                ...logContext,
+                error: deploymentError.message
+            });
+        }
+
+        // 3. Delete the project from database
         await Project.findOneAndDelete(query);
 
-        logger.info('Project deleted successfully', logContext);
-        return res.apiSuccess(null, 'Project and associated Docker resources deleted successfully');
+        logger.info('Project and all related records deleted successfully', logContext);
+        return res.apiSuccess(null, 'Project and all associated resources deleted successfully');
     } catch (err) {
         logger.error('Failed to delete project', {
             ...logContext,

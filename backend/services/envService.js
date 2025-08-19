@@ -60,9 +60,17 @@ const getEnvVars = async (projectId) => {
     }));
 };
 
-// Get env var by ID (for ownership verification)
+// Get env var by ID (for ownership verification and editing)
 const getEnvVarById = async (envVarId) => {
-    return await EnvVar.findById(envVarId);
+    const envVar = await EnvVar.findById(envVarId);
+    if (!envVar) return null;
+    
+    // Decrypt the value for editing
+    const decryptedValue = decrypt(envVar.value);
+    return {
+        ...envVar.toObject(),
+        value: decryptedValue
+    };
 };
 
 // Update a specific env var

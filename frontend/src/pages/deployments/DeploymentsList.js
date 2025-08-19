@@ -217,7 +217,7 @@ const DeploymentsList = () => {
                 {/* URL */}
                 {project.subdomain && (
                     <a
-                      href={project.subdomain ? `http://${project.subdomain}.localhost:${project.framework === 'mern' ? '12001' : project.framework === 'django' ? '13000' : '14000'}` : `http://localhost:3000`}
+                      href={project.subdomain ? `http://${project.subdomain}.localhost:${project.framework === 'mern' ? '12000' : project.framework === 'django' ? '13000' : '14000'}` : `http://localhost:3000`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all font-medium"

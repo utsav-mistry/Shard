@@ -27,6 +27,26 @@ const createDeployment = async (req, res) => {
             return res.apiNotFound('Project');
         }
 
+        // Check for existing active deployments to prevent duplicates
+        const activeStatuses = ['pending', 'reviewing', 'configuring', 'building', 'deploying', 'queued'];
+        const existingActiveDeployment = await Deployment.findOne({
+            projectId: project._id,
+            status: { $in: activeStatuses }
+        });
+
+        if (existingActiveDeployment) {
+            return res.apiError(
+                `A deployment is already in progress for this project (Status: ${existingActiveDeployment.status})`,
+                409, // Conflict status code
+                {
+                    existingDeploymentId: existingActiveDeployment._id,
+                    existingStatus: existingActiveDeployment.status,
+                    createdAt: existingActiveDeployment.createdAt
+                },
+                'DEPLOYMENT_IN_PROGRESS'
+            );
+        }
+
         // Mark old deployments as inactive
         await Deployment.updateMany(
             { projectId: project._id, status: { $in: ['success', 'running', 'active'] } },
@@ -404,6 +424,26 @@ const redeployDeployment = async (req, res) => {
         // Check ownership
         if (project.ownerId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
             return res.apiForbidden('You do not have permission to redeploy this project');
+        }
+
+        // Check for existing active deployments to prevent duplicates
+        const activeStatuses = ['pending', 'reviewing', 'configuring', 'building', 'deploying', 'queued'];
+        const existingActiveDeployment = await Deployment.findOne({
+            projectId: project._id,
+            status: { $in: activeStatuses }
+        });
+
+        if (existingActiveDeployment) {
+            return res.apiError(
+                `A deployment is already in progress for this project (Status: ${existingActiveDeployment.status})`,
+                409, // Conflict status code
+                {
+                    existingDeploymentId: existingActiveDeployment._id,
+                    existingStatus: existingActiveDeployment.status,
+                    createdAt: existingActiveDeployment.createdAt
+                },
+                'DEPLOYMENT_IN_PROGRESS'
+            );
         }
 
         // Create a new deployment record for the redeployment

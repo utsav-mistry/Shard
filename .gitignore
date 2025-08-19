@@ -221,6 +221,4 @@ structure.txt
 
 /logs
 
-DEEPSEEK_PROMPT.md
-EXAMPLE_OUTPUT.json
-replacements.txt
+proxy-mappings.conf

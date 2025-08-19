@@ -311,13 +311,14 @@ const DeploymentDetail = () => {
                     const response = await api.post(`/api/deployments/${deployment._id}/redeploy`, {});
                     if (response.data && response.data.success) {
                       const newDeploymentId = response.data.data._id;
-                      navigate(`/app/deployments/${newDeploymentId}`);
+                      // Navigate to deployment progress page instead of detail page
+                      navigate(`/app/deployments/${newDeploymentId}/progress`);
                     } else {
-                      throw new Error(response.data?.message || 'Failed to get new deployment details');
+                      throw new Error(response.data?.message || 'Failed to start redeployment');
                     }
                   } catch (err) {
                     console.error('Error redeploying:', err);
-                    setError('Failed to redeploy');
+                    setError(`Failed to redeploy: ${err.message}`);
                   }
                 }}
                 className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden hover:scale-[1.02] active:scale-95"

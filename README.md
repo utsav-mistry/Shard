@@ -76,7 +76,7 @@ Shard provides a Vercel-like deployment experience with advanced features includ
 - AI-powered code review
 - Docker containerization
 - Custom domain mapping with PORT_CONFIG:
-  - MERN: Frontend (12001), Backend (12000)
+  - MERN: Backend (12000)
   - Django: Backend (13000)
   - Flask: Backend (14000)
 
@@ -385,10 +385,11 @@ Log Streaming → Status Updates → Health Monitoring
 ### Container Management
 
 #### Port Allocation Strategy
-- **MERN Stack**: Backend on port 12000, Frontend on port 12001
+- **MERN Stack**: Backend on port 12000 (serves frontend build)
 - **Django Stack**: Backend on port 13000
 - **Flask Stack**: Backend on port 14000
 - **Dynamic Mapping**: Host ports mapped to container ports
+- **Internal Port Ranges**: Flask (15xxx), Django (16xxx), MERN (17xxx)
 
 #### Resource Constraints
 - **Memory Limit**: 512MB per container

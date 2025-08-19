@@ -4,10 +4,12 @@ const axios = require('axios');
 const fs = require('fs');
 const logger = require('./logger');
 const StreamingLogger = require('./streamingLogger.js');
+const { validateDockerEnvironment } = require('./dockerChecker');
+const reverseProxyManager = require('../services/reverseProxyManager');
 
-// Fixed port allocation
+// Public port allocation (reverse proxy ports)
 const PORT_CONFIG = {
-    mern: { backend: 12000, frontend: 12001 },
+    mern: { backend: 12000 },
     django: { backend: 13000 },
     flask: { backend: 14000 },
 };
@@ -15,9 +17,36 @@ const PORT_CONFIG = {
 const usedContainers = new Set();
 
 const deployContainer = async (localPath, stack, subdomain, projectId, deploymentId, socket = null) => {
+    // Validate Docker environment before starting deployment
+    try {
+        await validateDockerEnvironment();
+    } catch (error) {
+        logger.error(`Docker validation failed for project ${projectId}: ${error.message}`);
+        throw error;
+    }
+
+    // Initialize reverse proxy if not running
+    await reverseProxyManager.initialize();
+
     const imageName = `shard-project-${projectId}`;
     const dockerfilePath = path.join(__dirname, "..", "dockerfiles", `Dockerfile.${stack}`);
     const envFilePath = path.join(localPath, ".env");
+
+    // Generate unique container name using subdomain to avoid conflicts
+    const containerName = `shard-${subdomain}`;
+
+    // Extract current repo folder name from localPath to preserve it during cleanup
+    const currentRepoFolder = path.basename(localPath);
+
+    // Pre-deployment cleanup to prevent conflicts (but preserve current repo)
+    logger.info(`[Project ${projectId}] Running pre-deployment cleanup`);
+    try {
+        await cleanupProjectContainers(projectId, subdomain, currentRepoFolder);
+        logger.info(`[Project ${projectId}] Pre-deployment cleanup completed`);
+    } catch (cleanupError) {
+        logger.warn(`[Project ${projectId}] Pre-deployment cleanup failed: ${cleanupError.message}`);
+        // Continue with deployment even if cleanup fails
+    }
 
     // Use streaming logger if socket is provided
     if (socket) {
@@ -25,13 +54,13 @@ const deployContainer = async (localPath, stack, subdomain, projectId, deploymen
 
         try {
             // Cleanup existing container first
-            await streamLogger.cleanupContainer(subdomain);
+            await streamLogger.cleanupContainer(containerName);
 
             // Build Docker image with streaming
             await streamLogger.buildDockerImage(localPath, dockerfilePath, imageName);
 
-            // Determine port mapping
-            const ports = getPortMapping(stack, subdomain);
+            // Allocate internal ports through reverse proxy manager
+            const ports = await getPortMappingWithProxy(stack, subdomain);
 
             // Check environment file
             const envFileExists = fs.existsSync(envFilePath);
@@ -50,13 +79,13 @@ const deployContainer = async (localPath, stack, subdomain, projectId, deploymen
                 memory: '512m'
             };
 
-            await streamLogger.runDockerContainer(imageName, subdomain, containerOptions);
+            await streamLogger.runDockerContainer(imageName, containerName, containerOptions);
 
-            // Log success information
+            // Log success information with public URL
+            const publicUrl = reverseProxyManager.getPublicUrl(subdomain, stack);
             streamLogger.emitLog(`Container running for ${subdomain} at:`, 'success', 'deploy');
-            ports.forEach(p => {
-                streamLogger.emitLog(`→ http://${subdomain}.localhost:${p.host}`, 'success', 'deploy');
-            });
+            streamLogger.emitLog(`→ ${publicUrl}`, 'success', 'deploy');
+            streamLogger.emitLog(`→ Internal ports: ${ports.map(p => p.host).join(', ')}`, 'info', 'deploy');
 
             return { success: true, ports };
 
@@ -85,12 +114,13 @@ const deployContainer = async (localPath, stack, subdomain, projectId, deploymen
         );
 
         // Cleanup existing container
-        await execPromise(`docker rm -f ${subdomain}`).catch(() =>
-            logger.info(`[Project ${projectId}] No existing container to remove for ${subdomain}`)
+        const containerName = `shard-${subdomain}`;
+        await execPromise(`docker rm -f ${containerName}`).catch(() =>
+            logger.info(`[Project ${projectId}] No existing container to remove for ${containerName}`)
         );
 
-        // Determine port mapping
-        const ports = getPortMapping(stack, subdomain);
+        // Allocate internal ports through reverse proxy manager
+        const ports = await getPortMappingWithProxy(stack, subdomain);
         const portArgs = ports.map(({ container, host }) => `-p ${host}:${container}`).join(" ");
 
         // Check if .env file exists and include it in Docker run command
@@ -106,23 +136,49 @@ const deployContainer = async (localPath, stack, subdomain, projectId, deploymen
         }
 
         // Run container with restart policy and environment variables
-        const dockerCmd = `docker run -d --memory=512m --restart=unless-stopped --name ${subdomain} ${portArgs} ${envFileArg} ${imageName}`.trim();
+        const dockerCmd = `docker run -d --memory=512m --restart=unless-stopped --name ${containerName} ${portArgs} ${envFileArg} ${imageName}`.trim();
         const result = await execPromise(dockerCmd);
 
+        // Log success information with public URL
+        const publicUrl = reverseProxyManager.getPublicUrl(subdomain, stack);
         logger.info(`[Project ${projectId}] Container running for ${subdomain} at:`);
-        ports.forEach(p => logger.info(`[Project ${projectId}] → http://${subdomain}.localhost:${p.host}`));
+        logger.info(`[Project ${projectId}] → ${publicUrl}`);
+        logger.info(`[Project ${projectId}] → Internal ports: ${ports.map(p => p.host).join(', ')}`);
 
-        captureRuntimeLogs(subdomain, projectId, deploymentId);
+        captureRuntimeLogs(containerName, projectId, deploymentId);
 
         return result;
     }
 };
 
+// Simplified port mapping that works directly with reverse proxy
+const getPortMappingWithProxy = async (stack, subdomain) => {
+    // Use reverseProxyManager for dynamic port allocation
+    const port = await reverseProxyManager.allocatePort(subdomain, stack);
+
+    // Register with reverse proxy using allocated internal port
+    await reverseProxyManager.updateNginxConfig(subdomain, stack, port);
+
+    // Return container port mapping based on stack
+    const containerPorts = {
+        mern: 5000,    // Express backend serves everything
+        django: 8000,  // Django backend
+        flask: 5000    // Flask backend
+    };
+
+    const containerPort = containerPorts[stack];
+    if (!containerPort) {
+        throw new Error(`Unsupported stack: ${stack}`);
+    }
+
+    return [{ container: containerPort, host: port }];
+};
+
+// Legacy function for backward compatibility
 const getPortMapping = (stack, subdomain) => {
     if (stack === "mern") {
         return [
-            { container: 12000, host: PORT_CONFIG.mern.backend },
-            { container: 12001, host: PORT_CONFIG.mern.frontend }
+            { container: 5000, host: PORT_CONFIG.mern.backend }
         ];
     }
     if (stack === "django") {
@@ -135,16 +191,8 @@ const getPortMapping = (stack, subdomain) => {
 };
 
 const getCustomDomainUrl = (stack, subdomain) => {
-    const ports = getPortMapping(stack, subdomain);
-
-    if (stack === "mern" && ports.length > 1) {
-        // For MERN, return frontend URL with subdomain
-        const frontendPort = ports.find(p => p.host === PORT_CONFIG.mern.frontend);
-        return `http://${subdomain}.localhost:${frontendPort.host}`;
-    }
-
-    // For other stacks, return backend URL with subdomain
-    return `http://${subdomain}.localhost:${ports[0].host}`;
+    // Use reverse proxy manager for consistent URL generation
+    return reverseProxyManager.getPublicUrl(subdomain, stack);
 };
 
 const captureRuntimeLogs = (containerName, projectId, deploymentId) => {
@@ -194,45 +242,106 @@ const cleanupExistingContainer = async (containerName) => {
     }
 };
 
-const cleanupProjectContainers = async (projectId, subdomain) => {
+const cleanupProjectContainers = async (projectId, subdomain, currentRepoFolder = null) => {
     try {
-        logger.info(`[Project ${projectId}] Starting cleanup of Docker resources`);
-        
-        // Stop and remove container by subdomain
+        logger.info(`[Project ${projectId}] Starting comprehensive cleanup of all project resources`);
+
+        // Remove from proxy configuration
         try {
-            await execPromise(`docker rm -f ${subdomain}`);
-            logger.info(`[Project ${projectId}] Removed container: ${subdomain}`);
+            const proxyConfig = require('../services/proxyConfig');
+            proxyConfig.removeMapping(subdomain);
+
+            logger.info(`[Cleanup] Removed reverse proxy mapping for ${subdomain}`);
+        } catch (proxyError) {
+            logger.warn(`[Cleanup] Failed to remove proxy mapping: ${proxyError.message}`);
+        }
+
+        // 1. Stop and remove container by subdomain (with shard- prefix)
+        const containerName = `shard-${subdomain}`;
+        try {
+            await execPromise(`docker rm -f ${containerName}`);
+            logger.info(`[Project ${projectId}] Removed container: ${containerName}`);
         } catch (err) {
             if (!err.message.includes("No such container")) {
-                logger.warn(`[Project ${projectId}] Failed to remove container ${subdomain}: ${err.message}`);
+                logger.warn(`[Project ${projectId}] Failed to remove container ${containerName}: ${err.message}`);
             }
         }
 
-        // Remove project-specific Docker image
+        // 2. Remove project-specific Docker image (force remove)
         const imageName = `shard-project-${projectId}`;
         try {
-            await execPromise(`docker rmi ${imageName}`);
-            logger.info(`[Project ${projectId}] Removed image: ${imageName}`);
+            await execPromise(`docker rmi -f ${imageName}`);
+            logger.info(`[Project ${projectId}] Force removed image: ${imageName}`);
         } catch (err) {
             if (!err.message.includes("No such image")) {
                 logger.warn(`[Project ${projectId}] Failed to remove image ${imageName}: ${err.message}`);
             }
         }
 
-        // Clean up dangling images and volumes
+        // 3. Clean up repos/ folder for this project (but preserve current deployment's repo)
+        const fs = require('fs-extra');
+        const reposPath = path.join(__dirname, '..', 'repos');
+        try {
+            const repoFolders = await fs.readdir(reposPath);
+            const projectRepoFolders = repoFolders.filter(folder => folder.startsWith(projectId));
+
+            for (const folder of projectRepoFolders) {
+                // Skip the current deployment's repo folder
+                if (currentRepoFolder && folder === currentRepoFolder) {
+                    logger.info(`[Project ${projectId}] Preserving current repo folder: ${folder}`);
+                    continue;
+                }
+
+                const folderPath = path.join(reposPath, folder);
+                await fs.remove(folderPath);
+                logger.info(`[Project ${projectId}] Removed repo folder: ${folder}`);
+            }
+        } catch (err) {
+            logger.warn(`[Project ${projectId}] Failed to cleanup repos folder: ${err.message}`);
+        }
+
+        // 4. Clean up builds/ folder for this project
+        const buildsPath = path.join(__dirname, '..', 'builds');
+        try {
+            if (await fs.pathExists(buildsPath)) {
+                const buildFolders = await fs.readdir(buildsPath);
+                const projectBuildFolders = buildFolders.filter(folder => folder.startsWith(projectId));
+
+                for (const folder of projectBuildFolders) {
+                    const folderPath = path.join(buildsPath, folder);
+                    await fs.remove(folderPath);
+                    logger.info(`[Project ${projectId}] Removed build folder: ${folder}`);
+                }
+            }
+        } catch (err) {
+            logger.warn(`[Project ${projectId}] Failed to cleanup builds folder: ${err.message}`);
+        }
+
+        // 5. Clean up dangling Docker resources
         try {
             await execPromise(`docker image prune -f`);
             await execPromise(`docker volume prune -f`);
+            await execPromise(`docker container prune -f`);
             logger.info(`[Project ${projectId}] Cleaned up dangling Docker resources`);
         } catch (err) {
             logger.warn(`[Project ${projectId}] Failed to cleanup dangling resources: ${err.message}`);
         }
 
-        logger.info(`[Project ${projectId}] Docker cleanup completed successfully`);
-        return { success: true, message: 'Docker resources cleaned up successfully' };
+        logger.info(`[Project ${projectId}] Comprehensive cleanup completed successfully`);
+        return {
+            success: true,
+            message: 'All project resources cleaned up successfully',
+            cleaned: {
+                container: containerName,
+                image: imageName,
+                repoFolders: 'cleaned',
+                buildFolders: 'cleaned',
+                danglingResources: 'cleaned'
+            }
+        };
     } catch (error) {
-        logger.error(`[Project ${projectId}] Docker cleanup failed: ${error.message}`);
-        throw new Error(`Docker cleanup failed: ${error.message}`);
+        logger.error(`[Project ${projectId}] Comprehensive cleanup failed: ${error.message}`);
+        throw new Error(`Comprehensive cleanup failed: ${error.message}`);
     }
 };
 

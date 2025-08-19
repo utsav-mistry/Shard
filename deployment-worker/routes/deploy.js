@@ -29,7 +29,7 @@ router.post('/job', async (req, res) => {
         logger.info(`Received deployment job for project ${projectId}`);
         
         // Process the job asynchronously
-                jobProcessor.processJob({
+        jobProcessor.processJob({
             token,
             deploymentId,
             projectId,
@@ -37,7 +37,7 @@ router.post('/job', async (req, res) => {
             branch: branch || 'main',
             stack,
             subdomain,
-                        envVars: envVars || [],
+            envVars: envVars || [],
             userEmail
         });
 

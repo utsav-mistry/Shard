@@ -10,6 +10,7 @@ import { deployContainer, cleanupExistingContainer } from '../utils/dockerHelper
 import { analyzeRepo } from './analyzeCode.js';
 import { cloneRepo } from './repoCloner.js';
 import StreamingLogger from '../utils/streamingLogger.js';
+import { checkDockerStatus } from '../utils/dockerChecker.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -96,10 +97,21 @@ const processJobWithStreaming = async (job, socket = null) => {
     const streamLogger = socket ? new StreamingLogger(socket, projectId, deploymentId) : null;
 
     try {
+        // Check Docker status before starting deployment
+        const dockerAvailable = await checkDockerStatus();
+        if (!dockerAvailable) {
+            if (streamLogger) {
+                streamLogger.emitLog("Docker daemon is not running!", 'error', 'init');
+                streamLogger.emitLog("Please start Docker Desktop and try again", 'error', 'init');
+            }
+            throw new Error("Docker daemon is not running. Please start Docker Desktop or Docker daemon and try again.");
+        }
+
         // Update deployment status to running
         await updateDeploymentStatus(deploymentId, "running", token);
 
         if (streamLogger) {
+            streamLogger.emitLog("Docker daemon is running", 'success', 'init');
             streamLogger.emitLog("Starting deployment process", 'info', 'init');
         }
 
@@ -127,7 +139,7 @@ const processJobWithStreaming = async (job, socket = null) => {
         await logStep(projectId, deploymentId, "setup", "Starting AI code review", token);
 
         if (streamLogger) {
-            streamLogger.emitLog("🤖 Starting AI code review", 'info', 'ai-review');
+            streamLogger.emitLog("Starting AI code review", 'info', 'ai-review');
         }
 
         const aiReviewResult = await analyzeRepo(localPath, deploymentId);
@@ -186,7 +198,7 @@ const processJobWithStreaming = async (job, socket = null) => {
             await logStep(projectId, deploymentId, "config", skipMessage, token);
 
             if (streamLogger) {
-                streamLogger.emitLog(`ℹ️ ${skipMessage}`, 'info', 'config');
+                streamLogger.emitLog(`${skipMessage}`, 'info', 'config');
             }
         } else {
             const configMessage = `Environment configured: ${envResult.variablesCount} variables`;

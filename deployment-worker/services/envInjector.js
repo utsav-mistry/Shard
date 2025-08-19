@@ -82,16 +82,34 @@ module.exports = { injectEnv, fetchEnvVars };
 // Keeps env fetching logic centralized with env injection utilities
 async function fetchEnvVars(projectId, token, logPath) {
     try {
-                const response = await axios.get(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/projects/${projectId}/env`, {
+                const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+        const url = `${backendUrl}/api/projects/${projectId}/env`;
+        
+        logger.info(`[Project ${projectId}] Fetching environment variables from: ${url}`);
+        
+        const response = await axios.get(url, {
             headers: { Authorization: `Bearer ${token}` },
-            timeout: 10000
+            timeout: 30000 // Increased timeout to 30 seconds
+        });
+
+        logger.info(`[Project ${projectId}] Environment variables response:`, {
+            status: response.status,
+            hasData: !!response.data,
+            dataType: typeof response.data,
+            isArray: Array.isArray(response.data),
+            hasSuccess: response.data?.success,
+            dataLength: response.data?.data?.length || (Array.isArray(response.data) ? response.data.length : 0)
         });
 
         if (response.data && response.data.success) {
-            return response.data.data || [];
+            const envVars = response.data.data || [];
+            logger.info(`[Project ${projectId}] Successfully fetched ${envVars.length} environment variables`);
+            return envVars;
         } else if (response.data && Array.isArray(response.data)) {
+            logger.info(`[Project ${projectId}] Successfully fetched ${response.data.length} environment variables (direct array)`);
             return response.data;
         } else {
+            logger.warn(`[Project ${projectId}] No environment variables found in response`);
             return [];
         }
     } catch (err) {

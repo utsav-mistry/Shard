@@ -249,9 +249,6 @@ const shutdownLog = (message, type = 'info') => {
     default:
       console.log(`${formattedTime} ${chalk.cyan(message)}`);
   }
-
-  // Also log to winston logger
-  logger.info(message);
 };
 
 /**

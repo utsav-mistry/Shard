@@ -18,7 +18,7 @@ const DeploymentResults = ({ deployment, project, aiResults }) => {
 
     const getCustomDomain = (stack, subdomain) => {
         const PORT_CONFIG = {
-            mern: { backend: 12000, frontend: 12001 },
+            mern: { backend: 12000 },
             django: { backend: 13000 },
             flask: { backend: 14000 },
         };

@@ -148,6 +148,23 @@ function setupSocketHandlers() {
         // Update overall status
         updateStatusIndicator('serverStatus', data.status === 'ok' ? 'ok' : 'error');
 
+        // Update Docker status
+        if (data.docker) {
+            const dockerStatusEl = document.getElementById('dockerStatus');
+            const dockerStatusTextEl = document.getElementById('dockerStatusText');
+            const dockerDetailEl = document.getElementById('dockerDetail');
+            
+            if (data.docker.running) {
+                updateStatusIndicator('dockerStatus', 'ok');
+                if (dockerStatusTextEl) dockerStatusTextEl.textContent = 'Running';
+                if (dockerDetailEl) dockerDetailEl.textContent = data.docker.status || 'Available';
+            } else {
+                updateStatusIndicator('dockerStatus', 'error');
+                if (dockerStatusTextEl) dockerStatusTextEl.textContent = 'Not Running';
+                if (dockerDetailEl) dockerDetailEl.textContent = data.docker.status || 'Unavailable';
+            }
+        }
+
         // Update backend service information
         if (data.status) {
             const backendStatusEl = document.getElementById('backendStatus');
@@ -282,6 +299,7 @@ function setupSocketHandlers() {
                 const versionEl = document.getElementById('workerVersion');
                 const queueEl = document.getElementById('workerQueue');
                 const memoryEl = document.getElementById('workerMemory');
+                const workerDocker = document.getElementById('workerDocker');
 
                 if (worker.status === 'ok' && worker.details) {
                     const details = worker.details;
@@ -295,6 +313,7 @@ function setupSocketHandlers() {
                         if (versionEl) versionEl.textContent = details.version || 'N/A';
                         if (queueEl) queueEl.textContent = details.display.queue || 'N/A';
                         if (memoryEl) memoryEl.textContent = details.display.memory || 'N/A';
+                        if (workerDocker) workerDocker.textContent = details.display.docker || 'N/A';
                     } else {
                         // Fallback to manual formatting
                         if (uptimeEl) uptimeEl.textContent = formatUptime(details.uptime);
@@ -308,6 +327,9 @@ function setupSocketHandlers() {
                         if (memoryEl && details.memory) {
                             memoryEl.textContent = `${formatBytes(details.memory.heapUsed)} / ${formatBytes(details.memory.heapTotal)}`;
                         }
+                        if (workerDocker && details.docker) {
+                            workerDocker.textContent = details.docker.running ? 'Running' : 'Not Available';
+                        }
                     }
                 } else {
                     updateStatusIndicator('workerStatus', 'error');
@@ -317,6 +339,7 @@ function setupSocketHandlers() {
                     if (versionEl) versionEl.textContent = 'N/A';
                     if (queueEl) queueEl.textContent = 'N/A';
                     if (memoryEl) memoryEl.textContent = 'N/A';
+                    if (workerDocker) workerDocker.textContent = 'N/A';
                 }
             }
 
@@ -493,8 +516,40 @@ function updateAIServiceStatus(aiData) {
     }
 }
 
+// Add Docker status section to the dashboard UI
+function ensureDockerStatusSection() {
+    const serverInfoSection = document.querySelector('.server-info');
+    if (!serverInfoSection) return;
+    
+    // Check if docker status section already exists
+    if (document.getElementById('dockerStatusSection')) return;
+    
+    const dockerSection = document.createElement('div');
+    dockerSection.id = 'dockerStatusSection';
+    dockerSection.className = 'info-section';
+    dockerSection.innerHTML = `
+        <h3>Docker Service</h3>
+        <div class="status-line">
+            <span class="label">Status:</span>
+            <span id="dockerStatus" class="status-indicator">
+                <span class="dot"></span>
+                <span id="dockerStatusText">Checking...</span>
+            </span>
+        </div>
+        <div class="status-line">
+            <span class="label">Details:</span>
+            <span id="dockerDetail">Checking Docker status...</span>
+        </div>
+    `;
+    
+    // Insert after server info section
+    serverInfoSection.parentNode.insertBefore(dockerSection, serverInfoSection.nextSibling);
+}
+
 // Initialize connection toggle button
 document.addEventListener('DOMContentLoaded', () => {
+    // Add Docker status section to the UI
+    ensureDockerStatusSection();
     const toggleBtn = document.createElement('button');
     toggleBtn.id = 'toggleConnectionBtn';
     toggleBtn.className = 'btn btn-sm';

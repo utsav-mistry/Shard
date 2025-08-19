@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const pkg = require('../package.json');
+const { isDockerRunning } = require('../utils/dockerChecker');
 
 const router = express.Router();
 
@@ -25,9 +26,12 @@ function formatUptime(seconds) {
     
     return parts.join(' ');
 }
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
     const queue = req.app.get('queue');
     const memoryUsage = process.memoryUsage();
+    
+    // Check Docker status
+    const dockerStatus = await isDockerRunning();
     
     // Helper function to get queue info
     const getQueueInfo = () => {
@@ -64,6 +68,10 @@ router.get('/', (req, res) => {
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         queue: queueInfo,
+        docker: {
+            running: dockerStatus,
+            status: dockerStatus ? 'available' : 'unavailable'
+        },
         memory: {
             heapUsed: (memoryUsage.heapUsed / 1024 / 1024).toFixed(2) + ' MB',
             heapTotal: (memoryUsage.heapTotal / 1024 / 1024).toFixed(2) + ' MB',
@@ -77,7 +85,8 @@ router.get('/', (req, res) => {
             memory: memoryUsage ? 
                 `${(memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB / ${(memoryUsage.heapTotal / 1024 / 1024).toFixed(2)} MB` :
                 'N/A',
-            uptime: formatUptime(process.uptime())
+            uptime: formatUptime(process.uptime()),
+            docker: dockerStatus ? 'Running' : 'Not Available'
         }
     };
     

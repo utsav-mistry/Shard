@@ -15,9 +15,10 @@ COPY --from=frontend /app/frontend/build ./frontend/build
 WORKDIR /app/backend
 RUN npm install
 
-# Set the internal port to 12001 for frontend
-ENV PORT=12001
+# Set standard Node.js ports internally
+ENV PORT=5000
+
 # Note: Project-specific environment variables are injected at runtime via --env-file flag
-EXPOSE 12000 12001
+EXPOSE 5000
 
 CMD ["node", "server.js"]

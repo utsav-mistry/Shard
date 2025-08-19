@@ -10,8 +10,6 @@
     <!-- Load Socket.IO client -->
     <script src="/socket.io/socket.io.js" nonce="health-dashboard"></script>
 
-
-
     <script nonce="health-dashboard">
         // Simple error display
         function showError(message) {
@@ -614,6 +612,14 @@
                     <div class="metric-item">
                         <span class="metric-label">Heap:</span>
                         <span class="metric-value" id="workerMemory">-</span>
+                    </div>
+                </div>
+                
+                <div class="metric-section">
+                    <h4>Docker Status</h4>
+                    <div class="metric-item">
+                        <span class="metric-label">Docker:</span>
+                        <span class="metric-value" id="workerDocker">-</span>
                     </div>
                 </div>
             </div>
