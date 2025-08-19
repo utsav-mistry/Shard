@@ -20,11 +20,11 @@ const options = {
     },
     servers: [
       {
-        url: process.env.API_URL || 'http://localhost:5000/api',
+        url: process.env.API_URL || 'http://localhost:5000',
         description: 'Development server'
       },
       {
-        url: 'https://api.shard.dev/api',
+        url: 'https://api.shard.dev',
         description: 'Production server'
       }
     ],

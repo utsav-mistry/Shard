@@ -1,15 +1,26 @@
+/**
+ * @fileoverview Health Service
+ * @description Provides aggregated health status monitoring for all dependent services
+ * @module services/healthService
+ * @requires axios
+ * @requires ../utils/logger
+ * @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const axios = require('axios');
 const logger = require('../utils/logger');
-
-/**
- * Health Service
- * Provides aggregated health status for all dependent services
- */
 
 const DEFAULT_TIMEOUT = 5000; // 5 seconds
 
 /**
- * Check health of a single service
+ * Checks health of a single service
+ * @async
+ * @function checkServiceHealth
+ * @param {string} serviceName - Name of the service being checked
+ * @param {string} url - Health check endpoint URL
+ * @param {number} [timeout=5000] - Request timeout in milliseconds
+ * @returns {Promise<Object>} Health status with response time and details
  */
 async function checkServiceHealth(serviceName, url, timeout = DEFAULT_TIMEOUT) {
     const startTime = Date.now();
@@ -48,7 +59,13 @@ async function checkServiceHealth(serviceName, url, timeout = DEFAULT_TIMEOUT) {
 }
 
 /**
- * Get aggregated health status of all services
+ * Gets aggregated health status of all services
+ * @async
+ * @function getAggregatedHealth
+ * @returns {Promise<Object>} Overall health status with individual service details
+ * @example
+ * const health = await getAggregatedHealth();
+ * console.log(health.status); // 'ok', 'degraded', or 'error'
  */
 async function getAggregatedHealth() {
     const services = {};
@@ -98,7 +115,13 @@ async function getAggregatedHealth() {
 }
 
 /**
- * Get detailed system health including services
+ * Gets detailed system health including services and system metrics
+ * @async
+ * @function getSystemHealth
+ * @returns {Promise<Object>} Complete system health with uptime and memory usage
+ * @example
+ * const systemHealth = await getSystemHealth();
+ * console.log(systemHealth.uptime); // Process uptime in seconds
  */
 async function getSystemHealth() {
     const servicesHealth = await getAggregatedHealth();
@@ -113,7 +136,13 @@ async function getSystemHealth() {
 }
 
 /**
- * Check if a specific service is healthy
+ * Checks if a specific service is healthy
+ * @async
+ * @function isServiceHealthy
+ * @param {string} serviceName - Name of the service to check
+ * @returns {Promise<boolean>} True if service is healthy, false otherwise
+ * @example
+ * const isHealthy = await isServiceHealthy('deployment-worker');
  */
 async function isServiceHealthy(serviceName) {
     const health = await getAggregatedHealth();
@@ -121,6 +150,10 @@ async function isServiceHealthy(serviceName) {
     return service && service.status === 'ok';
 }
 
+/**
+ * @namespace healthService
+ * @description Service health monitoring and aggregation utilities
+ */
 module.exports = {
     checkServiceHealth,
     getAggregatedHealth,

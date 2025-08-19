@@ -1,13 +1,29 @@
+/**
+ * @fileoverview Idempotency Middleware
+ * @description Prevents duplicate request processing by caching responses for non-GET requests
+ *              using idempotency keys for the Shard platform
+ *  @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const crypto = require('crypto');
 const logger = require('../utils/logger');
 
 /**
- * Middleware to ensure idempotency of non-GET requests
- * Uses an idempotency key header to prevent duplicate operations
- * 
- * @param {Object} cache - Cache service instance
- * @param {number} [ttl=86400] - Time to keep idempotency keys in cache (default: 24 hours)
+ * Create idempotency middleware to prevent duplicate request processing
+ * @function idempotencyMiddleware
+ * @param {Object} cache - Cache service instance with get/set/del methods
+ * @param {number} [ttl=86400] - Time to live for cached responses in seconds (default: 24 hours)
  * @returns {Function} Express middleware function
+ * @description Middleware ensures idempotency of non-GET requests using client-provided keys
+ * @note Skips GET requests as they should be idempotent by design
+ * @note Uses SHA-256 hash of request data and idempotency key for cache keys
+ * @note Only caches successful responses (2xx status codes)
+ * @note Gracefully continues on cache errors without breaking request flow
+ * @example
+ * // Usage in Express app
+ * const cache = require('./services/cacheService');
+ * app.use(idempotencyMiddleware(cache, 3600)); // 1 hour TTL
  */
 const idempotencyMiddleware = (cache, ttl = 86400) => {
     return async (req, res, next) => {
@@ -18,7 +34,7 @@ const idempotencyMiddleware = (cache, ttl = 86400) => {
 
         // Get idempotency key from header
         const idempotencyKey = req.headers['idempotency-key'];
-        
+
         // If no key provided, continue without idempotency check
         if (!idempotencyKey) {
             return next();
@@ -31,7 +47,7 @@ const idempotencyMiddleware = (cache, ttl = 86400) => {
         try {
             // Check if we've seen this request before
             const cachedResponse = await cache.get(cacheKey);
-            
+
             if (cachedResponse) {
                 logger.info('Idempotent request detected, returning cached response', {
                     method: req.method,
@@ -39,7 +55,7 @@ const idempotencyMiddleware = (cache, ttl = 86400) => {
                     idempotencyKey,
                     cacheKey
                 });
-                
+
                 // Return the cached response
                 return res
                     .status(cachedResponse.status)
@@ -51,26 +67,26 @@ const idempotencyMiddleware = (cache, ttl = 86400) => {
             const originalSend = res.send;
             const originalJson = res.json;
             const originalEnd = res.end;
-            
+
             // Response data collector
             const responseChunks = [];
-            
+
             // Override response methods to capture the response
             res.send = function (body) {
                 responseChunks.push(body);
                 originalSend.apply(res, arguments);
             };
-            
+
             res.json = function (body) {
                 responseChunks.push(JSON.stringify(body));
                 originalJson.apply(res, arguments);
             };
-            
+
             res.end = function (chunk, encoding) {
                 if (chunk) {
                     responseChunks.push(chunk);
                 }
-                
+
                 // Only cache successful responses (2xx)
                 if (res.statusCode >= 200 && res.statusCode < 300) {
                     const responseBody = responseChunks.join('');
@@ -79,7 +95,7 @@ const idempotencyMiddleware = (cache, ttl = 86400) => {
                         headers: res.getHeaders(),
                         body: responseBody
                     };
-                    
+
                     // Cache the response
                     cache.set(cacheKey, responseToCache, ttl)
                         .then(() => {
@@ -101,10 +117,10 @@ const idempotencyMiddleware = (cache, ttl = 86400) => {
                             });
                         });
                 }
-                
+
                 originalEnd.apply(res, [chunk, encoding]);
             };
-            
+
             next();
         } catch (error) {
             logger.error('Idempotency middleware error', {
@@ -120,8 +136,19 @@ const idempotencyMiddleware = (cache, ttl = 86400) => {
 };
 
 /**
- * Create a hash of the request to identify duplicate requests
+ * Create SHA-256 hash of request data to identify duplicate requests
  * @private
+ * @function createRequestHash
+ * @param {Object} req - Express request object
+ * @param {string} req.method - HTTP method
+ * @param {string} req.originalUrl - Full request URL with query parameters
+ * @param {Object} req.body - Request body data
+ * @param {Object} req.params - URL parameters
+ * @param {Object} req.query - Query string parameters
+ * @param {string} idempotencyKey - Client-provided idempotency key
+ * @returns {string} SHA-256 hash of request data for cache key generation
+ * @note Combines all request components to ensure unique identification
+ * @note Uses deterministic JSON serialization for consistent hashing
  */
 function createRequestHash(req, idempotencyKey) {
     const requestData = {
@@ -132,7 +159,7 @@ function createRequestHash(req, idempotencyKey) {
         query: req.query,
         idempotencyKey
     };
-    
+
     // Create a hash of the request data
     return crypto
         .createHash('sha256')

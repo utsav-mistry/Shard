@@ -1,11 +1,30 @@
+/**
+ * @fileoverview Proxy Helper Utilities
+ * @description Provides utility functions for managing reverse proxy configurations and operations
+ * @module utils/proxyHelpers
+ * @requires services/reverseProxyManager
+ * @requires ./logger
+ * @author Utsav Mistry
+ * @version 0.2.3
+ * 
+ */
+
 const reverseProxyManager = require('../services/reverseProxyManager');
 const logger = require('./logger');
 
 /**
- * Utility functions for reverse proxy integration
+ * Updates the Nginx configuration file with current proxy mappings
+ * @async
+ * @function updateNginxMappings
+ * @returns {Promise<boolean>} True if update was successful, false otherwise
+ * @description Generates and writes the Nginx map configuration based on current proxy mappings
+ * and triggers a configuration reload if successful.
+ * @example
+ * const success = await updateNginxMappings();
+ * if (success) {
+ *   console.log('Nginx mappings updated successfully');
+ * }
  */
-
-// Update nginx configuration file with current mappings
 const updateNginxMappings = async () => {
     try {
         const mappings = reverseProxyManager.getAllMappings();
@@ -31,7 +50,18 @@ const updateNginxMappings = async () => {
     }
 };
 
-// Generate nginx map configuration from current mappings
+/**
+ * Generates Nginx map configuration from proxy mappings
+ * @function generateNginxMapConfig
+ * @param {Array<Object>} mappings - Array of proxy mapping objects
+ * @param {string} mappings[].subdomain - Subdomain for the mapping
+ * @param {number} mappings[].port - Backend port number
+ * @param {string} [mappings[].stack] - Application stack type (e.g., 'mern', 'django')
+ * @param {number} [mappings[].frontendPort] - Frontend port for MERN stack
+ * @returns {string} Generated Nginx map configuration
+ * @description Creates Nginx map blocks for backend and frontend port mappings
+ * based on the provided proxy mappings.
+ */
 const generateNginxMapConfig = (mappings) => {
     const lines = [];
     
@@ -66,7 +96,19 @@ const generateNginxMapConfig = (mappings) => {
     return lines.join('\n');
 };
 
-// Validate proxy configuration
+/**
+ * Validates the Nginx proxy configuration
+ * @async
+ * @function validateProxyConfig
+ * @returns {Promise<boolean>} True if configuration is valid, false otherwise
+ * @description Checks if the reverse proxy is running and validates the Nginx
+ * configuration by executing 'nginx -t' in the proxy container.
+ * @example
+ * const isValid = await validateProxyConfig();
+ * if (isValid) {
+ *   console.log('Proxy configuration is valid');
+ * }
+ */
 const validateProxyConfig = async () => {
     try {
         // Check if reverse proxy is running
@@ -91,17 +133,41 @@ const validateProxyConfig = async () => {
     }
 };
 
-// Get deployment URL for a subdomain
+/**
+ * Gets the public URL for a deployment
+ * @function getDeploymentUrl
+ * @param {string} subdomain - The subdomain for the deployment
+ * @param {string} stack - The application stack (e.g., 'mern', 'django', 'flask')
+ * @returns {string} The complete public URL for the deployment
+ * @description Constructs the public URL using the reverse proxy manager's URL generation
+ * @example
+ * const url = getDeploymentUrl('myapp', 'mern');
+ * // Returns: 'http://myapp.localhost'
+ */
 const getDeploymentUrl = (subdomain, stack) => {
     return reverseProxyManager.getPublicUrl(subdomain, stack);
 };
 
-// Check if subdomain is already in use
+/**
+ * Checks if a subdomain is already in use by an existing proxy mapping
+ * @function isSubdomainInUse
+ * @param {string} subdomain - The subdomain to check
+ * @returns {boolean} True if the subdomain is already in use, false otherwise
+ * @description Verifies if the provided subdomain is already registered in the proxy mappings
+ * @example
+ * if (isSubdomainInUse('myapp')) {
+ *   console.log('Subdomain is already in use');
+ * }
+ */
 const isSubdomainInUse = (subdomain) => {
     const mappings = reverseProxyManager.getAllMappings();
     return mappings.some(mapping => mapping.subdomain === subdomain);
 };
 
+/**
+ * @namespace proxyHelpers
+ * @description Collection of utilities for managing reverse proxy configurations
+ */
 module.exports = {
     updateNginxMappings,
     generateNginxMapConfig,

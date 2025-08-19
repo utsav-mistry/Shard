@@ -1,5 +1,35 @@
+/**
+ * @fileoverview Code Analysis Service
+ * @description Service for analyzing repository code using AI review service
+ * @author Utsav Mistry
+ * @version 0.2.3
+ */
+
 const axios = require('axios');
 
+/**
+ * Analyze repository code using AI review service
+ * @async
+ * @function analyzeRepo
+ * @param {string} repoPath - Absolute path to the repository directory
+ * @param {string} projectId - Unique project identifier for tracking
+ * @returns {Promise<Object>} Analysis results from AI service
+ * @returns {string} returns.verdict - Review verdict ('approve', 'deny', 'manual_review')
+ * @returns {Array<Object>} returns.issues - Array of detected code issues
+ * @returns {number} returns.issueCount - Total number of issues found
+ * @returns {Object} returns.severity_breakdown - Count of issues by severity level
+ * @returns {number} returns.linter_count - Number of linter-detected issues
+ * @returns {number} returns.ai_count - Number of AI-detected issues
+ * @returns {string} [returns.error] - Error message if service unavailable
+ * @throws {Error} Network or service communication errors
+ * @description Sends repository for AI analysis and returns structured results.
+ * Falls back to approval if AI service is unavailable.
+ * @example
+ * const result = await analyzeRepo('/path/to/repo', 'proj123');
+ * if (result.verdict === 'approve') {
+ *   // Proceed with deployment
+ * }
+ */
 async function analyzeRepo(repoPath, projectId) {
     try {
         // Convert Windows path to Unix-style path for AI service
@@ -42,4 +72,9 @@ async function analyzeRepo(repoPath, projectId) {
     }
 }
 
+/**
+ * Export code analysis functions
+ * @module analyzeCode
+ * @description Service for AI-powered code analysis and review
+ */
 module.exports = { analyzeRepo };

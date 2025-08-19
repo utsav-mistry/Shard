@@ -1,6 +1,17 @@
+/**
+ * @fileoverview Validation Utilities
+ * @description Provides Joi validation schemas and middleware for request validation
+ * @module utils/validation
+ * @requires joi
+ * @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const Joi = require('joi');
 
-// Validation schemas
+/**
+ * Validation schemas for different entities
+ */
 const projectSchema = Joi.object({
     name: Joi.string().min(1).max(100).required(),
     repoUrl: Joi.string().uri().required(),
@@ -10,12 +21,20 @@ const projectSchema = Joi.object({
     branch: Joi.string().optional().default('main')
 }).options({ allowUnknown: true });
 
+/**
+ * Joi schema for environment variable validation
+ * @type {Joi.ObjectSchema}
+ */
 const envVarSchema = Joi.object({
     key: Joi.string().min(1).max(100).pattern(/^[A-Z_][A-Z0-9_]*$/).required(),
     value: Joi.string().max(1000).required(),
     projectId: Joi.string().hex().length(24).optional()
 }).options({ allowUnknown: true });
 
+/**
+ * Joi schema for deployment validation
+ * @type {Joi.ObjectSchema}
+ */
 const deploymentSchema = Joi.object({
     projectId: Joi.string().hex().length(24).required(),
     branch: Joi.string().min(1).max(100).optional().default('main'),
@@ -28,7 +47,16 @@ const deploymentSchema = Joi.object({
     })).optional().default([])
 }).options({ allowUnknown: true });
 
-// Validation middleware
+/**
+ * Validation middleware for project creation/update
+ * @function validateProject
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Next middleware function
+ * @returns {void}
+ * @example
+ * router.post('/projects', validateProject, createProject);
+ */
 const validateProject = (req, res, next) => {
     const { error } = projectSchema.validate(req.body);
     if (error) {
@@ -41,6 +69,16 @@ const validateProject = (req, res, next) => {
     next();
 };
 
+/**
+ * Validation middleware for environment variables
+ * @function validateEnvVar
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Next middleware function
+ * @returns {void}
+ * @example
+ * router.post('/env-vars', validateEnvVar, createEnvVar);
+ */
 const validateEnvVar = (req, res, next) => {
     // Create a copy of req.body without projectId for validation
     const { projectId, ...bodyWithoutProjectId } = req.body;
@@ -56,6 +94,16 @@ const validateEnvVar = (req, res, next) => {
     next();
 };
 
+/**
+ * Validation middleware for deployment requests
+ * @function validateDeployment
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Next middleware function
+ * @returns {void}
+ * @example
+ * router.post('/deployments', validateDeployment, createDeployment);
+ */
 const validateDeployment = (req, res, next) => {
     const { error } = deploymentSchema.validate(req.body);
     if (error) {
@@ -68,7 +116,15 @@ const validateDeployment = (req, res, next) => {
     next();
 };
 
-// Input sanitization
+/**
+ * Sanitizes input by trimming whitespace and removing dangerous characters
+ * @function sanitizeInput
+ * @param {*} input - Input value to sanitize
+ * @returns {*} Sanitized input
+ * @example
+ * const clean = sanitizeInput('<script>alert("xss")</script>');
+ * // Returns: 'scriptalert("xss")/script'
+ */
 const sanitizeInput = (input) => {
     if (typeof input === 'string') {
         return input.trim().replace(/[<>]/g, '');
@@ -76,6 +132,16 @@ const sanitizeInput = (input) => {
     return input;
 };
 
+/**
+ * Middleware to sanitize all fields in request body
+ * @function sanitizeBody
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Next middleware function
+ * @returns {void}
+ * @example
+ * router.use(sanitizeBody);
+ */
 const sanitizeBody = (req, res, next) => {
     if (req.body) {
         Object.keys(req.body).forEach(key => {
@@ -85,10 +151,20 @@ const sanitizeBody = (req, res, next) => {
     next();
 };
 
+/**
+ * @namespace validation
+ * @description Collection of validation utilities and middleware
+ */
 module.exports = {
     validateProject,
     validateEnvVar,
     validateDeployment,
     sanitizeBody,
-    sanitizeInput
+    sanitizeInput,
+    // Export schemas for direct use if needed
+    schemas: {
+        projectSchema,
+        envVarSchema,
+        deploymentSchema
+    }
 }; 

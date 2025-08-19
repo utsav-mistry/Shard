@@ -1,10 +1,32 @@
+/**
+ * @fileoverview Reverse Proxy Manager Service
+ * @description Manages Nginx reverse proxy container and port allocation for deployments
+ * @author Utsav Mistry
+ * @version 0.2.3
+ */
+
 const { exec } = require('child_process');
 const fs = require('fs-extra');
 const path = require('path');
 const logger = require('../utils/logger');
 const proxyConfig = require('./proxyConfig');
 
+/**
+ * Reverse proxy manager for deployment routing
+ * @class ReverseProxyManager
+ * @description Manages Nginx reverse proxy container, port allocation, and subdomain routing.
+ * Handles dynamic configuration updates and container lifecycle management.
+ * @example
+ * const proxyManager = require('./reverseProxyManager');
+ * await proxyManager.initialize();
+ * const port = await proxyManager.allocatePort('myapp', 'mern');
+ * await proxyManager.updateNginxConfig('myapp', 'mern', port);
+ */
 class ReverseProxyManager {
+    /**
+     * Initialize reverse proxy manager
+     * @description Sets up container name, configuration paths, and port ranges
+     */
     constructor() {
         this.nginxContainerName = 'shard-reverse-proxy';
         this.nginxConfigPath = path.join(__dirname, '..', 'nginx', 'nginx.conf');
@@ -16,7 +38,15 @@ class ReverseProxyManager {
         this.allocatedPorts = new Map(); // subdomain -> port mapping
     }
 
-    // Get next available internal port for a tech stack
+    /**
+     * Get next available internal port for a technology stack
+     * @async
+     * @function getNextInternalPort
+     * @param {string} stack - Technology stack ('flask', 'django', 'mern')
+     * @returns {Promise<number>} Next available port in stack's range
+     * @throws {Error} If no ports available or invalid stack
+     * @description Finds first available port within stack's allocated range
+     */
     async getNextInternalPort(stack) {
         const range = this.portRanges[stack];
         if (!range) {
@@ -32,12 +62,26 @@ class ReverseProxyManager {
         throw new Error(`No available ports in range ${range.start}-${range.end} for ${stack}`);
     }
 
-    // Check if port is already allocated
+    /**
+     * Check if port is already allocated
+     * @function isPortAllocated
+     * @param {number} port - Port number to check
+     * @returns {boolean} True if port is allocated
+     * @description Checks if port is currently allocated to any subdomain
+     */
     isPortAllocated(port) {
         return Array.from(this.allocatedPorts.values()).includes(port);
     }
 
-    // Allocate internal port for deployment
+    /**
+     * Allocate internal port for deployment
+     * @async
+     * @function allocatePort
+     * @param {string} subdomain - Subdomain name
+     * @param {string} stack - Technology stack
+     * @returns {Promise<number>} Allocated port number
+     * @description Allocates next available port for subdomain deployment
+     */
     async allocatePort(subdomain, stack) {
         const port = await this.getNextInternalPort(stack);
         
@@ -47,12 +91,24 @@ class ReverseProxyManager {
         return port;
     }
 
-    // Get allocated port for subdomain
+    /**
+     * Get allocated port for subdomain
+     * @function getAllocatedPort
+     * @param {string} subdomain - Subdomain name
+     * @returns {number|undefined} Allocated port or undefined if not found
+     * @description Retrieves currently allocated port for subdomain
+     */
     getAllocatedPort(subdomain) {
         return this.allocatedPorts.get(subdomain);
     }
 
-    // Release port allocation
+    /**
+     * Release port allocation for subdomain
+     * @function releasePort
+     * @param {string} subdomain - Subdomain name
+     * @returns {number|undefined} Released port number
+     * @description Releases port allocation and makes it available for reuse
+     */
     releasePort(subdomain) {
         const port = this.allocatedPorts.get(subdomain);
         
@@ -64,7 +120,14 @@ class ReverseProxyManager {
         return port;
     }
 
-    // Start reverse proxy container
+    /**
+     * Start reverse proxy container
+     * @async
+     * @function startReverseProxy
+     * @returns {Promise<boolean>} True if started successfully
+     * @throws {Error} Docker or container startup errors
+     * @description Builds and starts Nginx reverse proxy container with port mappings
+     */
     async startReverseProxy() {
         try {
             // Check if reverse proxy is already running
@@ -106,7 +169,13 @@ class ReverseProxyManager {
         }
     }
 
-    // Check if reverse proxy is running
+    /**
+     * Check if reverse proxy container is running
+     * @async
+     * @function isReverseProxyRunning
+     * @returns {Promise<boolean>} True if container is running
+     * @description Checks Docker container status for reverse proxy
+     */
     async isReverseProxyRunning() {
         try {
             const result = await this.execPromise(`docker ps -q -f name=${this.nginxContainerName}`);
@@ -116,7 +185,12 @@ class ReverseProxyManager {
         }
     }
 
-    // Stop reverse proxy
+    /**
+     * Stop reverse proxy container
+     * @async
+     * @function stopReverseProxy
+     * @description Forcefully removes reverse proxy container
+     */
     async stopReverseProxy() {
         try {
             await this.execPromise(`docker rm -f ${this.nginxContainerName}`);
@@ -126,7 +200,16 @@ class ReverseProxyManager {
         }
     }
 
-    // Update nginx configuration with new upstream
+    /**
+     * Update Nginx configuration with new upstream
+     * @async
+     * @function updateNginxConfig
+     * @param {string} subdomain - Subdomain name
+     * @param {string} stack - Technology stack
+     * @param {number} internalPort - Internal port number
+     * @returns {Promise<boolean>} True if updated successfully
+     * @description Adds subdomain mapping and reloads Nginx configuration
+     */
     async updateNginxConfig(subdomain, stack, internalPort) {
         try {
             // Add mapping to proxy config
@@ -144,7 +227,12 @@ class ReverseProxyManager {
         }
     }
 
-    // Reload nginx configuration
+    /**
+     * Reload Nginx configuration
+     * @async
+     * @function reloadNginxConfig
+     * @description Tests and reloads Nginx configuration, restarts container if needed
+     */
     async reloadNginxConfig() {
         try {
             const isRunning = await this.isReverseProxyRunning();
@@ -173,7 +261,14 @@ class ReverseProxyManager {
         }
     }
 
-    // Get public URL for deployment
+    /**
+     * Get public URL for deployment
+     * @function getPublicUrl
+     * @param {string} subdomain - Subdomain name
+     * @param {string} stack - Technology stack
+     * @returns {string} Public URL for accessing deployment
+     * @description Constructs public URL based on subdomain and stack port mapping
+     */
     getPublicUrl(subdomain, stack) {
         const portMap = {
             flask: 14000,
@@ -185,7 +280,14 @@ class ReverseProxyManager {
         return `http://${subdomain}.localhost:${port}`;
     }
 
-    // Utility function to execute commands
+    /**
+     * Execute shell command as Promise
+     * @function execPromise
+     * @param {string} cmd - Shell command to execute
+     * @returns {Promise<string>} Command stdout
+     * @throws {Error} Command execution errors
+     * @description Promisified wrapper for child_process.exec
+     */
     execPromise(cmd) {
         return new Promise((resolve, reject) => {
             exec(cmd, (err, stdout, stderr) => {
@@ -199,7 +301,12 @@ class ReverseProxyManager {
         });
     }
 
-    // Initialize reverse proxy on startup
+    /**
+     * Initialize reverse proxy manager
+     * @async
+     * @function initialize
+     * @description Loads existing mappings and starts reverse proxy container
+     */
     async initialize() {
         try {
             logger.info('[Reverse Proxy] Initializing reverse proxy manager...');
@@ -215,7 +322,12 @@ class ReverseProxyManager {
         }
     }
 
-    // Cleanup on shutdown
+    /**
+     * Cleanup reverse proxy resources
+     * @async
+     * @function cleanup
+     * @description Stops container and clears port allocations on shutdown
+     */
     async cleanup() {
         try {
             logger.info('[Reverse Proxy] Cleaning up reverse proxy...');
@@ -228,7 +340,16 @@ class ReverseProxyManager {
     }
 }
 
-// Singleton instance
+/**
+ * Singleton reverse proxy manager instance
+ * @type {ReverseProxyManager}
+ * @description Global instance for managing reverse proxy operations
+ */
 const reverseProxyManager = new ReverseProxyManager();
 
+/**
+ * Export reverse proxy manager singleton
+ * @module reverseProxyManager
+ * @description Nginx reverse proxy container and port management service
+ */
 module.exports = reverseProxyManager;

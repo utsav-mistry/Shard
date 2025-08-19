@@ -1,9 +1,22 @@
+/**
+ * @fileoverview Cache Service
+ * @description In-memory caching service using NodeCache with TTL and statistics
+ * @module services/cacheService
+ * @requires node-cache
+ * @requires ../utils/logger
+ * @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const NodeCache = require('node-cache');
 const logger = require('../utils/logger');
 
 /**
  * Cache service using NodeCache (LRU cache implementation)
- * Configurable TTL and max items
+ * @class CacheService
+ * @classdesc Provides in-memory caching with configurable TTL and max items
+ * @param {number} [ttlSeconds=600] - Default time-to-live in seconds
+ * @param {number} [maxKeys=1000] - Maximum number of keys to store
  */
 class CacheService {
     constructor(ttlSeconds = 600, maxKeys = 1000) {
@@ -23,9 +36,15 @@ class CacheService {
     }
 
     /**
-     * Get value by key
-     * @param {string} key
-     * @returns {*}
+     * Gets value by key from cache
+     * @method get
+     * @param {string} key - Cache key to retrieve
+     * @returns {*} Cached value or undefined if not found
+     * @example
+     * const userData = cache.get('user:123');
+     * if (userData) {
+     *   console.log('Found in cache:', userData);
+     * }
      */
     get(key) {
         try {
@@ -43,18 +62,25 @@ class CacheService {
     }
 
     /**
-     * Set value with key and optional TTL
-     * @param {string} key
-     * @param {*} value
+     * Sets value with key and optional TTL
+     * @method set
+     * @param {string} key - Cache key
+     * @param {*} value - Value to cache
      * @param {number} [ttl] - Time to live in seconds (overrides default if provided)
-     * @returns {boolean}
+     * @returns {boolean} True if successfully set, false otherwise
+     * @example
+     * // Set with default TTL
+     * cache.set('user:123', userData);
+     * 
+     * // Set with custom TTL (5 minutes)
+     * cache.set('temp:data', tempData, 300);
      */
     set(key, value, ttl) {
         try {
-            const success = ttl 
+            const success = ttl
                 ? this.cache.set(key, value, ttl)
                 : this.cache.set(key, value);
-            
+
             if (success) {
                 logger.debug(`Cache set for key: ${key}${ttl ? ` with TTL: ${ttl}s` : ''}`);
             } else {
@@ -68,9 +94,13 @@ class CacheService {
     }
 
     /**
-     * Delete value by key
-     * @param {string} key
-     * @returns {number} Number of deleted keys
+     * Deletes value by key from cache
+     * @method del
+     * @param {string} key - Cache key to delete
+     * @returns {number} Number of deleted keys (0 or 1)
+     * @example
+     * const deleted = cache.del('user:123');
+     * console.log(`Deleted ${deleted} items`);
      */
     del(key) {
         try {
@@ -86,8 +116,14 @@ class CacheService {
     }
 
     /**
-     * Clear the entire cache
+     * Clears the entire cache
+     * @async
+     * @method flush
      * @returns {Promise<void>}
+     * @throws {Error} If cache flush operation fails
+     * @example
+     * await cache.flush();
+     * console.log('Cache cleared');
      */
     async flush() {
         try {
@@ -100,8 +136,18 @@ class CacheService {
     }
 
     /**
-     * Get cache statistics
-     * @returns {Object} Cache statistics
+     * Gets cache statistics
+     * @method getStats
+     * @returns {Object} Cache statistics object
+     * @property {number} keys - Number of keys in cache
+     * @property {number} hits - Number of cache hits
+     * @property {number} misses - Number of cache misses
+     * @property {number} keyCount - Total key count
+     * @property {number} ksize - Size of keys in bytes
+     * @property {number} vsize - Size of values in bytes
+     * @example
+     * const stats = cache.getStats();
+     * console.log(`Hit rate: ${stats.hits / (stats.hits + stats.misses)}`);
      */
     getStats() {
         return {
@@ -115,8 +161,10 @@ class CacheService {
     }
 
     /**
-     * Log cache statistics periodically
+     * Logs cache statistics periodically (every 5 minutes)
      * @private
+     * @method logStats
+     * @returns {void}
      */
     logStats() {
         const stats = this.getStats();
@@ -136,7 +184,12 @@ class CacheService {
     }
 
     /**
-     * Clean up resources
+     * Cleans up resources and stops periodic logging
+     * @method close
+     * @returns {void}
+     * @example
+     * // Clean up when shutting down
+     * cache.close();
      */
     close() {
         if (this.statsInterval) {
@@ -146,8 +199,19 @@ class CacheService {
     }
 }
 
-// Export a singleton instance
-module.exports = new CacheService(
+/**
+ * Singleton cache service instance
+ * @type {CacheService}
+ * @description Pre-configured cache instance with environment-based settings
+ */
+const cacheInstance = new CacheService(
     parseInt(process.env.CACHE_TTL || '600', 10),
     parseInt(process.env.CACHE_MAX_KEYS || '1000', 10)
 );
+
+/**
+ * @namespace cacheService
+ * @description In-memory caching service with TTL and statistics
+ */
+module.exports = cacheInstance;
+module.exports.CacheService = CacheService;

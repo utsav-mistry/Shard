@@ -1,18 +1,42 @@
+/**
+ * @fileoverview Nginx Proxy Configuration Service
+ * @description Dynamic Nginx configuration generator for subdomain routing
+ * @author Utsav Mistry
+ * @version 0.2.3
+ */
+
 const fs = require('fs-extra');
 const path = require('path');
 const logger = require('../utils/logger');
 
 /**
  * Dynamic Nginx configuration generator for subdomain routing
- * This creates a simple mapping file that can be used by nginx for routing
+ * @class ProxyConfig
+ * @description Manages subdomain-to-port mappings for reverse proxy configuration.
+ * Automatically generates and reloads Nginx configuration files.
+ * @example
+ * const proxyConfig = require('./proxyConfig');
+ * proxyConfig.addMapping('myapp', 'mern', 17001);
+ * proxyConfig.removeMapping('oldapp');
  */
 class ProxyConfig {
+    /**
+     * Initialize proxy configuration manager
+     * @description Sets up configuration paths and mapping storage
+     */
     constructor() {
         this.configPath = path.join(__dirname, '..', 'nginx', 'proxy-mappings.conf');
         this.mappings = new Map(); // subdomain -> { stack, port }
     }
 
-    // Add a new subdomain mapping
+    /**
+     * Add a new subdomain mapping
+     * @function addMapping
+     * @param {string} subdomain - Subdomain name (without .localhost)
+     * @param {string} stack - Technology stack ('mern', 'django', 'flask')
+     * @param {number} port - Backend port number
+     * @description Adds subdomain mapping and regenerates Nginx configuration
+     */
     addMapping(subdomain, stack, port) {
         this.mappings.set(subdomain, {
             stack,
@@ -23,7 +47,12 @@ class ProxyConfig {
         this.generateConfig();
     }
 
-    // Remove a subdomain mapping
+    /**
+     * Remove a subdomain mapping
+     * @function removeMapping
+     * @param {string} subdomain - Subdomain name to remove
+     * @description Removes subdomain mapping and regenerates Nginx configuration
+     */
     removeMapping(subdomain) {
         if (this.mappings.has(subdomain)) {
             this.mappings.delete(subdomain);
@@ -32,7 +61,11 @@ class ProxyConfig {
         }
     }
 
-    // Generate nginx configuration file
+    /**
+     * Generate Nginx configuration file
+     * @function generateConfig
+     * @description Creates proxy-mappings.conf file with current subdomain mappings
+     */
     generateConfig() {
         const configLines = [];
 
@@ -72,7 +105,12 @@ class ProxyConfig {
         }
     }
 
-    // Trigger nginx reload automatically
+    /**
+     * Trigger automatic Nginx configuration reload
+     * @async
+     * @function triggerNginxReload
+     * @description Tests and reloads Nginx configuration in Docker container
+     */
     async triggerNginxReload() {
         try {
             const { exec } = require('child_process');
@@ -93,7 +131,11 @@ class ProxyConfig {
         }
     }
 
-    // Load existing mappings from file (for persistence)
+    /**
+     * Load existing mappings from configuration file
+     * @function loadMappings
+     * @description Parses existing proxy-mappings.conf to restore subdomain mappings
+     */
     loadMappings() {
         try {
             if (fs.existsSync(this.configPath)) {
@@ -141,7 +183,12 @@ class ProxyConfig {
         }
     }
 
-    // Get all current mappings
+    /**
+     * Get all current subdomain mappings
+     * @function getAllMappings
+     * @returns {Array<Object>} Array of mapping objects with subdomain, stack, and port
+     * @description Returns formatted array of all current subdomain mappings
+     */
     getAllMappings() {
         return Array.from(this.mappings.entries()).map(([subdomain, config]) => ({
             subdomain,
@@ -150,4 +197,9 @@ class ProxyConfig {
     }
 }
 
+/**
+ * Export singleton ProxyConfig instance
+ * @module proxyConfig
+ * @description Nginx proxy configuration manager singleton
+ */
 module.exports = new ProxyConfig();

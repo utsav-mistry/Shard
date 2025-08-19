@@ -1,8 +1,40 @@
+/**
+ * @fileoverview Environment Variable Injection Service
+ * @description Service for injecting environment variables into deployment projects
+ * @author Utsav Mistry
+ * @version 0.2.3
+ */
+
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const logger = require('../utils/logger');
 
+/**
+ * Inject environment variables into project as .env file
+ * @async
+ * @function injectEnv
+ * @param {string} projectPath - Absolute path to the project directory
+ * @param {Array<Object>} envVars - Array of environment variable objects
+ * @param {string} envVars[].key - Environment variable name
+ * @param {string|number|boolean} envVars[].value - Environment variable value
+ * @param {string} projectId - Unique project identifier for logging
+ * @returns {Promise<Object>} Injection result object
+ * @returns {boolean} returns.success - Whether injection was successful
+ * @returns {string|null} returns.path - Path to created .env file or null if skipped
+ * @returns {number} returns.variablesCount - Number of variables injected
+ * @returns {Array<string>} [returns.variables] - Array of variable names injected
+ * @returns {boolean} [returns.skipped] - Whether injection was skipped
+ * @throws {Error} File system or validation errors
+ * @description Creates .env file with properly escaped environment variables for Docker compatibility.
+ * Handles special characters, spaces, and quotes in values. Skips invalid or empty variables.
+ * @example
+ * const result = await injectEnv('/path/to/project', [
+ *   { key: 'API_KEY', value: 'secret123' },
+ *   { key: 'DEBUG', value: true }
+ * ], 'proj123');
+ * console.log(`Injected ${result.variablesCount} variables`);
+ */
 const injectEnv = async (projectPath, envVars, projectId) => {
     const envFilePath = path.join(projectPath, ".env");
 
@@ -76,10 +108,32 @@ const injectEnv = async (projectPath, envVars, projectId) => {
     }
 };
 
+/**
+ * Export environment injection functions
+ * @module envInjector
+ * @description Service for managing environment variables in deployment projects
+ */
 module.exports = { injectEnv, fetchEnvVars };
 
-// Fetch environment variables for a project from backend API
-// Keeps env fetching logic centralized with env injection utilities
+/**
+ * Fetch environment variables for a project from backend API
+ * @async
+ * @function fetchEnvVars
+ * @param {string} projectId - Unique project identifier
+ * @param {string} token - JWT authentication token
+ * @param {string} [logPath] - Optional path to log file for error logging
+ * @returns {Promise<Array<Object>>} Array of environment variable objects
+ * @returns {string} returns[].key - Environment variable name
+ * @returns {string|number|boolean} returns[].value - Environment variable value
+ * @throws {Error} Network or authentication errors (caught internally)
+ * @description Fetches environment variables from backend API with proper error handling.
+ * Returns empty array if no variables found or on error. Logs detailed information for debugging.
+ * @example
+ * const envVars = await fetchEnvVars('proj123', 'jwt_token', '/path/to/log');
+ * if (envVars.length > 0) {
+ *   await injectEnv(projectPath, envVars, projectId);
+ * }
+ */
 async function fetchEnvVars(projectId, token, logPath) {
     try {
                 const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';

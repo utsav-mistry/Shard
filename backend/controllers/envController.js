@@ -1,7 +1,33 @@
+/**
+ * @fileoverview Environment Variable Controller
+ * @description Handles CRUD operations for project environment variables with encryption,
+ *              validation, and access control for the Shard platform
+ *  @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const envService = require("../services/envService");
 const Project = require("../models/Project");
 
-// Create environment variable
+/**
+ * Create a new environment variable for a project
+ * @async
+ * @function addEnvVar
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.key - Environment variable key (will be converted to UPPER_SNAKE_CASE)
+ * @param {string} req.body.value - Environment variable value (will be encrypted)
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.projectId - Project ID to add environment variable to
+ * @param {Object} req.user - Authenticated user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with created environment variable
+ * @throws {ValidationError} When key or value is missing
+ * @throws {NotFoundError} When project is not found or user lacks access
+ * @throws {ConflictError} When environment variable key already exists
+ * @throws {ServerError} When database operations fail
+ * @note Admin users can add environment variables to any project, regular users only their own
+ */
 const addEnvVar = async (req, res) => {
     const { key, value } = req.body;
     const { projectId } = req.params;
@@ -47,7 +73,21 @@ const addEnvVar = async (req, res) => {
     }
 };
 
-// Get all environment variables for project
+/**
+ * Get all environment variables for a project
+ * @async
+ * @function getEnvVars
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.projectId - Project ID to get environment variables for
+ * @param {Object} req.user - Authenticated user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with environment variables array
+ * @throws {NotFoundError} When project is not found or user lacks access
+ * @throws {ServerError} When database operations fail
+ * @note Returns decrypted values for authorized users
+ * @note Admin users can access any project's environment variables, regular users only their own
+ */
 const getEnvVars = async (req, res) => {
     const { projectId } = req.params;
 
@@ -70,7 +110,28 @@ const getEnvVars = async (req, res) => {
     }
 };
 
-// Update environment variable
+/**
+ * Update an existing environment variable
+ * @async
+ * @function updateEnvVar
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.key - Updated environment variable key
+ * @param {string} req.body.value - Updated environment variable value
+ * @param {boolean} [req.body.secret] - Whether the variable is secret
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.id - Environment variable ID to update
+ * @param {string} req.params.projectId - Project ID the environment variable belongs to
+ * @param {Object} req.user - Authenticated user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with updated environment variable
+ * @throws {ValidationError} When key or value is missing
+ * @throws {NotFoundError} When project or environment variable is not found
+ * @throws {ForbiddenError} When environment variable doesn't belong to the project
+ * @throws {ConflictError} When updated key already exists
+ * @throws {ServerError} When database operations fail
+ * @note Admin users can update any environment variable, regular users only their own
+ */
 const updateEnvVar = async (req, res) => {
     const { key, value, secret } = req.body;
     const { id, projectId } = req.params;
@@ -127,14 +188,30 @@ const updateEnvVar = async (req, res) => {
     }
 };
 
-// Delete environment variable
+/**
+ * Delete an environment variable
+ * @async
+ * @function deleteEnvVar
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.id - Environment variable ID to delete
+ * @param {string} req.params.projectId - Project ID the environment variable belongs to
+ * @param {Object} req.user - Authenticated user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response confirming deletion
+ * @throws {ValidationError} When ID is missing or invalid format
+ * @throws {NotFoundError} When project or environment variable is not found
+ * @throws {ForbiddenError} When environment variable doesn't belong to the project
+ * @throws {ServerError} When database operations fail
+ * @note Admin users can delete any environment variable, regular users only their own
+ */
 const deleteEnvVar = async (req, res) => {
     const { id, projectId } = req.params;
 
     if (!id) {
         return res.apiValidationError({ id: 'Environment variable ID is required' }, 'Environment variable ID is required');
     }
-    
+
     if (!projectId || !/^[0-9a-fA-F]{24}$/.test(projectId)) {
         return res.status(400).json({
             success: false,
@@ -172,7 +249,24 @@ const deleteEnvVar = async (req, res) => {
     }
 };
 
-// Get a single environment variable by ID
+/**
+ * Get a single environment variable by ID
+ * @async
+ * @function getEnvVarById
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.id - Environment variable ID to retrieve
+ * @param {string} req.params.projectId - Project ID the environment variable belongs to
+ * @param {Object} req.user - Authenticated user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with environment variable data
+ * @throws {ValidationError} When ID is missing
+ * @throws {NotFoundError} When project or environment variable is not found
+ * @throws {ForbiddenError} When environment variable doesn't belong to the project
+ * @throws {ServerError} When database operations fail
+ * @note Returns decrypted value for authorized users
+ * @note Admin users can access any environment variable, regular users only their own
+ */
 const getEnvVarById = async (req, res) => {
     const { id, projectId } = req.params;
 
@@ -207,7 +301,28 @@ const getEnvVarById = async (req, res) => {
     }
 };
 
-// Bulk create environment variables (for project creation)
+/**
+ * Bulk create environment variables (used during project creation)
+ * @async
+ * @function addBulkEnvVars
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body
+ * @param {Array<Object>} req.body.envVars - Array of environment variables to create
+ * @param {string} req.body.envVars[].key - Environment variable key
+ * @param {string} req.body.envVars[].value - Environment variable value
+ * @param {boolean} [req.body.envVars[].secret=false] - Whether the variable is secret
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.projectId - Project ID to add environment variables to
+ * @param {Object} req.user - Authenticated user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with created environment variables and any errors
+ * @throws {ValidationError} When envVars is not an array or contains invalid data
+ * @throws {NotFoundError} When project is not found or user lacks access
+ * @throws {ServerError} When database operations fail
+ * @note Continues processing even if some variables fail, returns partial success with errors
+ * @note Filters out empty keys and validates all entries before processing
+ * @note Admin users can bulk create for any project, regular users only their own
+ */
 const addBulkEnvVars = async (req, res) => {
     const { envVars } = req.body;
     const { projectId } = req.params;
@@ -222,7 +337,7 @@ const addBulkEnvVars = async (req, res) => {
 
     // Filter out empty env vars and validate
     const validEnvVars = envVars.filter(env => env.key && env.key.trim() !== '');
-    
+
     if (validEnvVars.length === 0) {
         return res.apiSuccess([], 'No environment variables to create');
     }
@@ -255,8 +370,8 @@ const addBulkEnvVars = async (req, res) => {
         for (const env of validEnvVars) {
             try {
                 const envVar = await envService.addEnvVar(
-                    projectId, 
-                    env.key.toUpperCase().trim(), 
+                    projectId,
+                    env.key.toUpperCase().trim(),
                     env.value.trim(),
                     env.secret || false
                 );

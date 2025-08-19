@@ -1,8 +1,43 @@
+/**
+ * @fileoverview Repository Cloning Service
+ * @description Service for cloning Git repositories with commit metadata extraction
+ * @author Utsav Mistry
+ * @version 0.2.3
+ */
+
 const simpleGit = require('simple-git');
 const fs = require('fs');
 const path = require('path');
 const StreamingLogger = require('../utils/streamingLogger');
 
+/**
+ * Clone a Git repository with commit metadata extraction
+ * @async
+ * @function cloneRepo
+ * @param {string} repoUrl - Git repository URL to clone
+ * @param {string} projectId - Unique project identifier for directory naming
+ * @param {string} [branch='main'] - Git branch to clone
+ * @param {Object} [socket=null] - Socket.io connection for streaming logs
+ * @returns {Promise<Object>} Repository information and metadata
+ * @returns {string} returns.path - Absolute path to cloned repository
+ * @returns {string} returns.uniqueId - Unique identifier for this clone
+ * @returns {string} returns.commitHash - Latest commit hash
+ * @returns {string} returns.commitMessage - Latest commit message
+ * @returns {string} returns.author - Commit author name
+ * @returns {string} returns.date - Commit timestamp
+ * @throws {Error} Git clone or file system errors
+ * @description Clones repository to unique timestamped directory and extracts latest commit info.
+ * Supports both streaming (with socket) and standard cloning modes.
+ * @example
+ * const repoInfo = await cloneRepo(
+ *   'https://github.com/user/repo.git',
+ *   'proj123',
+ *   'main',
+ *   socket
+ * );
+ * console.log(`Cloned to: ${repoInfo.path}`);
+ * console.log(`Latest commit: ${repoInfo.commitHash}`);
+ */
 const cloneRepo = async (repoUrl, projectId, branch = 'main', socket = null) => {
     const basePath = path.join(__dirname, "..", "repos");
     // Create unique identifier for each repo clone
@@ -69,4 +104,9 @@ const cloneRepo = async (repoUrl, projectId, branch = 'main', socket = null) => 
     }
 };
 
+/**
+ * Export repository cloning functions
+ * @module repoCloner
+ * @description Service for Git repository cloning with metadata extraction
+ */
 module.exports = { cloneRepo };

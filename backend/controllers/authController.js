@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Authentication Controller
+ * @description Handles user authentication, registration, OAuth flows, and profile management
+ *  @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
@@ -7,7 +14,20 @@ const { generateToken } = require('../config/jwt');
 const githubService = require("../services/githubService");
 const googleService = require("../services/googleService");
 
-// Manual User Registration
+/**
+ * Register a new user with email and password
+ * @async
+ * @function registerUser
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.email - User's email address
+ * @param {string} req.body.password - User's password (will be hashed)
+ * @param {string} [req.body.name] - User's display name (optional)
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with user data and JWT token
+ * @throws {ValidationError} When email/password missing or user already exists
+ * @throws {ServerError} When database operations fail
+ */
 const registerUser = async (req, res) => {
     const { email, password, name } = req.body;
 
@@ -68,7 +88,20 @@ const registerUser = async (req, res) => {
     }
 };
 
-// Manual User Login
+/**
+ * Authenticate user with email and password
+ * @async
+ * @function loginUser
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.email - User's email address
+ * @param {string} req.body.password - User's password
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with user data and JWT token
+ * @throws {ValidationError} When email/password missing
+ * @throws {UnauthorizedError} When credentials are invalid
+ * @throws {ServerError} When database operations fail
+ */
 const loginUser = async (req, res) => {
     const { email, password } = req.body;
 
@@ -119,7 +152,18 @@ const loginUser = async (req, res) => {
     }
 };
 
-// GitHub OAuth Callback
+/**
+ * Handle GitHub OAuth callback for user authentication
+ * @async
+ * @function githubOAuthCallback
+ * @param {Object} req - Express request object
+ * @param {string} req.query.code - OAuth authorization code from GitHub
+ * @param {string} [req.query.state] - OAuth state parameter
+ * @param {string} [req.query.error] - OAuth error if authorization failed
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>} Redirects to frontend with authentication result
+ * @throws {Error} When GitHub OAuth flow fails
+ */
 const githubOAuthCallback = async (req, res) => {
     const code = req.query.code || req.body.code;
     const state = req.query.state;
@@ -138,7 +182,7 @@ const githubOAuthCallback = async (req, res) => {
     if (state) {
         const { cache } = require('../services/cacheService');
         const stateData = cache.get(`github:integration:${state}`);
-        
+
         if (stateData && stateData.userId) {
             // This is an integration request, delegate to integration controller
             const integrationsController = require('./integrationsController');
@@ -150,7 +194,7 @@ const githubOAuthCallback = async (req, res) => {
         const accessToken = await githubService.getAccessToken(code);
         const gitHubUser = await githubService.getGitHubUser(accessToken);
 
-        let user = await User.findOne({ 
+        let user = await User.findOne({
             $or: [
                 { githubId: gitHubUser.id },
                 { email: gitHubUser.email || `${gitHubUser.login}@github.com` }
@@ -187,7 +231,7 @@ const githubOAuthCallback = async (req, res) => {
         let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         frontendUrl = frontendUrl.endsWith('/') ? frontendUrl.slice(0, -1) : frontendUrl;
         const frontendBase = new URL(frontendUrl);
-        
+
         // Set HTTP-only cookie for better security
         res.cookie('token', token, {
             httpOnly: true,
@@ -200,7 +244,7 @@ const githubOAuthCallback = async (req, res) => {
         const redirectUrl = new URL(`${frontendBase.origin}/auth/callback`);
         redirectUrl.searchParams.set('token', token);
         redirectUrl.searchParams.set('provider', 'github');
-        
+
         return res.redirect(redirectUrl.toString());
     } catch (err) {
         console.error('GitHub OAuth error:', err);
@@ -212,7 +256,17 @@ const githubOAuthCallback = async (req, res) => {
     }
 };
 
-// GitHub OAuth Callback - AUTHENTICATION ONLY
+/**
+ * Handle GitHub OAuth callback specifically for authentication (not integration)
+ * @async
+ * @function githubOAuthCallbackAuth
+ * @param {Object} req - Express request object
+ * @param {string} req.query.code - OAuth authorization code from GitHub
+ * @param {string} [req.query.error] - OAuth error if authorization failed
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>} Redirects to frontend with authentication token
+ * @throws {Error} When GitHub authentication fails
+ */
 const githubOAuthCallbackAuth = async (req, res) => {
     const code = req.query.code || req.body.code;
     const error = req.query.error;
@@ -241,7 +295,7 @@ const githubOAuthCallbackAuth = async (req, res) => {
         }
 
         // Find user by GitHub Auth ID (separate from integration)
-        let user = await User.findOne({ 
+        let user = await User.findOne({
             $or: [
                 { githubAuthId: gitHubUser.id.toString() },
                 { email: gitHubUser.email || `${gitHubUser.login}@github.com` }
@@ -283,10 +337,10 @@ const githubOAuthCallbackAuth = async (req, res) => {
         const token = generateToken(user);
         const frontendBase = process.env.FRONTEND_URL || 'http://localhost:3000';
         const frontendUrl = frontendBase.endsWith('/') ? frontendBase.slice(0, -1) : frontendBase;
-        
+
         // Redirect to frontend with authentication token
         res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
-        
+
     } catch (error) {
         console.error('GitHub OAuth authentication error:', error);
         const frontendBase = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -295,7 +349,18 @@ const githubOAuthCallbackAuth = async (req, res) => {
     }
 };
 
-// GitHub OAuth Callback (for login)
+/**
+ * Handle GitHub OAuth callback for API-based login
+ * @async
+ * @function githubOAuthCallbackLogin
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.code - OAuth authorization code from GitHub
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with user data and JWT token
+ * @throws {ValidationError} When authorization code is missing
+ * @throws {ServerError} When GitHub OAuth flow fails
+ */
 const githubOAuthCallbackLogin = async (req, res) => {
     const code = req.body.code;
 
@@ -308,7 +373,7 @@ const githubOAuthCallbackLogin = async (req, res) => {
         const gitHubUser = await githubService.getGitHubUser(accessToken);
 
         // Find user by GitHub Auth ID or email
-        let user = await User.findOne({ 
+        let user = await User.findOne({
             $or: [
                 { githubAuthId: gitHubUser.id.toString() },
                 { email: gitHubUser.email || `${gitHubUser.login}@github.com` }
@@ -344,7 +409,7 @@ const githubOAuthCallbackLogin = async (req, res) => {
         await user.save();
 
         const token = generateToken(user);
-        
+
         // Return user data and token
         const userResponse = {
             id: user._id,
@@ -363,7 +428,18 @@ const githubOAuthCallbackLogin = async (req, res) => {
     }
 };
 
-// Google OAuth Callback (for login)
+/**
+ * Handle Google OAuth callback for API-based login
+ * @async
+ * @function googleOAuthCallback
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.code - OAuth authorization code from Google
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with user data and JWT token
+ * @throws {ValidationError} When authorization code is missing
+ * @throws {ServerError} When Google OAuth flow fails
+ */
 const googleOAuthCallback = async (req, res) => {
     const code = req.body.code;
 
@@ -405,7 +481,7 @@ const googleOAuthCallback = async (req, res) => {
         await user.save();
 
         const token = generateToken(user);
-        
+
         // Return user data and token
         const userResponse = {
             id: user._id,
@@ -423,7 +499,17 @@ const googleOAuthCallback = async (req, res) => {
     }
 };
 
-// Google OAuth Callback (GET) - for redirect_uri pointing to backend
+/**
+ * Handle Google OAuth callback via GET redirect
+ * @async
+ * @function googleOAuthCallbackRedirect
+ * @param {Object} req - Express request object
+ * @param {string} req.query.code - OAuth authorization code from Google
+ * @param {string} [req.query.error] - OAuth error if authorization failed
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>} Redirects to frontend with authentication token
+ * @throws {Error} When Google OAuth flow fails
+ */
 const googleOAuthCallbackRedirect = async (req, res) => {
     const code = req.query.code;
     const error = req.query.error;
@@ -468,9 +554,9 @@ const googleOAuthCallbackRedirect = async (req, res) => {
         await user.save();
 
         const token = jwt.sign(
-            { 
-                id: user._id, 
-                email: user.email, 
+            {
+                id: user._id,
+                email: user.email,
                 role: user.role,
                 name: user.name
             },
@@ -479,12 +565,12 @@ const googleOAuthCallbackRedirect = async (req, res) => {
         );
 
         console.log('Google authentication successful, redirecting with token');
-        
+
         // Redirect to frontend with authentication token
         const frontendBase = process.env.FRONTEND_URL || 'http://localhost:3000';
         const frontendUrl = frontendBase.endsWith('/') ? frontendBase.slice(0, -1) : frontendBase;
         res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
-        
+
     } catch (err) {
         console.error('Google OAuth GET callback error:', err);
         const frontendUrl = new URL(process.env.FRONTEND_URL || 'http://localhost:3000');
@@ -494,7 +580,17 @@ const googleOAuthCallbackRedirect = async (req, res) => {
     }
 };
 
-// Get User Profile
+/**
+ * Get authenticated user's profile information
+ * @async
+ * @function getUserProfile
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated user object (set by auth middleware)
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with user profile data
+ * @throws {NotFoundError} When user is not found
+ * @throws {ServerError} When database operations fail
+ */
 const getUserProfile = async (req, res) => {
     try {
         // req.user is set by the auth middleware
@@ -521,7 +617,20 @@ const getUserProfile = async (req, res) => {
     }
 };
 
-// Update User Profile
+/**
+ * Update authenticated user's profile information
+ * @async
+ * @function updateUserProfile
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated user object (set by auth middleware)
+ * @param {Object} req.body - Request body
+ * @param {string} [req.body.name] - Updated display name
+ * @param {string} [req.body.avatar] - Updated avatar URL
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with updated user profile data
+ * @throws {NotFoundError} When user is not found
+ * @throws {ServerError} When database operations fail
+ */
 const updateUserProfile = async (req, res) => {
     try {
         // req.user is set by the auth middleware

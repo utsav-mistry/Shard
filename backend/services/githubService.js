@@ -1,3 +1,14 @@
+/**
+ * @fileoverview GitHub Service
+ * @description GitHub API integration for authentication and repository operations
+ * @module services/githubService
+ * @requires axios
+ * @requires ../utils/logger
+ * @requires ../services/cacheService
+ * @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const axios = require('axios');
 const logger = require('../utils/logger');
 const cacheService = require('../services/cacheService');
@@ -7,7 +18,10 @@ const CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
 const GITHUB_API = 'https://api.github.com';
 
 /**
- * Create authenticated GitHub API client
+ * Creates authenticated GitHub API client
+ * @function createGitHubClient
+ * @param {string} accessToken - GitHub access token
+ * @returns {Object} Configured axios instance for GitHub API
  */
 const createGitHubClient = (accessToken) => {
     return axios.create({

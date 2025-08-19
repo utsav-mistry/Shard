@@ -1,3 +1,11 @@
+/**
+ * @fileoverview Admin Controller
+ * @description Handles administrative operations including system monitoring, user management,
+ *              database operations, and service health checks for the Shard platform
+ *  @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const axios = require("axios");
 const Deployment = require("../models/Deployment");
 const Project = require("../models/Project");
@@ -6,7 +14,18 @@ const os = require("os");
 const fs = require("fs").promises;
 const path = require("path");
 
-// Get system statistics
+/**
+ * Get comprehensive system statistics including hardware, database, and service info
+ * @async
+ * @function getSystemStats
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with system statistics
+ * @throws {ServerError} When system information retrieval fails
+ * @note Only accessible by admin users
+ * @note Includes platform info, memory usage, CPU stats, and database counts
+ */
 const getSystemStats = async (req, res) => {
     try {
         const stats = {
@@ -50,7 +69,19 @@ const getSystemStats = async (req, res) => {
     }
 };
 
-// Get active deployments with details
+/**
+ * Get currently active deployments with detailed information
+ * @async
+ * @function getActiveDeployments
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with active deployments array
+ * @throws {ServerError} When database operations fail
+ * @note Returns deployments with status: pending, building, deploying, or pending_review
+ * @note Limited to 50 most recent active deployments
+ * @note Includes project details and deployment duration calculations
+ */
 const getActiveDeployments = async (req, res) => {
     try {
         const deployments = await Deployment.find({
@@ -79,7 +110,21 @@ const getActiveDeployments = async (req, res) => {
     }
 };
 
-// Get system logs (last 100 entries)
+/**
+ * Get system logs from log files with filtering options
+ * @async
+ * @function getSystemLogs
+ * @param {Object} req - Express request object
+ * @param {Object} req.query - Query parameters
+ * @param {string} [req.query.level='all'] - Log level filter (all, error, warn, info, debug)
+ * @param {number} [req.query.limit=100] - Maximum number of log entries to return
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with filtered log entries
+ * @throws {ServerError} When log file reading fails
+ * @note Reads from combined.log and error.log files in logs directory
+ * @note Automatically parses JSON log entries and sorts by timestamp
+ */
 const getSystemLogs = async (req, res) => {
     try {
         const { level = 'all', limit = 100 } = req.query;
@@ -124,7 +169,18 @@ const getSystemLogs = async (req, res) => {
     }
 };
 
-// Get deployment worker status
+/**
+ * Get deployment worker service health status
+ * @async
+ * @function getWorkerStatus
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with worker service status
+ * @note Always returns success response, even if worker is down (includes error details)
+ * @note Uses DEPLOYMENT_WORKER_URL environment variable or defaults to localhost:9000
+ * @note Includes response time and timestamp information
+ */
 const getWorkerStatus = async (req, res) => {
     try {
         const workerUrl = process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000';
@@ -148,7 +204,18 @@ const getWorkerStatus = async (req, res) => {
     }
 };
 
-// Get AI service status
+/**
+ * Get AI service health status
+ * @async
+ * @function getAIServiceStatus
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with AI service status
+ * @note Always returns success response, even if AI service is down (includes error details)
+ * @note Uses AI_SERVICE_URL environment variable or defaults to localhost:8000
+ * @note Includes response time and timestamp information
+ */
 const getAIServiceStatus = async (req, res) => {
     try {
         const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
@@ -174,13 +241,25 @@ const getAIServiceStatus = async (req, res) => {
     }
 };
 
-// CRUD Operations for Users
+/**
+ * Get all users in the system (admin only)
+ * @async
+ * @function getAllUsers
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with users array
+ * @throws {ServerError} When database operations fail
+ * @note Excludes sensitive fields (passwordHash, githubAccessToken)
+ * @note Results sorted by creation date (newest first)
+ * @note Only accessible by admin users
+ */
 const getAllUsers = async (req, res) => {
     try {
         const users = await User.find({})
             .select('-passwordHash -githubAccessToken')
             .sort({ createdAt: -1 });
-        
+
         return res.apiSuccess(users, 'Users retrieved successfully');
     } catch (error) {
         console.error("Error getting users:", error);
@@ -188,55 +267,88 @@ const getAllUsers = async (req, res) => {
     }
 };
 
+/**
+ * Update user information (admin only)
+ * @async
+ * @function updateUser
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.id - User ID to update
+ * @param {Object} req.body - Update data
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with updated user data
+ * @throws {NotFoundError} When user is not found
+ * @throws {ValidationError} When update data is invalid
+ * @throws {ConflictError} When email already exists
+ * @throws {ServerError} When database operations fail
+ * @note Automatically removes empty password fields and sensitive data
+ * @note Only accessible by admin users
+ */
 const updateUser = async (req, res) => {
     try {
         const { id } = req.params;
         let updateData = { ...req.body };
-        
+
         // Remove empty password field
         if (updateData.passwordHash === '') {
             delete updateData.passwordHash;
         }
-        
+
         // Remove sensitive fields from update
         delete updateData.githubAccessToken;
-        
+
         const user = await User.findByIdAndUpdate(
             id,
             updateData,
             { new: true, runValidators: true }
         ).select('-passwordHash -githubAccessToken');
-        
+
         if (!user) {
             return res.apiNotFound('User not found');
         }
-        
+
         return res.apiSuccess(user, 'User updated successfully');
     } catch (error) {
         console.error("Error updating user:", error);
-        
+
         if (error.name === 'ValidationError') {
             const validationErrors = Object.values(error.errors).map(err => err.message);
             return res.apiBadRequest(`Validation failed: ${validationErrors.join(', ')}`);
         }
-        
+
         if (error.code === 11000) {
             return res.apiBadRequest('Email already exists');
         }
-        
+
         return res.apiServerError('Failed to update user', error.message);
     }
 };
 
+/**
+ * Delete a user (admin only)
+ * @async
+ * @function deleteUser
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.id - User ID to delete
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response confirming deletion
+ * @throws {NotFoundError} When user is not found
+ * @throws {ServerError} When database operations fail
+ * @note Only accessible by admin users
+ * @warning Does not check for cascade deletion of user's projects/deployments
+ */
 const deleteUser = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         const user = await User.findByIdAndDelete(id);
         if (!user) {
             return res.apiNotFound('User not found');
         }
-        
+
         return res.apiSuccess(null, 'User deleted successfully');
     } catch (error) {
         console.error("Error deleting user:", error);
@@ -244,13 +356,25 @@ const deleteUser = async (req, res) => {
     }
 };
 
-// CRUD Operations for Projects
+/**
+ * Get all projects in the system (admin only)
+ * @async
+ * @function getAllProjects
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with projects array
+ * @throws {ServerError} When database operations fail
+ * @note Includes owner information (name, email)
+ * @note Results sorted by creation date (newest first)
+ * @note Only accessible by admin users
+ */
 const getAllProjects = async (req, res) => {
     try {
         const projects = await Project.find({})
             .populate('ownerId', 'name email')
             .sort({ createdAt: -1 });
-        
+
         return res.apiSuccess(projects, 'Projects retrieved successfully');
     } catch (error) {
         console.error("Error getting projects:", error);
@@ -258,11 +382,29 @@ const getAllProjects = async (req, res) => {
     }
 };
 
+/**
+ * Update project information (admin only)
+ * @async
+ * @function updateProject
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.id - Project ID to update
+ * @param {Object} req.body - Update data
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with updated project data
+ * @throws {NotFoundError} When project is not found
+ * @throws {ValidationError} When update data is invalid
+ * @throws {ConflictError} When project name/subdomain already exists
+ * @throws {ServerError} When database operations fail
+ * @note Handles field mapping (stack -> framework) and data type conversion
+ * @note Only accessible by admin users
+ */
 const updateProject = async (req, res) => {
     try {
         const { id } = req.params;
         let updateData = { ...req.body };
-        
+
         // Parse envVars if it's a string
         if (typeof updateData.envVars === 'string') {
             try {
@@ -271,55 +413,70 @@ const updateProject = async (req, res) => {
                 delete updateData.envVars; // Keep existing if parsing fails
             }
         }
-        
+
         // Convert port to number
         if (updateData.port) {
             updateData.port = parseInt(updateData.port);
         }
-        
+
         // Fix field name mapping
         if (updateData.stack) {
             updateData.framework = updateData.stack;
             delete updateData.stack;
         }
-        
+
         const project = await Project.findByIdAndUpdate(
             id,
             updateData,
             { new: true, runValidators: true }
         ).populate('ownerId', 'name email');
-        
+
         if (!project) {
             return res.apiNotFound('Project not found');
         }
-        
+
         return res.apiSuccess(project, 'Project updated successfully');
     } catch (error) {
         console.error("Error updating project:", error);
-        
+
         if (error.name === 'ValidationError') {
             const validationErrors = Object.values(error.errors).map(err => err.message);
             return res.apiBadRequest(`Validation failed: ${validationErrors.join(', ')}`);
         }
-        
+
         if (error.code === 11000) {
             const field = Object.keys(error.keyPattern)[0];
             return res.apiBadRequest(`${field} already exists`);
         }
-        
+
         return res.apiServerError('Failed to update project', error.message);
     }
 };
 
+/**
+ * Delete a project (admin only)
+ * @async
+ * @function deleteProject
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.id - Project ID to delete
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response confirming deletion
+ * @throws {NotFoundError} When project is not found
+ * @throws {ServerError} When database operations fail
+ * @note Only accessible by admin users
+ * @warning Does not check for cascade deletion of project's deployments/environment variables
+ */
 const deleteProject = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         const project = await Project.findByIdAndDelete(id);
         if (!project) {
             return res.apiNotFound('Project not found');
         }
-        
+
         return res.apiSuccess(null, 'Project deleted successfully');
     } catch (error) {
         console.error("Error deleting project:", error);
@@ -327,7 +484,20 @@ const deleteProject = async (req, res) => {
     }
 };
 
-// CRUD Operations for Deployments
+/**
+ * Get all deployments in the system (admin only)
+ * @async
+ * @function getAllDeployments
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with deployments array
+ * @throws {ServerError} When database operations fail
+ * @note Includes project and user information
+ * @note Limited to 100 most recent deployments
+ * @note Results sorted by creation date (newest first)
+ * @note Only accessible by admin users
+ */
 const getAllDeployments = async (req, res) => {
     try {
         const deployments = await Deployment.find({})
@@ -335,7 +505,7 @@ const getAllDeployments = async (req, res) => {
             .populate('userId', 'name email')
             .sort({ createdAt: -1 })
             .limit(100);
-        
+
         return res.apiSuccess(deployments, 'Deployments retrieved successfully');
     } catch (error) {
         console.error("Error getting deployments:", error);
@@ -343,50 +513,81 @@ const getAllDeployments = async (req, res) => {
     }
 };
 
+/**
+ * Update deployment information (admin only)
+ * @async
+ * @function updateDeployment
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.id - Deployment ID to update
+ * @param {Object} req.body - Update data
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with updated deployment data
+ * @throws {NotFoundError} When deployment is not found
+ * @throws {ValidationError} When update data is invalid
+ * @throws {ServerError} When database operations fail
+ * @note Automatically removes empty fields from update data
+ * @note Only accessible by admin users
+ */
 const updateDeployment = async (req, res) => {
     try {
         const { id } = req.params;
         let updateData = { ...req.body };
-        
+
         // Remove empty fields
         Object.keys(updateData).forEach(key => {
             if (updateData[key] === '') {
                 delete updateData[key];
             }
         });
-        
+
         const deployment = await Deployment.findByIdAndUpdate(
             id,
             updateData,
             { new: true, runValidators: true }
         ).populate('projectId', 'name subdomain framework').populate('userId', 'name email');
-        
+
         if (!deployment) {
             return res.apiNotFound('Deployment not found');
         }
-        
+
         return res.apiSuccess(deployment, 'Deployment updated successfully');
     } catch (error) {
         console.error("Error updating deployment:", error);
-        
+
         if (error.name === 'ValidationError') {
             const validationErrors = Object.values(error.errors).map(err => err.message);
             return res.apiBadRequest(`Validation failed: ${validationErrors.join(', ')}`);
         }
-        
+
         return res.apiServerError('Failed to update deployment', error.message);
     }
 };
 
+/**
+ * Delete a deployment (admin only)
+ * @async
+ * @function deleteDeployment
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.id - Deployment ID to delete
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response confirming deletion
+ * @throws {NotFoundError} When deployment is not found
+ * @throws {ServerError} When database operations fail
+ * @note Only accessible by admin users
+ */
 const deleteDeployment = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         const deployment = await Deployment.findByIdAndDelete(id);
         if (!deployment) {
             return res.apiNotFound('Deployment not found');
         }
-        
+
         return res.apiSuccess(null, 'Deployment deleted successfully');
     } catch (error) {
         console.error("Error deleting deployment:", error);
@@ -394,12 +595,27 @@ const deleteDeployment = async (req, res) => {
     }
 };
 
-// Generic database CRUD operations
+/**
+ * Get data from specified database table (generic admin interface)
+ * @async
+ * @function getTableData
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.tableName - Table name (users, projects, deployments, logs)
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with table data
+ * @throws {ValidationError} When invalid table name is provided
+ * @throws {ServerError} When database operations fail
+ * @note Supports users, projects, deployments, and logs tables
+ * @note Includes populated references and excludes sensitive fields
+ * @note Only accessible by admin users
+ */
 const getTableData = async (req, res) => {
     try {
         const { tableName } = req.params;
         let data = [];
-        
+
         switch (tableName) {
             case 'users':
                 data = await User.find({}).select('-passwordHash -githubAccessToken').sort({ createdAt: -1 });
@@ -426,7 +642,7 @@ const getTableData = async (req, res) => {
             default:
                 return res.apiBadRequest('Invalid table name');
         }
-        
+
         return res.apiSuccess(data, `${tableName} data retrieved successfully`);
     } catch (error) {
         console.error(`Error getting ${req.params.tableName} data:`, error);
@@ -434,12 +650,31 @@ const getTableData = async (req, res) => {
     }
 };
 
+/**
+ * Create a new record in specified database table (generic admin interface)
+ * @async
+ * @function createRecord
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.tableName - Table name (users, projects, deployments)
+ * @param {Object} req.body - Record data to create
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with created record
+ * @throws {ValidationError} When required fields are missing or invalid table name
+ * @throws {ConflictError} When unique constraints are violated
+ * @throws {ServerError} When database operations fail
+ * @note Validates required fields based on table type
+ * @note Handles data type conversion and field mapping
+ * @note Logs table is read-only and returns informational message
+ * @note Only accessible by admin users
+ */
 const createRecord = async (req, res) => {
     try {
         const { tableName } = req.params;
         let recordData = { ...req.body };
         let newRecord;
-        
+
         // Clean and validate data based on table
         switch (tableName) {
             case 'users':
@@ -449,17 +684,17 @@ const createRecord = async (req, res) => {
                         delete recordData[key];
                     }
                 });
-                
+
                 // Ensure required fields
                 if (!recordData.email) {
                     return res.apiBadRequest('Email is required for users');
                 }
-                
+
                 newRecord = new User(recordData);
                 await newRecord.save();
                 newRecord = await User.findById(newRecord._id).select('-passwordHash');
                 break;
-                
+
             case 'projects':
                 // Parse envVars if it's a string
                 if (typeof recordData.envVars === 'string') {
@@ -469,29 +704,29 @@ const createRecord = async (req, res) => {
                         recordData.envVars = [];
                     }
                 }
-                
+
                 // Convert port to number
                 if (recordData.port) {
                     recordData.port = parseInt(recordData.port);
                 }
-                
+
                 // Remove empty fields
                 Object.keys(recordData).forEach(key => {
                     if (recordData[key] === '' || recordData[key] === null) {
                         delete recordData[key];
                     }
                 });
-                
+
                 // Ensure required fields
                 if (!recordData.name || !recordData.repoUrl || !recordData.framework || !recordData.subdomain || !recordData.ownerId) {
                     return res.apiBadRequest('Name, repoUrl, framework, subdomain, and ownerId are required for projects');
                 }
-                
+
                 newRecord = new Project(recordData);
                 await newRecord.save();
                 newRecord = await Project.findById(newRecord._id).populate('ownerId', 'name email');
                 break;
-                
+
             case 'deployments':
                 // Remove empty fields
                 Object.keys(recordData).forEach(key => {
@@ -499,17 +734,17 @@ const createRecord = async (req, res) => {
                         delete recordData[key];
                     }
                 });
-                
+
                 // Ensure required fields
                 if (!recordData.projectId) {
                     return res.apiBadRequest('ProjectId is required for deployments');
                 }
-                
+
                 newRecord = new Deployment(recordData);
                 await newRecord.save();
                 newRecord = await Deployment.findById(newRecord._id).populate('projectId', 'name subdomain');
                 break;
-                
+
             case 'logs':
                 // Remove empty fields except content
                 Object.keys(recordData).forEach(key => {
@@ -517,40 +752,60 @@ const createRecord = async (req, res) => {
                         delete recordData[key];
                     }
                 });
-                
+
                 // For logs, we'll create a simple log entry (no specific model exists)
                 return res.apiSuccess({ message: 'Log entries are managed automatically by the system' }, 'Logs are read-only');
-                
+
             default:
                 return res.apiBadRequest('Invalid table name');
         }
-        
+
         return res.apiSuccess(newRecord, `${tableName.slice(0, -1)} created successfully`);
     } catch (error) {
         console.error(`Error creating ${req.params.tableName} record:`, error);
-        
+
         // Handle validation errors
         if (error.name === 'ValidationError') {
             const validationErrors = Object.values(error.errors).map(err => err.message);
             return res.apiBadRequest(`Validation failed: ${validationErrors.join(', ')}`);
         }
-        
+
         // Handle duplicate key errors
         if (error.code === 11000) {
             const field = Object.keys(error.keyPattern)[0];
             return res.apiBadRequest(`${field} already exists`);
         }
-        
+
         return res.apiServerError(`Failed to create ${req.params.tableName} record`, error.message);
     }
 };
 
+/**
+ * Update a record in specified database table (generic admin interface)
+ * @async
+ * @function updateRecord
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.tableName - Table name (users, projects, deployments)
+ * @param {string} req.params.id - Record ID to update
+ * @param {Object} req.body - Update data
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with updated record
+ * @throws {NotFoundError} When record is not found
+ * @throws {ValidationError} When update data is invalid or invalid table name
+ * @throws {ConflictError} When unique constraints are violated
+ * @throws {ServerError} When database operations fail
+ * @note Handles data type conversion and field cleaning
+ * @note Logs table is read-only and returns informational message
+ * @note Only accessible by admin users
+ */
 const updateRecord = async (req, res) => {
     try {
         const { tableName, id } = req.params;
         let recordData = { ...req.body };
         let updatedRecord;
-        
+
         // Clean and validate data based on table
         switch (tableName) {
             case 'users':
@@ -560,19 +815,19 @@ const updateRecord = async (req, res) => {
                         delete recordData[key];
                     }
                 });
-                
+
                 // Don't update password if it's empty (keep existing)
                 if (recordData.passwordHash === '') {
                     delete recordData.passwordHash;
                 }
-                
+
                 updatedRecord = await User.findByIdAndUpdate(
                     id,
                     recordData,
                     { new: true, runValidators: true }
                 ).select('-passwordHash');
                 break;
-                
+
             case 'projects':
                 // Parse envVars if it's a string
                 if (typeof recordData.envVars === 'string') {
@@ -583,26 +838,26 @@ const updateRecord = async (req, res) => {
                         delete recordData.envVars;
                     }
                 }
-                
+
                 // Convert port to number
                 if (recordData.port) {
                     recordData.port = parseInt(recordData.port);
                 }
-                
+
                 // Remove empty fields
                 Object.keys(recordData).forEach(key => {
                     if (recordData[key] === null) {
                         delete recordData[key];
                     }
                 });
-                
+
                 updatedRecord = await Project.findByIdAndUpdate(
                     id,
                     recordData,
                     { new: true, runValidators: true }
                 ).populate('ownerId', 'name email');
                 break;
-                
+
             case 'deployments':
                 // Remove empty fields
                 Object.keys(recordData).forEach(key => {
@@ -610,55 +865,75 @@ const updateRecord = async (req, res) => {
                         delete recordData[key];
                     }
                 });
-                
+
                 updatedRecord = await Deployment.findByIdAndUpdate(
                     id,
                     recordData,
                     { new: true, runValidators: true }
                 ).populate('projectId', 'name subdomain');
                 break;
-                
+
             case 'logs':
                 return res.apiSuccess({ message: 'Log entries are managed automatically by the system' }, 'Logs are read-only');
-                
+
             default:
                 return res.apiBadRequest('Invalid table name');
         }
-        
+
         if (!updatedRecord) {
             return res.apiNotFound(`${tableName.slice(0, -1)} not found`);
         }
-        
+
         return res.apiSuccess(updatedRecord, `${tableName.slice(0, -1)} updated successfully`);
     } catch (error) {
         console.error(`Error updating ${req.params.tableName} record:`, error);
-        
+
         // Handle validation errors
         if (error.name === 'ValidationError') {
             const validationErrors = Object.values(error.errors).map(err => err.message);
             return res.apiBadRequest(`Validation failed: ${validationErrors.join(', ')}`);
         }
-        
+
         // Handle duplicate key errors
         if (error.code === 11000) {
             const field = Object.keys(error.keyPattern)[0];
             return res.apiBadRequest(`${field} already exists`);
         }
-        
+
         return res.apiServerError(`Failed to update ${req.params.tableName} record`, error.message);
     }
 };
 
+/**
+ * Delete a record from specified database table (generic admin interface)
+ * @async
+ * @function deleteRecord
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.tableName - Table name (users, projects, deployments)
+ * @param {string} req.params.id - Record ID to delete
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response confirming deletion
+ * @throws {ValidationError} When invalid ID format or invalid table name
+ * @throws {NotFoundError} When record is not found
+ * @throws {ConflictError} When record has dependent relationships
+ * @throws {ServerError} When database operations fail
+ * @note Validates ObjectId format before deletion
+ * @note Checks for dependent relationships (users with projects, projects with deployments)
+ * @note Logs table is read-only and returns informational message
+ * @note Only accessible by admin users
+ */
 const deleteRecord = async (req, res) => {
     try {
         const { tableName, id } = req.params;
         let deletedRecord;
-        
+
         // Validate ObjectId format
         if (!id.match(/^[0-9a-fA-F]{24}$/)) {
             return res.apiBadRequest('Invalid ID format');
         }
-        
+
         switch (tableName) {
             case 'users':
                 // Check if user has projects before deleting
@@ -666,35 +941,35 @@ const deleteRecord = async (req, res) => {
                 if (userProjects > 0) {
                     return res.apiBadRequest(`Cannot delete user: ${userProjects} projects are owned by this user`);
                 }
-                
+
                 deletedRecord = await User.findByIdAndDelete(id);
                 break;
-                
+
             case 'projects':
                 // Check if project has deployments before deleting
                 const projectDeployments = await Deployment.countDocuments({ projectId: id });
                 if (projectDeployments > 0) {
                     return res.apiBadRequest(`Cannot delete project: ${projectDeployments} deployments exist for this project`);
                 }
-                
+
                 deletedRecord = await Project.findByIdAndDelete(id);
                 break;
-                
+
             case 'deployments':
                 deletedRecord = await Deployment.findByIdAndDelete(id);
                 break;
-                
+
             case 'logs':
                 return res.apiSuccess(null, 'Logs are managed automatically by the system');
-                
+
             default:
                 return res.apiBadRequest('Invalid table name');
         }
-        
+
         if (!deletedRecord) {
             return res.apiNotFound(`${tableName.slice(0, -1)} not found`);
         }
-        
+
         return res.apiSuccess(null, `${tableName.slice(0, -1)} deleted successfully`);
     } catch (error) {
         console.error(`Error deleting ${req.params.tableName} record:`, error);
@@ -702,31 +977,44 @@ const deleteRecord = async (req, res) => {
     }
 };
 
+/**
+ * Get list of available database tables with metadata (admin interface)
+ * @async
+ * @function getTables
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated admin user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with tables metadata
+ * @throws {ServerError} When database operations fail
+ * @note Returns table names, record counts, and descriptions
+ * @note Includes users, projects, deployments, and logs tables
+ * @note Only accessible by admin users
+ */
 const getTables = async (req, res) => {
     try {
         const tables = [
-            { 
-                name: 'users', 
+            {
+                name: 'users',
                 count: await User.countDocuments(),
                 description: 'System users with authentication and profile data'
             },
-            { 
-                name: 'projects', 
+            {
+                name: 'projects',
                 count: await Project.countDocuments(),
                 description: 'User projects with repository and deployment configuration'
             },
-            { 
-                name: 'deployments', 
+            {
+                name: 'deployments',
                 count: await Deployment.countDocuments(),
                 description: 'Project deployment history and status'
             },
-            { 
-                name: 'logs', 
+            {
+                name: 'logs',
                 count: 0,
                 description: 'System logs (managed automatically)'
             }
         ];
-        
+
         return res.apiSuccess(tables, 'Tables retrieved successfully');
     } catch (error) {
         console.error("Error getting tables:", error);

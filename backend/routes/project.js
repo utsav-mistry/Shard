@@ -1,3 +1,119 @@
+/**
+ * @fileoverview Project Routes
+ * @description Express routes for project management, deployment, and CRUD operations
+ * @module routes/project
+ * @requires express
+ * @requires ../controllers/projectController
+ * @requires ../middleware/auth
+ * @requires ../middleware/validate
+ * @author Utsav Mistry
+ * @version 1.0.0
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Project:
+ *       type: object
+ *       required:
+ *         - name
+ *         - repoUrl
+ *         - framework
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: Project ID
+ *         name:
+ *           type: string
+ *           description: Project name
+ *         repoUrl:
+ *           type: string
+ *           format: uri
+ *           description: GitHub repository URL
+ *         framework:
+ *           type: string
+ *           enum: [mern, django, flask]
+ *           description: Project framework
+ *         subdomain:
+ *           type: string
+ *           description: Generated subdomain for deployment
+ *         deploymentUrl:
+ *           type: string
+ *           format: uri
+ *           description: Live deployment URL
+ *         status:
+ *           type: string
+ *           enum: [pending, deploying, deployed, failed]
+ *           description: Project deployment status
+ *         userId:
+ *           type: string
+ *           description: Owner user ID
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Project creation timestamp
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: Last update timestamp
+ *     
+ *     CreateProjectRequest:
+ *       type: object
+ *       required:
+ *         - name
+ *         - repoUrl
+ *         - framework
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: Project name
+ *           minLength: 1
+ *           maxLength: 100
+ *         repoUrl:
+ *           type: string
+ *           format: uri
+ *           description: GitHub repository URL
+ *         framework:
+ *           type: string
+ *           enum: [mern, django, flask]
+ *           description: Project framework
+ *         envVars:
+ *           type: array
+ *           description: Environment variables
+ *           items:
+ *             type: object
+ *             properties:
+ *               key:
+ *                 type: string
+ *                 description: Environment variable key
+ *               value:
+ *                 type: string
+ *                 description: Environment variable value
+ *               secret:
+ *                 type: boolean
+ *                 description: Whether variable is secret
+ *     
+ *     UpdateProjectRequest:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: Updated project name
+ *         repoUrl:
+ *           type: string
+ *           format: uri
+ *           description: Updated repository URL
+ *         framework:
+ *           type: string
+ *           enum: [mern, django, flask]
+ *           description: Updated framework
+ * 
+ * tags:
+ *   - name: Projects
+ *     description: Project management operations
+ */
+
 const express = require('express');
 const Joi = require('joi');
 const {
@@ -66,7 +182,7 @@ const validateObjectId = (req, res, next) => {
 
 /**
  * @swagger
- * /projects:
+ * /api/projects:
  *   post:
  *     summary: Create a new project
  *     tags: [Projects]
@@ -77,22 +193,58 @@ const validateObjectId = (req, res, next) => {
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - name
- *               - repoUrl
- *               - framework
- *             properties:
- *               name:
- *                 type: string
- *                 minLength: 3
- *                 maxLength: 50
- *                 example: "my-awesome-project"
- *               description:
- *                 type: string
- *                 maxLength: 500
- *                 example: "A brief description of my project"
- *               repoUrl:
+ *             $ref: '#/components/schemas/CreateProjectRequest'
+ *     responses:
+ *       201:
+ *         description: Project created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     project:
+ *                       $ref: '#/components/schemas/Project'
+ *                 message:
+ *                   type: string
+ *                   example: Project created successfully
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *   get:
+ *     summary: Get all user projects
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Projects retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     projects:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Project'
+ *                 message:
+ *                   type: string
+ *                   example: Projects retrieved successfully
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  *                 type: string
  *                 format: uri
  *                 example: "https://github.com/username/repo"
@@ -215,24 +367,12 @@ router.get("/",
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Project'
- *       400:
- *         description: Invalid project ID format
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
- *         description: Project not found
- */
-router.get("/:id",
-  protect,
-  validateObjectId,
-  getProjectById
-);
-
-/**
- * @swagger
- * /projects/{id}:
+ *         $ref: '#/components/responses/NotFound'
  *   put:
- *     summary: Update a project
+ *     summary: Update project
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -359,4 +499,8 @@ router.get("/check-subdomain/:subdomain", protect, async (req, res) => {
   }
 });
 
+/**
+ * @namespace projectRoutes
+ * @description Express router for project management and deployment endpoints
+ */
 module.exports = router;

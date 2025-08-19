@@ -1,3 +1,11 @@
+/**
+ * @fileoverview Project Controller
+ * @description Handles CRUD operations for projects, including creation with environment variables,
+ *              automatic deployment triggering, and resource cleanup
+ *  @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const Project = require('../models/Project');
 const Deployment = require('../models/Deployment');
 const EnvVar = require('../models/EnvVar');
@@ -75,7 +83,27 @@ const logger = require('../utils/logger');
  *       description: Project ID
  */
 
-// Create New Project
+/**
+ * Create a new project with optional environment variables and trigger initial deployment
+ * @async
+ * @function createProject
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.name - Project name (3-50 characters)
+ * @param {string} req.body.repoUrl - Repository URL
+ * @param {string} req.body.framework - Framework type (mern, flask, django)
+ * @param {string} [req.body.branch='main'] - Git branch to deploy
+ * @param {string} [req.body.description] - Project description
+ * @param {Array<Object>} [req.body.environmentVariables] - Environment variables array
+ * @param {string} req.body.environmentVariables[].key - Environment variable key (UPPER_SNAKE_CASE)
+ * @param {string} req.body.environmentVariables[].value - Environment variable value
+ * @param {boolean} [req.body.environmentVariables[].secret=false] - Whether variable is secret
+ * @param {Object} req.user - Authenticated user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with created project and initial deployment info
+ * @throws {ValidationError} When required fields missing or validation fails
+ * @throws {ServerError} When database operations or deployment triggering fails
+ */
 const createProject = async (req, res) => {
     const { name, repoUrl, framework, branch = 'main', description, environmentVariables = [] } = req.body;
     const ownerId = req.user._id;
@@ -116,22 +144,22 @@ const createProject = async (req, res) => {
         const envVarErrors = [];
         const envKeys = new Set();
         const envObjectForJob = {};
-        
+
         if (environmentVariables && Array.isArray(environmentVariables) && environmentVariables.length > 0) {
             environmentVariables.forEach((env, index) => {
                 const errors = [];
-                
+
                 // Validate key
                 if (!env.key || !env.key.trim()) {
                     errors.push('Environment variable key is required');
                 } else {
                     const key = env.key.trim().toUpperCase();
-                    
+
                     // Check key format (UPPER_SNAKE_CASE)
                     if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
                         errors.push('Key must be in UPPER_SNAKE_CASE format (e.g., API_KEY)');
                     }
-                    
+
                     // Check for duplicates
                     if (envKeys.has(key)) {
                         errors.push('Duplicate environment variable key');
@@ -139,25 +167,25 @@ const createProject = async (req, res) => {
                         envKeys.add(key);
                     }
                 }
-                
+
                 // Validate value
                 if (!env.value || !env.value.trim()) {
                     errors.push('Environment variable value is required');
                 }
-                
+
                 if (errors.length > 0) {
                     envVarErrors.push({ index, errors });
                 }
             });
         }
-        
+
         // Return validation errors if any
         if (envVarErrors.length > 0) {
             logger.error('Environment variable validation failed', {
                 ...logContext,
                 envVarErrors
             });
-            
+
             return res.apiValidationError(
                 { environmentVariables: envVarErrors },
                 'Environment variable validation failed'
@@ -204,7 +232,7 @@ const createProject = async (req, res) => {
                     projectId: project._id,
                     error: envError.message
                 });
-                
+
                 try {
                     await Project.findByIdAndDelete(project._id);
                     logger.info('Project rollback completed', { projectId: project._id });
@@ -214,7 +242,7 @@ const createProject = async (req, res) => {
                         error: rollbackError.message
                     });
                 }
-                
+
                 return res.apiServerError('Failed to create environment variables', envError.message);
             }
         }
@@ -359,7 +387,22 @@ const createProject = async (req, res) => {
     }
 };
 
-// Get all projects of current user
+/**
+ * Get paginated list of projects for the authenticated user
+ * @async
+ * @function getProjects
+ * @param {Object} req - Express request object
+ * @param {Object} req.query - Query parameters
+ * @param {number} [req.query.page=1] - Page number for pagination
+ * @param {number} [req.query.limit=10] - Number of items per page
+ * @param {string} [req.query.sort='createdAt:desc'] - Sort field and order
+ * @param {Object} req.user - Authenticated user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with paginated projects list
+ * @throws {ValidationError} When pagination parameters are invalid
+ * @throws {ServerError} When database operations fail
+ * @note Admin users can see all projects, regular users only see their own
+ */
 const getProjects = async (req, res) => {
     const { page = 1, limit = 10, sort = 'createdAt:desc' } = req.query;
     const skip = (page - 1) * limit;
@@ -447,7 +490,20 @@ const getProjects = async (req, res) => {
     }
 };
 
-// Get project by ID
+/**
+ * Get a specific project by ID
+ * @async
+ * @function getProjectById
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.id - Project ID
+ * @param {Object} req.user - Authenticated user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with project data
+ * @throws {NotFoundError} When project is not found or user lacks access
+ * @throws {ServerError} When database operations fail
+ * @note Admin users can access any project, regular users only their own
+ */
 const getProjectById = async (req, res) => {
     const { id } = req.params;
 
@@ -484,7 +540,27 @@ const getProjectById = async (req, res) => {
     }
 };
 
-// Update project
+/**
+ * Update an existing project
+ * @async
+ * @function updateProject
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.id - Project ID
+ * @param {Object} req.body - Request body with update data
+ * @param {string} [req.body.name] - Updated project name
+ * @param {string} [req.body.description] - Updated project description
+ * @param {string} [req.body.repoUrl] - Updated repository URL
+ * @param {string} [req.body.framework] - Updated framework
+ * @param {string} [req.body.branch] - Updated branch
+ * @param {Object} req.user - Authenticated user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with updated project data
+ * @throws {NotFoundError} When project is not found or user lacks access
+ * @throws {ValidationError} When update data is invalid
+ * @throws {ServerError} When database operations fail
+ * @note Admin users can update any project, regular users only their own
+ */
 const updateProject = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
@@ -537,7 +613,25 @@ const updateProject = async (req, res) => {
     }
 };
 
-// Delete project
+/**
+ * Delete a project and all associated resources
+ * @async
+ * @function deleteProject
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.id - Project ID
+ * @param {Object} req.user - Authenticated user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response confirming deletion
+ * @throws {NotFoundError} When project is not found or user lacks access
+ * @throws {ServerError} When database operations fail
+ * @note Performs cascade deletion of:
+ *       - Docker containers and images
+ *       - Environment variables
+ *       - Deployments and their logs
+ *       - Project record
+ * @note Admin users can delete any project, regular users only their own
+ */
 const deleteProject = async (req, res) => {
     const { id } = req.params;
 
@@ -583,7 +677,7 @@ const deleteProject = async (req, res) => {
 
         // Cascade delete related records
         logger.info('Starting cascade deletion of related records', logContext);
-        
+
         // 1. Delete environment variables
         try {
             const EnvVar = require('../models/EnvVar');
@@ -603,20 +697,20 @@ const deleteProject = async (req, res) => {
         try {
             const Deployment = require('../models/Deployment');
             const Logs = require('../models/Logs');
-            
+
             // Find all deployments for this project
             const deployments = await Deployment.find({ projectId: id });
             const deploymentIds = deployments.map(d => d._id);
-            
+
             if (deploymentIds.length > 0) {
                 // Delete logs for all deployments
-                const deletedLogs = await Logs.deleteMany({ 
-                    deploymentId: { $in: deploymentIds } 
+                const deletedLogs = await Logs.deleteMany({
+                    deploymentId: { $in: deploymentIds }
                 });
-                
+
                 // Delete deployments
                 const deletedDeployments = await Deployment.deleteMany({ projectId: id });
-                
+
                 logger.info('Deployments and logs deleted', {
                     ...logContext,
                     deletedDeployments: deletedDeployments.deletedCount,

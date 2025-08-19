@@ -1,3 +1,11 @@
+/**
+ * @fileoverview Deployment Controller
+ * @description Handles deployment operations including creation, status updates, AI review integration,
+ *              and deployment worker communication for the Shard platform
+ *  @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const axios = require("axios");
 const Deployment = require("../models/Deployment");
 const Project = require("../models/Project");
@@ -5,6 +13,27 @@ const logService = require("../services/logService");
 const envService = require("../services/envService");
 const logger = require("../utils/logger");
 
+/**
+ * Create a new deployment with AI review and worker queue integration
+ * @async
+ * @function createDeployment
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.projectId - Project ID to deploy
+ * @param {string} [req.body.branch='main'] - Git branch to deploy
+ * @param {string} [req.body.commitHash] - Specific commit hash to deploy
+ * @param {string} [req.body.message] - Deployment message
+ * @param {Array<Object>} [req.body.environmentVariables] - Additional environment variables
+ * @param {Object} req.user - Authenticated user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with deployment info or error
+ * @throws {ValidationError} When projectId is missing
+ * @throws {NotFoundError} When project is not found or user lacks access
+ * @throws {ConflictError} When another deployment is already in progress
+ * @throws {ServerError} When AI review or deployment queuing fails
+ * @note Performs AI code review before deployment and handles verdict-based flow control
+ * @note Admin users can deploy any project, regular users only their own
+ */
 const createDeployment = async (req, res) => {
     const { projectId, branch = 'main', commitHash, message, environmentVariables = [] } = req.body;
 
@@ -167,23 +196,23 @@ const createDeployment = async (req, res) => {
                     'Content-Type': 'application/json'
                 }
             });
-            
+
             await logService.addLog(projectId, deployment._id, "queue", "Job added to deployment queue");
         } catch (queueError) {
             console.error("Failed to queue deployment job:", queueError);
-            
+
             // Update deployment status to failed
             deployment.status = "failed";
             deployment.finishedAt = new Date();
             await deployment.save();
-            
-            await logService.addLog(projectId, deployment._id, "error", 
+
+            await logService.addLog(projectId, deployment._id, "error",
                 `Failed to queue deployment: ${queueError.message}`);
-            
+
             return res.apiServerError("Failed to queue deployment", queueError.message);
         }
 
-        return res.apiCreated({ 
+        return res.apiCreated({
             _id: deployment._id,
             deploymentId: deployment._id,
             status: deployment.status,
@@ -196,6 +225,18 @@ const createDeployment = async (req, res) => {
     }
 };
 
+/**
+ * Get all deployments for the authenticated user with project information
+ * @async
+ * @function getDeployments
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with deployments array
+ * @throws {ServerError} When database operations fail
+ * @note Admin users see all deployments, regular users only their own project deployments
+ * @note Results are sorted by creation date (newest first) and include project name/subdomain
+ */
 const getDeployments = async (req, res) => {
     try {
         // Admin can see all deployments, users only their own
@@ -229,6 +270,23 @@ const getDeployments = async (req, res) => {
     }
 };
 
+/**
+ * Update deployment step and log progress (used by deployment worker)
+ * @async
+ * @function updateDeploymentStep
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.deploymentId - Deployment ID to update
+ * @param {string} req.body.step - Current deployment step (build, deploy, etc.)
+ * @param {string} [req.body.message] - Step message to log
+ * @param {string} [req.body.status] - New deployment status
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with updated deployment info
+ * @throws {ValidationError} When required fields are missing
+ * @throws {NotFoundError} When deployment is not found
+ * @throws {ServerError} When database operations fail
+ * @note Used by deployment worker to provide real-time progress updates
+ */
 const updateDeploymentStep = async (req, res) => {
     const { deploymentId, step, message, status } = req.body;
 
@@ -269,6 +327,20 @@ const updateDeploymentStep = async (req, res) => {
     }
 };
 
+/**
+ * Update deployment final status (success/failed) and set completion time
+ * @async
+ * @function updateDeploymentStatus
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.deploymentId - Deployment ID to update
+ * @param {string} req.body.status - Final deployment status (success, failed, etc.)
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with updated deployment
+ * @throws {NotFoundError} When deployment is not found
+ * @throws {ServerError} When database operations fail
+ * @note Automatically sets finishedAt timestamp for terminal statuses (success/failed)
+ */
 const updateDeploymentStatus = async (req, res) => {
     const { deploymentId, status } = req.body;
 
@@ -295,7 +367,22 @@ const updateDeploymentStatus = async (req, res) => {
     }
 };
 
-// New method for creating deployment from GitHub project import
+/**
+ * Create deployment from project import (internal helper function)
+ * @async
+ * @function createDeploymentFromProject
+ * @param {Object} params - Deployment parameters
+ * @param {string} params.projectId - Project ID to deploy
+ * @param {string} params.userId - User ID triggering deployment
+ * @param {string} [params.branch='main'] - Git branch to deploy
+ * @param {string} [params.commitHash='HEAD'] - Commit hash to deploy
+ * @param {string} [params.message] - Deployment message
+ * @param {Array<Object>} [params.envVars] - Environment variables array
+ * @returns {Promise<Object>} Deployment result object with success status
+ * @throws {Error} When project is not found or deployment queuing fails
+ * @note Used internally for automated deployments during project import
+ * @note Bypasses AI review process for imported projects
+ */
 const createDeploymentFromProject = async ({
     projectId,
     userId,
@@ -376,7 +463,22 @@ const createDeploymentFromProject = async ({
     }
 };
 
-// Delete deployment
+/**
+ * Delete a deployment and its associated logs
+ * @async
+ * @function deleteDeployment
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.id - Deployment ID to delete
+ * @param {Object} req.user - Authenticated user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response confirming deletion
+ * @throws {NotFoundError} When deployment is not found
+ * @throws {ForbiddenError} When user lacks permission to delete deployment
+ * @throws {ServerError} When database operations fail
+ * @note Only project owners can delete their deployments
+ * @note Performs cascade deletion of associated logs
+ */
 const deleteDeployment = async (req, res) => {
     try {
         const { id } = req.params;
@@ -408,7 +510,24 @@ const deleteDeployment = async (req, res) => {
     }
 };
 
-// Redeploy a previous deployment
+/**
+ * Redeploy an existing deployment with same configuration
+ * @async
+ * @function redeployDeployment
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - URL parameters
+ * @param {string} req.params.id - Existing deployment ID to redeploy
+ * @param {Object} req.user - Authenticated user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with new deployment info
+ * @throws {NotFoundError} When original deployment is not found
+ * @throws {ForbiddenError} When user lacks permission to redeploy
+ * @throws {ConflictError} When another deployment is already in progress
+ * @throws {ServerError} When deployment queuing fails
+ * @note Creates new deployment record with same branch/commit as original
+ * @note Bypasses AI review process for redeployments
+ * @note Admin users can redeploy any deployment, regular users only their own
+ */
 const redeployDeployment = async (req, res) => {
     try {
         const { id } = req.params; // This is the deployment ID to redeploy
@@ -480,13 +599,13 @@ const redeployDeployment = async (req, res) => {
 
         // Log and queue the job
         await logService.addLog(project._id, newDeployment._id, "build", "Redeployment started");
-        
+
         // No AI review on redeploy, just queue it
         await axios.post(`${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/deploy/job`, job, {
             timeout: 10000,
             headers: { 'Content-Type': 'application/json' }
         });
-        
+
         await logService.addLog(project._id, newDeployment._id, "queue", "Redeployment job queued");
 
         // Update the new deployment status to 'queued'
@@ -494,8 +613,8 @@ const redeployDeployment = async (req, res) => {
         await newDeployment.save();
 
         logger.info(`Redeployment triggered for project ${project._id} by user ${req.user.email}`);
-        
-        return res.apiCreated({ 
+
+        return res.apiCreated({
             _id: newDeployment._id,
             deploymentId: newDeployment._id,
             status: newDeployment.status,
@@ -508,6 +627,12 @@ const redeployDeployment = async (req, res) => {
     }
 };
 
+/**
+ * Export deployment controller functions
+ * @module deployController
+ * @description Provides comprehensive deployment management including creation, monitoring,
+ *              AI review integration, and worker communication for the Shard platform
+ */
 module.exports = {
     createDeployment,
     createDeploymentFromProject,

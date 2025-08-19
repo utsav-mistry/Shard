@@ -1,8 +1,36 @@
+/**
+ * @fileoverview Job Queue Service
+ * @description Event-driven job queue with concurrency control, retries, and graceful shutdown
+ * @author Utsav Mistry
+ * @version 0.2.3
+ */
+
 const { EventEmitter } = require('events');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 
+/**
+ * Job Queue with concurrency control and retry logic
+ * @class JobQueue
+ * @extends EventEmitter
+ * @description Manages deployment jobs with priority queuing, concurrent processing, and automatic retries.
+ * Provides graceful shutdown and comprehensive status monitoring.
+ * @example
+ * class DeploymentQueue extends JobQueue {
+ *   async processJob(job) {
+ *     await deployProject(job.data);
+ *   }
+ * }
+ * 
+ * const queue = new DeploymentQueue(3);
+ * const jobId = queue.add({ projectId: 'proj123' }, { priority: 1 });
+ */
 class JobQueue extends EventEmitter {
+  /**
+   * Create a new job queue
+   * @param {number} [concurrency=3] - Maximum number of concurrent jobs
+   * @description Initializes queue with specified concurrency limit and event handling
+   */
   constructor(concurrency = 3) {
     super();
     this.queue = [];
@@ -256,4 +284,9 @@ class JobQueue extends EventEmitter {
   }
 }
 
+/**
+ * Export JobQueue class
+ * @module queueService
+ * @description Event-driven job queue with concurrency control and retry logic
+ */
 module.exports = JobQueue;

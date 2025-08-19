@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Health Check Routes
+ * @description Express routes for deployment worker health monitoring and system status
+ * @author Utsav Mistry
+ * @version 0.2.3
+ */
+
 const express = require('express');
 const path = require('path');
 const pkg = require('../package.json');
@@ -7,8 +14,11 @@ const router = express.Router();
 
 /**
  * Format uptime in seconds to a human-readable string
+ * @function formatUptime
  * @param {number} seconds - Uptime in seconds
- * @returns {string} Formatted uptime string
+ * @returns {string} Formatted uptime string (e.g., "2d 3h 45m 12s")
+ * @description Converts process uptime to human-readable format
+ * @note Returns 'N/A' for invalid input values
  */
 function formatUptime(seconds) {
     if (isNaN(seconds) || seconds < 0) return 'N/A';
@@ -26,6 +36,21 @@ function formatUptime(seconds) {
     
     return parts.join(' ');
 }
+/**
+ * Comprehensive health check endpoint
+ * @route GET /
+ * @returns {Object} Detailed system health information
+ * @returns {string} returns.status - Overall system status
+ * @returns {string} returns.timestamp - Current timestamp
+ * @returns {number} returns.uptime - Process uptime in seconds
+ * @returns {Object} returns.queue - Job queue status and statistics
+ * @returns {Object} returns.docker - Docker daemon status
+ * @returns {Object} returns.memory - Memory usage statistics
+ * @returns {string} returns.version - Application version
+ * @returns {Object} returns.display - Human-readable status summaries
+ * @description Provides comprehensive health check including queue, Docker, and memory status
+ * @note Used by monitoring systems and load balancers for health verification
+ */
 router.get('/', async (req, res) => {
     const queue = req.app.get('queue');
     const memoryUsage = process.memoryUsage();
@@ -93,4 +118,9 @@ router.get('/', async (req, res) => {
     res.status(200).json(status);
 });
 
+/**
+ * Export health check routes
+ * @module healthRoutes
+ * @description Express router for deployment worker health monitoring
+ */
 module.exports = router;

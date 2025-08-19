@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Docker Container Management Utilities
+ * @description Comprehensive Docker operations for deployment containerization and cleanup
+ * @author Utsav Mistry
+ * @version 0.2.3
+ */
+
 const { exec } = require('child_process');
 const path = require('path');
 const axios = require('axios');
@@ -7,15 +14,51 @@ const StreamingLogger = require('./streamingLogger.js');
 const { validateDockerEnvironment } = require('./dockerChecker');
 const reverseProxyManager = require('../services/reverseProxyManager');
 
-// Public port allocation (reverse proxy ports)
+/**
+ * Public port allocation configuration for reverse proxy
+ * @type {Object}
+ * @property {Object} mern - MERN stack port configuration
+ * @property {Object} django - Django stack port configuration
+ * @property {Object} flask - Flask stack port configuration
+ * @description Static port mappings for different technology stacks
+ */
 const PORT_CONFIG = {
     mern: { backend: 12000 },
     django: { backend: 13000 },
     flask: { backend: 14000 },
 };
 
+/**
+ * Set of currently used container names
+ * @type {Set<string>}
+ * @description Tracks active containers to prevent naming conflicts
+ */
 const usedContainers = new Set();
 
+/**
+ * Deploy application container with Docker
+ * @async
+ * @function deployContainer
+ * @param {string} localPath - Absolute path to project source code
+ * @param {string} stack - Technology stack ('mern', 'django', 'flask')
+ * @param {string} subdomain - Project subdomain for container naming
+ * @param {string} projectId - Unique project identifier
+ * @param {string} deploymentId - Unique deployment identifier
+ * @param {Object} [socket=null] - Socket.io connection for streaming logs
+ * @returns {Promise<Object>} Deployment result with success status and port information
+ * @throws {Error} Docker validation, build, or runtime errors
+ * @description Complete Docker deployment pipeline: validation → cleanup → build → run → proxy setup.
+ * Supports both streaming (with socket) and standard deployment modes.
+ * @example
+ * const result = await deployContainer(
+ *   '/path/to/project',
+ *   'mern',
+ *   'myapp',
+ *   'proj123',
+ *   'deploy456',
+ *   socketConnection
+ * );
+ */
 const deployContainer = async (localPath, stack, subdomain, projectId, deploymentId, socket = null) => {
     // Validate Docker environment before starting deployment
     try {
@@ -151,7 +194,18 @@ const deployContainer = async (localPath, stack, subdomain, projectId, deploymen
     }
 };
 
-// Simplified port mapping that works directly with reverse proxy
+/**
+ * Get port mapping with reverse proxy integration
+ * @async
+ * @function getPortMappingWithProxy
+ * @param {string} stack - Technology stack ('mern', 'django', 'flask')
+ * @param {string} subdomain - Project subdomain
+ * @returns {Promise<Array<Object>>} Port mapping configuration
+ * @returns {number} returns[].container - Container internal port
+ * @returns {number} returns[].host - Host port allocated by proxy manager
+ * @throws {Error} Unsupported stack or port allocation errors
+ * @description Allocates dynamic ports through reverse proxy manager and configures Nginx routing.
+ */
 const getPortMappingWithProxy = async (stack, subdomain) => {
     // Use reverseProxyManager for dynamic port allocation
     const port = await reverseProxyManager.allocatePort(subdomain, stack);
@@ -174,7 +228,15 @@ const getPortMappingWithProxy = async (stack, subdomain) => {
     return [{ container: containerPort, host: port }];
 };
 
-// Legacy function for backward compatibility
+/**
+ * Legacy port mapping function for backward compatibility
+ * @function getPortMapping
+ * @param {string} stack - Technology stack
+ * @param {string} subdomain - Project subdomain (unused in legacy mode)
+ * @returns {Array<Object>} Static port mapping configuration
+ * @deprecated Use getPortMappingWithProxy for dynamic port allocation
+ * @description Provides static port mappings without reverse proxy integration.
+ */
 const getPortMapping = (stack, subdomain) => {
     if (stack === "mern") {
         return [
@@ -190,11 +252,27 @@ const getPortMapping = (stack, subdomain) => {
     throw new Error(`Unsupported stack: ${stack}`);
 };
 
+/**
+ * Get custom domain URL for deployed application
+ * @function getCustomDomainUrl
+ * @param {string} stack - Technology stack
+ * @param {string} subdomain - Project subdomain
+ * @returns {string} Public URL for accessing the deployed application
+ * @description Generates public URL using reverse proxy manager for consistent routing.
+ */
 const getCustomDomainUrl = (stack, subdomain) => {
     // Use reverse proxy manager for consistent URL generation
     return reverseProxyManager.getPublicUrl(subdomain, stack);
 };
 
+/**
+ * Capture and stream runtime logs from Docker container
+ * @function captureRuntimeLogs
+ * @param {string} containerName - Docker container name
+ * @param {string} projectId - Project identifier
+ * @param {string} deploymentId - Deployment identifier
+ * @description Streams container logs to backend API for real-time monitoring.
+ */
 const captureRuntimeLogs = (containerName, projectId, deploymentId) => {
     const process = exec(`docker logs -f ${containerName}`);
 
@@ -207,6 +285,16 @@ const captureRuntimeLogs = (containerName, projectId, deploymentId) => {
     });
 };
 
+/**
+ * Send log entry to backend API
+ * @async
+ * @function sendLog
+ * @param {string} projectId - Project identifier
+ * @param {string} deploymentId - Deployment identifier
+ * @param {string} type - Log type ('runtime', 'build', 'error')
+ * @param {string} content - Log content
+ * @description Sends log entries to backend for storage and frontend display.
+ */
 const sendLog = async (projectId, deploymentId, type, content) => {
     try {
         await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/logs`, {
@@ -220,6 +308,14 @@ const sendLog = async (projectId, deploymentId, type, content) => {
     }
 };
 
+/**
+ * Execute shell command as Promise
+ * @function execPromise
+ * @param {string} cmd - Shell command to execute
+ * @returns {Promise<string>} Command stdout
+ * @throws {Error} Command execution errors with stderr details
+ * @description Promisified wrapper for child_process.exec with error logging.
+ */
 const execPromise = (cmd) => {
     return new Promise((resolve, reject) => {
         exec(cmd, (err, stdout, stderr) => {
@@ -232,6 +328,14 @@ const execPromise = (cmd) => {
     });
 };
 
+/**
+ * Cleanup existing Docker container by name
+ * @async
+ * @function cleanupExistingContainer
+ * @param {string} containerName - Container name to remove
+ * @throws {Error} Container removal errors (except 'No such container')
+ * @description Forcefully removes existing container, ignoring 'not found' errors.
+ */
 const cleanupExistingContainer = async (containerName) => {
     try {
         await execPromise(`docker rm -f ${containerName}`);
@@ -242,6 +346,21 @@ const cleanupExistingContainer = async (containerName) => {
     }
 };
 
+/**
+ * Comprehensive cleanup of all project resources
+ * @async
+ * @function cleanupProjectContainers
+ * @param {string} projectId - Project identifier
+ * @param {string} subdomain - Project subdomain
+ * @param {string} [currentRepoFolder=null] - Current repo folder to preserve during cleanup
+ * @returns {Promise<Object>} Cleanup result summary
+ * @throws {Error} Critical cleanup failures
+ * @description Removes containers, images, proxy mappings, repo folders, and dangling resources.
+ * Preserves current deployment's repository folder to avoid interrupting active deployments.
+ * @example
+ * const result = await cleanupProjectContainers('proj123', 'myapp', 'proj123-1234567890');
+ * console.log('Cleanup completed:', result.cleaned);
+ */
 const cleanupProjectContainers = async (projectId, subdomain, currentRepoFolder = null) => {
     try {
         logger.info(`[Project ${projectId}] Starting comprehensive cleanup of all project resources`);
@@ -345,4 +464,9 @@ const cleanupProjectContainers = async (projectId, subdomain, currentRepoFolder 
     }
 };
 
+/**
+ * Export Docker management utilities
+ * @module dockerHelpers
+ * @description Comprehensive Docker container management for deployment operations
+ */
 module.exports = { deployContainer, cleanupExistingContainer, cleanupProjectContainers, getCustomDomainUrl };

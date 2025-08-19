@@ -1,13 +1,35 @@
+/**
+ * @fileoverview Email Service
+ * @description SMTP email service for sending deployment notifications and welcome emails
+ * @module services/emailService
+ * @requires nodemailer
+ * @requires fs-extra
+ * @requires path
+ * @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const nodemailer = require('nodemailer');
-const fs = require('fs');
+const fs = require('fs-extra');
 const path = require('path');
 
+/**
+ * Email service for sending transactional emails
+ * @class EmailService
+ * @classdesc Handles SMTP configuration and email template processing
+ */
 class EmailService {
     constructor() {
         this.transporter = null;
         this.initializeTransporter();
     }
 
+    /**
+     * Initializes the SMTP transporter with environment configuration
+     * @private
+     * @method initializeTransporter
+     * @returns {void}
+     */
     initializeTransporter() {
         // Configure SMTP transporter
         this.transporter = nodemailer.createTransport({
@@ -24,6 +46,17 @@ class EmailService {
         });
     }
 
+    /**
+     * Verifies SMTP server connection
+     * @async
+     * @method verifyConnection
+     * @returns {Promise<boolean>} True if connection is successful
+     * @example
+     * const isConnected = await emailService.verifyConnection();
+     * if (isConnected) {
+     *   console.log('Email service ready');
+     * }
+     */
     async verifyConnection() {
         try {
             await this.transporter.verify();
@@ -35,6 +68,14 @@ class EmailService {
         }
     }
 
+    /**
+     * Loads email template from file system
+     * @method loadTemplate
+     * @param {string} templateName - Name of the template file (without .html extension)
+     * @returns {string|null} Template content or null if not found
+     * @example
+     * const template = emailService.loadTemplate('welcome');
+     */
     loadTemplate(templateName) {
         try {
             const templatePath = path.join(__dirname, '..', 'templates', 'emails', `${templateName}.html`);
@@ -45,6 +86,18 @@ class EmailService {
         }
     }
 
+    /**
+     * Replaces template variables with actual values
+     * @method replaceTemplateVariables
+     * @param {string} template - HTML template content
+     * @param {Object} variables - Key-value pairs for template replacement
+     * @returns {string} Template with variables replaced
+     * @example
+     * const html = emailService.replaceTemplateVariables(template, {
+     *   userName: 'John Doe',
+     *   projectName: 'My App'
+     * });
+     */
     replaceTemplateVariables(template, variables) {
         let result = template;
         Object.keys(variables).forEach(key => {
@@ -54,6 +107,17 @@ class EmailService {
         return result;
     }
 
+    /**
+     * Sends deployment started notification email
+     * @async
+     * @method sendDeploymentStarted
+     * @param {string} userEmail - Recipient email address
+     * @param {string} projectName - Name of the project being deployed
+     * @param {string} deploymentId - Unique deployment identifier
+     * @returns {Promise<boolean>} True if email was sent successfully
+     * @example
+     * await emailService.sendDeploymentStarted('user@example.com', 'My App', 'deploy-123');
+     */
     async sendDeploymentStarted(userEmail, projectName, deploymentId) {
         const template = this.loadTemplate('deployment-started');
         if (!template) return false;
@@ -82,6 +146,18 @@ class EmailService {
         }
     }
 
+    /**
+     * Sends deployment success notification email
+     * @async
+     * @method sendDeploymentSuccess
+     * @param {string} userEmail - Recipient email address
+     * @param {string} projectName - Name of the deployed project
+     * @param {string} deploymentId - Unique deployment identifier
+     * @param {string} customUrl - URL where the deployed app is accessible
+     * @returns {Promise<boolean>} True if email was sent successfully
+     * @example
+     * await emailService.sendDeploymentSuccess('user@example.com', 'My App', 'deploy-123', 'https://myapp.shard.com');
+     */
     async sendDeploymentSuccess(userEmail, projectName, deploymentId, customUrl) {
         const template = this.loadTemplate('deployment-success');
         if (!template) return false;
@@ -111,6 +187,18 @@ class EmailService {
         }
     }
 
+    /**
+     * Sends deployment failure notification email
+     * @async
+     * @method sendDeploymentFailed
+     * @param {string} userEmail - Recipient email address
+     * @param {string} projectName - Name of the project that failed to deploy
+     * @param {string} deploymentId - Unique deployment identifier
+     * @param {string} [errorMessage] - Error message describing the failure
+     * @returns {Promise<boolean>} True if email was sent successfully
+     * @example
+     * await emailService.sendDeploymentFailed('user@example.com', 'My App', 'deploy-123', 'Build failed');
+     */
     async sendDeploymentFailed(userEmail, projectName, deploymentId, errorMessage) {
         const template = this.loadTemplate('deployment-failed');
         if (!template) return false;
@@ -141,6 +229,16 @@ class EmailService {
         }
     }
 
+    /**
+     * Sends welcome email to new users
+     * @async
+     * @method sendWelcomeEmail
+     * @param {string} userEmail - New user's email address
+     * @param {string} userName - New user's name
+     * @returns {Promise<boolean>} True if email was sent successfully
+     * @example
+     * await emailService.sendWelcomeEmail('newuser@example.com', 'John Doe');
+     */
     async sendWelcomeEmail(userEmail, userName) {
         const template = this.loadTemplate('welcome');
         if (!template) return false;
@@ -171,4 +269,16 @@ class EmailService {
     }
 }
 
-module.exports = new EmailService();
+/**
+ * Singleton email service instance
+ * @type {EmailService}
+ * @description Pre-configured email service for sending transactional emails
+ */
+const emailServiceInstance = new EmailService();
+
+/**
+ * @namespace emailService
+ * @description SMTP email service for deployment notifications and user communications
+ */
+module.exports = emailServiceInstance;
+module.exports.EmailService = EmailService;

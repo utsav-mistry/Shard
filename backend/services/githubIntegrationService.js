@@ -1,5 +1,19 @@
+/**
+ * @fileoverview GitHub Integration Service
+ * @description Handles GitHub OAuth integration for repository access (separate from auth)
+ * @module services/githubIntegrationService
+ * @requires axios
+ * @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const axios = require('axios');
 
+/**
+ * GitHub Integration Service for repository access
+ * @class GitHubIntegrationService
+ * @classdesc Manages GitHub OAuth integration separate from user authentication
+ */
 class GitHubIntegrationService {
     constructor() {
         this.clientId = process.env.GITHUB_INTEGRATION_CLIENT_ID;
@@ -18,7 +32,14 @@ class GitHubIntegrationService {
     }
 
     /**
-     * Exchange authorization code for access token (Integration App)
+     * Exchanges authorization code for access token (Integration App)
+     * @async
+     * @method getAccessToken
+     * @param {string} code - OAuth authorization code from GitHub
+     * @returns {Promise<string>} GitHub access token for repository access
+     * @throws {Error} If OAuth exchange fails
+     * @example
+     * const token = await githubIntegration.getAccessToken('auth_code_123');
      */
     async getAccessToken(code) {
         try {
@@ -45,9 +66,15 @@ class GitHubIntegrationService {
     }
 
     /**
-     * Get GitHub user information using integration access token
+     * Gets GitHub user information using integration access token
+     * @async
+     * @method getGitHubUser
      * @param {string} accessToken - GitHub OAuth access token
      * @returns {Promise<Object>} GitHub user information
+     * @throws {Error} If user fetch fails
+     * @example
+     * const user = await githubIntegration.getGitHubUser(token);
+     * console.log(user.login); // GitHub username
      */
     async getGitHubUser(accessToken) {
         try {

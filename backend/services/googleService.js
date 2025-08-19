@@ -1,3 +1,12 @@
+/**
+ * @fileoverview Google Service
+ * @description Handles Google OAuth integration for user authentication
+ * @module services/googleService
+ * @requires axios
+ * @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const axios = require("axios");
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -5,7 +14,14 @@ const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
 
 /**
- * Exchange OAuth authorization code for access token
+ * Exchanges OAuth authorization code for access token
+ * @async
+ * @function getAccessToken
+ * @param {string} code - OAuth authorization code from Google
+ * @returns {Promise<string>} Google access token
+ * @throws {Error} If token exchange fails
+ * @example
+ * const token = await getAccessToken('4/0AX4XfWh...');
  */
 const getAccessToken = async (code) => {
     try {
@@ -33,7 +49,15 @@ const getAccessToken = async (code) => {
 };
 
 /**
- * Fetch Google user profile info using access token
+ * Fetches Google user profile information using access token
+ * @async
+ * @function getGoogleUser
+ * @param {string} accessToken - Google OAuth access token
+ * @returns {Promise<Object>} User profile data from Google
+ * @throws {Error} If user info retrieval fails
+ * @example
+ * const user = await getGoogleUser('ya29.a0ARrdaM...');
+ * console.log(user.email); // user@gmail.com
  */
 const getGoogleUser = async (accessToken) => {
     try {
@@ -53,4 +77,8 @@ const getGoogleUser = async (accessToken) => {
     }
 };
 
+/**
+ * @namespace googleService
+ * @description Service for Google OAuth authentication and user data retrieval
+ */
 module.exports = { getAccessToken, getGoogleUser };

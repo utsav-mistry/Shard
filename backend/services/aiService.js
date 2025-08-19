@@ -1,3 +1,14 @@
+/**
+ * @fileoverview AI Service Integration
+ * @description Provides AI-powered repository analysis, code review, and Dockerfile generation
+ * @module services/aiService
+ * @requires axios
+ * @requires ../utils/logger
+ * @requires ./githubService
+ * @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const axios = require('axios');
 const logger = require('../utils/logger');
 const githubService = require('./githubService');
@@ -8,13 +19,24 @@ const AI_API_KEY = process.env.AI_API_KEY;
 const DEFAULT_TIMEOUT = 30000; // 30 seconds
 
 /**
- * Analyze repository structure and content to determine project type and requirements
+ * Analyzes repository structure and content to determine project type and requirements
+ * @async
+ * @function analyzeRepository
+ * @param {string} accessToken - GitHub access token
+ * @param {string} owner - Repository owner
+ * @param {string} repo - Repository name
+ * @param {string} [branch='main'] - Branch to analyze
+ * @param {string} [path=''] - Path within repository
+ * @returns {Promise<Object>} Analysis result with framework detection and recommendations
+ * @example
+ * const analysis = await analyzeRepository(token, 'user', 'my-repo', 'main');
+ * console.log(analysis.framework); // 'nextjs', 'node', 'python', etc.
  */
 const analyzeRepository = async (accessToken, owner, repo, branch = 'main', path = '') => {
     try {
         // First, try to determine project type from repository contents
         const contents = await githubService.listRepoContents(accessToken, owner, repo, path, branch);
-        
+
         // Look for common configuration files to determine project type
         const configFiles = {
             'package.json': 'node',
@@ -41,18 +63,18 @@ const analyzeRepository = async (accessToken, owner, repo, branch = 'main', path
         let buildCommand = null;
         let startCommand = null;
         let installCommand = null;
-        
+
         // Check for framework-specific files
         for (const [file, detectedFramework] of Object.entries(configFiles)) {
             if (contents.some(item => item.name === file)) {
                 framework = detectedFramework;
-                
+
                 // Set package manager based on framework
                 if (['node', 'nextjs', 'nuxtjs', 'gatsby', 'vue', 'angular', 'svelte'].includes(detectedFramework)) {
                     // Check for package-lock.json or yarn.lock to determine package manager
                     const hasYarnLock = contents.some(item => item.name === 'yarn.lock');
                     packageManager = hasYarnLock ? 'yarn' : 'npm';
-                    
+
                     // Set default commands
                     installCommand = hasYarnLock ? 'yarn install --frozen-lockfile' : 'npm ci';
                     buildCommand = hasYarnLock ? 'yarn build' : 'npm run build';
@@ -62,7 +84,7 @@ const analyzeRepository = async (accessToken, owner, repo, branch = 'main', path
                     installCommand = 'pip install -r requirements.txt';
                     startCommand = 'python app.py'; // This is just a guess, will be refined
                 }
-                
+
                 break;
             }
         }
@@ -75,7 +97,7 @@ const analyzeRepository = async (accessToken, owner, repo, branch = 'main', path
                 if (pkgJson) {
                     const fileContent = await githubService.getFileContent(accessToken, owner, repo, pkgJson.path, branch);
                     const pkg = JSON.parse(Buffer.from(fileContent.content, 'base64').toString('utf8'));
-                    
+
                     // Check for framework-specific dependencies
                     if (pkg.dependencies?.next) framework = 'nextjs';
                     else if (pkg.dependencies?.nuxt) framework = 'nuxtjs';
@@ -83,7 +105,7 @@ const analyzeRepository = async (accessToken, owner, repo, branch = 'main', path
                     else if (pkg.dependencies?.vue) framework = 'vue';
                     else if (pkg.dependencies?.['@angular/core']) framework = 'angular';
                     else if (pkg.dependencies?.['svelte']) framework = 'svelte';
-                    
+
                     // Update commands based on package.json scripts
                     if (pkg.scripts) {
                         if (pkg.scripts.build) buildCommand = `${packageManager} run build`;
@@ -99,14 +121,14 @@ const analyzeRepository = async (accessToken, owner, repo, branch = 'main', path
         // Analyze for environment variables
         const envFiles = ['.env', '.env.local', '.env.development', '.env.production'];
         const envVars = [];
-        
+
         for (const envFile of envFiles) {
             const envContent = contents.find(item => item.name === envFile);
             if (envContent) {
                 try {
                     const fileContent = await githubService.getFileContent(accessToken, owner, repo, envContent.path, branch);
                     const envContentStr = Buffer.from(fileContent.content, 'base64').toString('utf8');
-                    
+
                     // Simple regex to find environment variables
                     const envVarsInFile = envContentStr
                         .split('\n')
@@ -116,7 +138,7 @@ const analyzeRepository = async (accessToken, owner, repo, branch = 'main', path
                             const value = valueParts.join('=').replace(/['"]/g, '').trim();
                             return { key, value, isSecret: true };
                         });
-                    
+
                     envVars.push(...envVarsInFile);
                 } catch (error) {
                     logger.error(`Error reading ${envFile}:`, error);
@@ -160,7 +182,17 @@ const analyzeRepository = async (accessToken, owner, repo, branch = 'main', path
 };
 
 /**
- * Get AI-powered analysis of the repository
+ * Gets AI-powered analysis of the repository
+ * @async
+ * @function getAIRepositoryAnalysis
+ * @param {Object} repoInfo - Repository information object
+ * @param {string} repoInfo.owner - Repository owner
+ * @param {string} repoInfo.repo - Repository name
+ * @param {string} repoInfo.framework - Detected framework
+ * @param {string} repoInfo.packageManager - Package manager (npm, yarn, pip)
+ * @param {boolean} repoInfo.hasDocker - Whether Docker files are present
+ * @returns {Promise<Object>} AI analysis with build commands and suggestions
+ * @throws {Error} Falls back to default recommendations if AI service fails
  */
 const getAIRepositoryAnalysis = async (repoInfo) => {
     try {
@@ -188,7 +220,12 @@ const getAIRepositoryAnalysis = async (repoInfo) => {
 };
 
 /**
- * Generate default recommendations when AI service is not available
+ * Generates default recommendations when AI service is not available
+ * @function getDefaultRecommendations
+ * @param {Object} repoInfo - Repository information object
+ * @param {string} repoInfo.framework - Detected framework
+ * @param {string} repoInfo.packageManager - Package manager
+ * @returns {Object} Default build and deployment recommendations
  */
 const getDefaultRecommendations = (repoInfo) => {
     const { framework, packageManager } = repoInfo;
@@ -203,26 +240,26 @@ const getDefaultRecommendations = (repoInfo) => {
         case 'nextjs':
             recommendations.buildCommand = 'next build';
             recommendations.startCommand = 'next start -p $PORT';
-            recommendations.installCommand = packageManager === 'yarn' 
-                ? 'yarn install --frozen-lockfile' 
+            recommendations.installCommand = packageManager === 'yarn'
+                ? 'yarn install --frozen-lockfile'
                 : 'npm ci';
             recommendations.suggestions.push('Next.js detected. Using optimized build and start commands.');
             break;
-            
+
         case 'node':
             recommendations.startCommand = 'node index.js';
-            recommendations.installCommand = packageManager === 'yarn' 
-                ? 'yarn install --frozen-lockfile' 
+            recommendations.installCommand = packageManager === 'yarn'
+                ? 'yarn install --frozen-lockfile'
                 : 'npm ci';
             recommendations.suggestions.push('Node.js application detected. Make sure your package.json has the correct start script.');
             break;
-            
+
         case 'python':
             recommendations.installCommand = 'pip install -r requirements.txt';
             recommendations.startCommand = 'python app.py';
             recommendations.suggestions.push('Python application detected. Make sure you have a requirements.txt file.');
             break;
-            
+
         default:
             recommendations.suggestions.push('Could not determine framework. Using default settings.');
     }
@@ -231,7 +268,16 @@ const getDefaultRecommendations = (repoInfo) => {
 };
 
 /**
- * Review code for security vulnerabilities and best practices
+ * Reviews code for security vulnerabilities and best practices
+ * @async
+ * @function reviewCode
+ * @param {string} code - Source code to review
+ * @param {string} filePath - Path to the file being reviewed
+ * @param {string} language - Programming language of the code
+ * @returns {Promise<Object>} Review result with issues and suggestions
+ * @example
+ * const review = await reviewCode(sourceCode, 'src/app.js', 'javascript');
+ * console.log(review.issues); // Array of security issues found
  */
 const reviewCode = async (code, filePath, language) => {
     try {
@@ -266,7 +312,16 @@ const reviewCode = async (code, filePath, language) => {
 };
 
 /**
- * Generate a Dockerfile for the project
+ * Generates a Dockerfile for the project based on detected framework
+ * @async
+ * @function generateDockerfile
+ * @param {Object} repoInfo - Repository information object
+ * @param {string} repoInfo.framework - Detected framework
+ * @param {string} repoInfo.packageManager - Package manager
+ * @returns {Promise<Object>} Generated Dockerfile content and suggestions
+ * @example
+ * const dockerfile = await generateDockerfile({ framework: 'nextjs', packageManager: 'npm' });
+ * console.log(dockerfile.dockerfile); // Generated Dockerfile content
  */
 const generateDockerfile = async (repoInfo) => {
     try {
@@ -301,11 +356,15 @@ const generateDockerfile = async (repoInfo) => {
 };
 
 /**
- * Generate a default Dockerfile based on framework
+ * Generates a default Dockerfile based on framework when AI service is unavailable
+ * @function generateDefaultDockerfile
+ * @param {Object} repoInfo - Repository information object
+ * @param {string} repoInfo.framework - Framework type (nextjs, node, python, etc.)
+ * @returns {string} Default Dockerfile content as string
  */
 const generateDefaultDockerfile = (repoInfo) => {
     const { framework } = repoInfo;
-    
+
     switch (framework) {
         case 'nextjs':
             return `# Use an official Node.js runtime as the base image
@@ -411,8 +470,15 @@ CMD ["echo", "Please customize this Dockerfile for your application"]`;
     }
 };
 
+/**
+ * @namespace aiService
+ * @description AI-powered development services for repository analysis and code review
+ */
 module.exports = {
     analyzeRepository,
     reviewCode,
     generateDockerfile,
+    getAIRepositoryAnalysis,
+    getDefaultRecommendations,
+    generateDefaultDockerfile
 };

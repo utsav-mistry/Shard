@@ -1,10 +1,23 @@
+/**
+ * @fileoverview Deployment Routes
+ * @description Express routes for deployment job processing, cleanup, and status management
+ *              in the deployment worker service
+ * @author Utsav Mistry
+ * @version 0.2.3
+ */
+
 const express = require('express');
 const router = express.Router();
 const jobProcessor = require('../services/jobProcessor');
 const { cleanupProjectContainers } = require('../utils/dockerHelpers');
 const logger = require('../utils/logger');
 
-// Health check endpoint
+/**
+ * Health check endpoint for deployment service
+ * @route GET /
+ * @returns {Object} Service status and timestamp
+ * @description Basic health check to verify deployment worker is running
+ */
 router.get('/', (req, res) => {
     res.json({
         status: 'ok',
@@ -13,7 +26,25 @@ router.get('/', (req, res) => {
     });
 });
 
-// Process deployment job
+/**
+ * Process new deployment job
+ * @route POST /job
+ * @param {Object} req.body - Deployment job parameters
+ * @param {string} req.body.deploymentId - Unique deployment identifier
+ * @param {string} req.body.projectId - Project identifier
+ * @param {string} req.body.repoUrl - Repository URL to deploy
+ * @param {string} [req.body.branch='main'] - Git branch to deploy
+ * @param {string} req.body.stack - Technology stack (mern, flask, django)
+ * @param {string} req.body.subdomain - Project subdomain
+ * @param {Array<Object>} [req.body.envVars=[]] - Environment variables
+ * @param {string} req.body.userEmail - User email for notifications
+ * @param {string} req.body.token - Authentication token
+ * @returns {Object} Job queue confirmation or error
+ * @throws {ValidationError} When required fields are missing
+ * @throws {ServerError} When job processing fails
+ * @description Queues deployment job for asynchronous processing
+ * @note Job is processed asynchronously to avoid request timeout
+ */
 router.post('/job', async (req, res) => {
         const { deploymentId, projectId, repoUrl, branch, stack, subdomain, envVars, userEmail, token } = req.body;
 
@@ -56,7 +87,17 @@ router.post('/job', async (req, res) => {
     }
 });
 
-// Cleanup project Docker resources
+/**
+ * Cleanup Docker resources for a project
+ * @route DELETE /cleanup/:projectId
+ * @param {string} req.params.projectId - Project ID to cleanup
+ * @param {string} req.body.subdomain - Project subdomain for container identification
+ * @returns {Object} Cleanup result or error
+ * @throws {ValidationError} When projectId or subdomain is missing
+ * @throws {ServerError} When Docker cleanup fails
+ * @description Removes Docker containers, images, and networks for a project
+ * @note Used when projects are deleted or need resource cleanup
+ */
 router.delete('/cleanup/:projectId', async (req, res) => {
     const { projectId } = req.params;
     const { subdomain } = req.body;
@@ -89,7 +130,18 @@ router.delete('/cleanup/:projectId', async (req, res) => {
     }
 });
 
-// Update deployment status
+/**
+ * Update deployment status and logs
+ * @route PUT /status/:deploymentId
+ * @param {string} req.params.deploymentId - Deployment ID to update
+ * @param {string} req.body.status - New deployment status
+ * @param {string} [req.body.message] - Status message
+ * @param {Array<string>} [req.body.logs] - Deployment logs
+ * @returns {Object} Update confirmation or error
+ * @throws {ServerError} When status update fails
+ * @description Updates deployment status in database and logs progress
+ * @note Called by job processor to report deployment progress
+ */
 router.put('/status/:deploymentId', async (req, res) => {
     const { deploymentId } = req.params;
     const { status, message, logs } = req.body;
@@ -114,4 +166,9 @@ router.put('/status/:deploymentId', async (req, res) => {
     }
 });
 
+/**
+ * Export deployment routes
+ * @module deployRoutes
+ * @description Express router for deployment job management and Docker cleanup
+ */
 module.exports = router;

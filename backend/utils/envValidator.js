@@ -1,3 +1,15 @@
+/**
+ * @fileoverview Environment Variable Validator
+ * @description Validates environment variables against a defined schema
+ * and provides helpful error messages for missing or invalid variables
+ * @module utils/envValidator
+ * @requires fs
+ * @requires path
+ * @requires ./logger
+ * @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const logger = require('./logger');
 
 /**
@@ -5,14 +17,36 @@ const logger = require('./logger');
  * Ensures all required environment variables are present and valid
  */
 
+/**
+ * @typedef {Object} EnvVarSchema
+ * @property {boolean} required - Whether the variable is required
+ * @property {string} type - Expected type ('string', 'number', 'boolean', 'array')
+ * @property {Array} allowedValues - Allowed values for the variable
+ * @property {number} min - Minimum value (for numbers)
+ * @property {number} max - Maximum value (for numbers)
+ * @property {number} minLength - Minimum length (for strings/arrays)
+ * @property {number} maxLength - Maximum length (for strings/arrays)
+ * @property {RegExp} pattern - Regex pattern the value must match
+ * @property {string} default - Default value if not provided
+ * @property {string} description - Description of the variable
+ */
+
 const requiredEnvVars = {
     // Core application settings
+    /**
+     * @description Node.js environment (development, production, test)
+     * @type {EnvVarSchema}
+     */
     NODE_ENV: {
         required: true,
         type: 'string',
         allowedValues: ['development', 'production', 'test'],
         default: 'development'
     },
+    /**
+     * @description Server port number
+     * @type {EnvVarSchema}
+     */
     PORT: {
         required: true,
         type: 'number',
@@ -22,6 +56,10 @@ const requiredEnvVars = {
     },
 
     // Database
+    /**
+     * @description MongoDB connection string
+     * @type {EnvVarSchema}
+     */
     MONGO_URI: {
         required: true,
         type: 'string',
@@ -30,12 +68,20 @@ const requiredEnvVars = {
     },
 
     // Authentication
+    /**
+     * @description JWT secret key (minimum 32 characters)
+     * @type {EnvVarSchema}
+     */
     JWT_SECRET: {
         required: true,
         type: 'string',
         minLength: 32,
         description: 'JWT secret key (minimum 32 characters)'
     },
+    /**
+     * @description JWT expiration time (e.g., 7d, 24h, 60m)
+     * @type {EnvVarSchema}
+     */
     JWT_EXPIRE: {
         required: false,
         type: 'string',
@@ -45,6 +91,10 @@ const requiredEnvVars = {
     },
 
     // Encryption
+    /**
+     * @description Encryption secret key (minimum 32 characters)
+     * @type {EnvVarSchema}
+     */
     ENCRYPTION_SECRET: {
         required: true,
         type: 'string',
@@ -53,6 +103,10 @@ const requiredEnvVars = {
     },
 
     // External services
+    /**
+     * @description Deployment worker service URL
+     * @type {EnvVarSchema}
+     */
     DEPLOYMENT_WORKER_URL: {
         required: false,
         type: 'string',
@@ -60,6 +114,10 @@ const requiredEnvVars = {
         default: 'http://localhost:9000',
         description: 'Deployment worker service URL'
     },
+    /**
+     * @description AI review service URL
+     * @type {EnvVarSchema}
+     */
     AI_SERVICE_URL: {
         required: false,
         type: 'string',
@@ -69,6 +127,10 @@ const requiredEnvVars = {
     },
 
     // Security
+    /**
+     * @description CORS allowed origins
+     * @type {EnvVarSchema}
+     */
     CORS_ORIGIN: {
         required: false,
         type: 'string',
@@ -78,7 +140,13 @@ const requiredEnvVars = {
 };
 
 /**
- * Validate a single environment variable
+ * Validates a single environment variable against its schema definition
+ * @private
+ * @function validateEnvVar
+ * @param {string} name - The name of the environment variable
+ * @param {EnvVarSchema} config - Validation schema for the variable
+ * @param {string} value - The value to validate
+ * @returns {Array<string>} Error messages if validation fails, empty array otherwise
  */
 function validateEnvVar(name, config, value) {
     const errors = [];
@@ -138,7 +206,12 @@ function validateEnvVar(name, config, value) {
 }
 
 /**
- * Validate all environment variables
+ * Validates all environment variables against their schema definitions
+ * @function validateEnvironment
+ * @returns {Object} Validation result object
+ * @property {boolean} valid - Whether all required variables are present and valid
+ * @property {Array<string>} errors - Array of validation error messages
+ * @property {Array<string>} warnings - Array of validation warning messages
  */
 function validateEnvironment() {
     const errors = [];
@@ -191,6 +264,8 @@ function validateEnvironment() {
 
 /**
  * Get environment summary for debugging
+ * @function getEnvironmentSummary
+ * @returns {Object} Environment summary object
  */
 function getEnvironmentSummary() {
     const summary = {
@@ -211,6 +286,10 @@ function getEnvironmentSummary() {
     return summary;
 }
 
+/**
+ * @namespace envValidator
+ * @description Collection of environment validation utilities
+ */
 module.exports = {
     validateEnvironment,
     getEnvironmentSummary,

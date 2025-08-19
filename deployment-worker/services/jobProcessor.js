@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Deployment Job Processor
+ * @description Main service for processing deployment jobs with AI review, environment injection, and containerization
+ * @author Utsav Mistry
+ * @version 0.2.3
+ */
+
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
@@ -12,7 +19,16 @@ const { analyzeRepo } = require('./analyzeCode.js');
 const { cloneRepo } = require('./repoCloner.js');
 const { checkDockerStatus } = require('../utils/dockerChecker.js');
 
-// Function to update deployment with AI review results
+/**
+ * Update deployment record with AI review results
+ * @async
+ * @function updateDeploymentWithAIResults
+ * @param {string} deploymentId - Unique deployment identifier
+ * @param {Object} aiResults - AI analysis results from analyzeRepo
+ * @param {string} token - JWT authentication token
+ * @returns {Promise<void>} Resolves when update is complete or fails silently
+ * @description Stores AI review results in backend for frontend display. Non-critical operation.
+ */
 const updateDeploymentWithAIResults = async (deploymentId, aiResults, token) => {
     try {
         const response = await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deploy/ai-results`, {
@@ -35,7 +51,20 @@ const updateDeploymentWithAIResults = async (deploymentId, aiResults, token) => 
     }
 };
 
-// Function to update deployment with commit information
+/**
+ * Update deployment record with Git commit information
+ * @async
+ * @function updateDeploymentWithCommitInfo
+ * @param {string} deploymentId - Unique deployment identifier
+ * @param {Object} commitInfo - Git commit details
+ * @param {string} commitInfo.commitHash - Git commit hash
+ * @param {string} commitInfo.commitMessage - Commit message
+ * @param {string} commitInfo.author - Commit author
+ * @param {string} commitInfo.commitDate - Commit timestamp
+ * @param {string} token - JWT authentication token
+ * @returns {Promise<void>} Resolves when update is complete or fails silently
+ * @description Updates deployment record with Git metadata for tracking. Non-critical operation.
+ */
 const updateDeploymentWithCommitInfo = async (deploymentId, commitInfo, token) => {
     try {
         const response = await axios.patch(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deploy/${deploymentId}`, {
@@ -71,6 +100,33 @@ if (!fs.existsSync(CONFIG.LOG_DIR)) {
     fs.mkdirSync(CONFIG.LOG_DIR, { recursive: true });
 }
 
+/**
+ * Process a deployment job through the complete pipeline
+ * @async
+ * @function processJob
+ * @param {Object} job - Deployment job object
+ * @param {string} job.projectId - Unique project identifier
+ * @param {string} job.repoUrl - Git repository URL to deploy
+ * @param {string} job.stack - Technology stack ('mern', 'django', 'flask')
+ * @param {string} job.subdomain - Subdomain for deployment
+ * @param {string} job.userEmail - User email for notifications
+ * @param {string} job.deploymentId - Unique deployment identifier
+ * @param {string} job.token - JWT authentication token
+ * @returns {Promise<void>} Resolves when deployment is complete
+ * @throws {Error} Deployment pipeline errors
+ * @description Complete deployment pipeline: clone → AI review → env injection → containerization.
+ * Handles status updates, notifications, and error recovery throughout the process.
+ * @example
+ * await processJob({
+ *   projectId: 'proj123',
+ *   repoUrl: 'https://github.com/user/repo.git',
+ *   stack: 'mern',
+ *   subdomain: 'myapp',
+ *   userEmail: 'user@example.com',
+ *   deploymentId: 'deploy456',
+ *   token: 'jwt_token'
+ * });
+ */
 const processJob = async (job) => {
     const {
         projectId,
@@ -206,6 +262,20 @@ const processJob = async (job) => {
     }
 };
 
+/**
+ * Handle deployment errors with logging and status updates
+ * @async
+ * @function handleDeploymentError
+ * @param {Error} error - The error that occurred during deployment
+ * @param {string} projectId - Unique project identifier
+ * @param {string} deploymentId - Unique deployment identifier
+ * @param {string} userEmail - User email for notifications
+ * @param {string} logPath - Path to deployment log file
+ * @param {string} token - JWT authentication token
+ * @returns {Promise<void>} Resolves when error handling is complete
+ * @description Logs error details to file and backend, updates deployment status to failed.
+ * Ensures proper cleanup and user notification on deployment failures.
+ */
 const handleDeploymentError = async (error, projectId, deploymentId, userEmail, logPath, token) => {
     const errorDetails = {
         message: error.message,
@@ -230,4 +300,9 @@ const handleDeploymentError = async (error, projectId, deploymentId, userEmail, 
     }
 };
 
+/**
+ * Export job processing functions
+ * @module jobProcessor
+ * @description Main deployment pipeline processor with AI review and containerization
+ */
 module.exports = { processJob };

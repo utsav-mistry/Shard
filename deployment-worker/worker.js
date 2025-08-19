@@ -1,3 +1,11 @@
+/**
+ * @fileoverview Deployment Worker Server
+ * @description Main deployment worker service that processes deployment jobs, manages queues,
+ *              and provides real-time communication for the Shard platform
+ * @author Utsav Mistry
+ * @version 0.2.3
+ */
+
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -15,14 +23,29 @@ const JobQueue = require('./services/queueService.js');
 const { processJob } = require('./services/jobProcessor.js');
 const { Server } = require('socket.io');
 
-// __filename and __dirname are available in CommonJS
-
-// Initialize Express app
+/**
+ * Express application instance
+ * @type {express.Application}
+ */
 const app = express();
+
+/**
+ * HTTP server instance
+ * @type {http.Server}
+ */
 const server = http.createServer(app);
+
+/**
+ * Server port configuration
+ * @type {number}
+ */
 const PORT = process.env.PORT || 9000;
 
-// Initialize Socket.IO for real-time communication
+/**
+ * Socket.IO server for real-time communication
+ * @type {Server}
+ * @description Provides real-time updates for deployment progress
+ */
 const io = new Server(server, {
   cors: {
     origin: process.env.CORS_ORIGIN || ['http://localhost:3000', 'http://127.0.0.1:3000'],
@@ -32,7 +55,16 @@ const io = new Server(server, {
   transports: ['websocket', 'polling']
 });
 
-// Configuration
+/**
+ * Worker configuration object
+ * @type {Object}
+ * @property {number} concurrency - Maximum concurrent jobs
+ * @property {number} jobTimeout - Job timeout in milliseconds
+ * @property {string} requestLimit - Request body size limit
+ * @property {string} corsOrigin - CORS origin configuration
+ * @property {number} rateLimitWindowMs - Rate limit window in milliseconds
+ * @property {number} rateLimitMax - Maximum requests per window
+ */
 const config = {
   concurrency: parseInt(process.env.MAX_CONCURRENT_JOBS || '3', 10),
   jobTimeout: parseInt(process.env.JOB_TIMEOUT || '900000', 10), // 15 minutes
@@ -217,7 +249,13 @@ const registerCleanup = (callback) => {
     return () => shutdownState.cleanupCallbacks.delete(callback);
 };
 
-// Enhanced console logging for shutdown with colors and timestamps
+/**
+ * Enhanced console logging for shutdown process with colors and timestamps
+ * @function shutdownLog
+ * @param {string} message - Log message to display
+ * @param {string} [type='info'] - Log type (start, step, success, error, warn, complete, queue)
+ * @description Provides colored, timestamped logging for shutdown process visibility
+ */
 const shutdownLog = (message, type = 'info') => {
   const timestamp = new Date().toISOString();
   const formattedTime = chalk.gray(`[${timestamp}]`);
@@ -252,11 +290,18 @@ const shutdownLog = (message, type = 'info') => {
 };
 
 /**
- * Graceful shutdown handler
- * @param {Object} [options] - Shutdown options
- * @param {number} [options.timeout=30000] - Time to wait for active jobs to complete
- * @param {boolean} [options.force=false] - Force shutdown immediately
- * @returns {Promise<{success: boolean, message: string}>} Shutdown result
+ * Graceful shutdown handler for deployment worker
+ * @async
+ * @function gracefulShutdown
+ * @param {Object} [options={}] - Shutdown configuration options
+ * @param {number} [options.timeout=30000] - Maximum time to wait for active jobs completion
+ * @param {boolean} [options.force=false] - Force immediate shutdown without waiting
+ * @returns {Promise<{success: boolean, message: string}>} Shutdown operation result
+ * @throws {Error} When shutdown process encounters critical errors
+ * @description Performs graceful shutdown of deployment worker with job completion handling
+ * @note Ensures active deployment jobs complete before shutdown when possible
+ * @note Provides detailed logging throughout shutdown process
+ * @note Handles cleanup callbacks and resource deallocation
  */
 const gracefulShutdown = async (options = {}) => {
   // If already shutting down, return the existing promise
@@ -440,7 +485,15 @@ process.on('uncaughtException', (error) => {
   // Don't exit immediately, let the process manager handle it
 });
 
-// Start the server
+/**
+ * Start the deployment worker server
+ * @async
+ * @function startServer
+ * @returns {Promise<void>} Resolves when server starts successfully
+ * @throws {Error} When server fails to start
+ * @description Initializes and starts the HTTP server with comprehensive logging
+ * @note Logs server configuration and system information on startup
+ */
 const startServer = async () => {
   try {
     await new Promise((resolve) => {
@@ -480,4 +533,9 @@ if (process.env.NODE_ENV !== 'test') {
   });
 }
 
+/**
+ * Export deployment worker components
+ * @module worker
+ * @description Main deployment worker server with job processing and graceful shutdown
+ */
 module.exports = { app, deploymentQueue, startServer, gracefulShutdown };

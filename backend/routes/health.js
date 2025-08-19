@@ -1,3 +1,47 @@
+/**
+ * @fileoverview Health Dashboard Routes
+ * @description Express routes for health monitoring and system status checks
+ * @module routes/health-dashboard-new
+ * @requires express
+ * @requires mongoose
+ * @requires ../utils/logger
+ * @requires ../services/healthService
+ * @author Utsav Mistry
+ * @version 0.0.1
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     ServiceHealth:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: string
+ *           enum: [ok, error]
+ *         responseTime:
+ *           type: number
+ *           description: Response time in milliseconds
+ *         timestamp:
+ *           type: string
+ *           format: date-time
+ *         details:
+ *           type: object
+ *           description: Additional service-specific health details
+ *           properties:
+ *             status:
+ *               type: string
+ *               example: 'connected'
+ *             version:
+ *               type: string
+ *               example: '5.0.0'
+ * 
+ * tags:
+ *   - name: Health
+ *     description: Health check operations
+ */
+
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
@@ -6,10 +50,11 @@ const { getAggregatedHealth } = require('../services/healthService');
 
 /**
  * @swagger
- * /health:
+ * /api/health:
  *   get:
  *     summary: Health check endpoint
  *     description: Returns the aggregated health status of the application and all its dependencies
+ *     tags: [Health]
  *     responses:
  *       200:
  *         description: Health status retrieved successfully
@@ -30,38 +75,33 @@ const { getAggregatedHealth } = require('../services/healthService');
  *                   description: Uptime in seconds
  *                 db:
  *                   type: object
+ *                   properties:
+ *                     status:
+ *                       type: string
+ *                       enum: [connected, disconnected]
+ *                     version:
+ *                       type: string
+ *                     collections:
+ *                       type: number
+ *                 memory:
+ *                   type: object
+ *                   properties:
+ *                     rss:
+ *                       type: number
+ *                     heapTotal:
+ *                       type: number
+ *                     heapUsed:
+ *                       type: number
+ *                     external:
+ *                       type: number
  *                 services:
  *                   type: object
  *                   description: Health status of all dependent services
  *                   properties:
- *                     'deployment-worker':
+ *                     deployment-worker:
  *                       $ref: '#/components/schemas/ServiceHealth'
- *                     'ai-review':
+ *                     ai-review:
  *                       $ref: '#/components/schemas/ServiceHealth'
- *     components:
- *       schemas:
- *         ServiceHealth:
- *           type: object
- *           properties:
- *             status:
- *               type: string
- *               enum: [ok, error]
- *             responseTime:
- *               type: number
- *               description: Response time in milliseconds
- *             timestamp:
- *               type: string
- *               format: date-time
- *             details:
- *               type: object
- *               description: Additional service-specific health details
- *                   properties:
- *                     status:
- *                       type: string
- *                       example: 'connected'
- *                     version:
- *                       type: string
- *                       example: '5.0.0'
  *       503:
  *         description: Service Unavailable
  *         content:
@@ -75,6 +115,26 @@ const { getAggregatedHealth } = require('../services/healthService');
  *                 error:
  *                   type: string
  *                   example: 'Database connection failed'
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                 services:
+ *                   type: object
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: 'error'
+ *                 error:
+ *                   type: string
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
  */
 router.get('/', async (req, res) => {
     try {
@@ -148,4 +208,8 @@ async function getCollectionCount() {
     }
 }
 
+/**
+ * @namespace healthDashboardRoutes
+ * @description Express router for health monitoring and system status endpoints
+ */
 module.exports = router;

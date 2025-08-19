@@ -145,6 +145,24 @@ const { addResponseHelpers } = require('./utils/apiResponse');
 // Add API response helpers middleware
 app.use(addResponseHelpers);
 
+// Swagger setup
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./config/swagger');
+
+// Swagger documentation endpoint
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
+    explorer: true,
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Shard Platform API Documentation',
+    swaggerOptions: {
+        persistAuthorization: true,
+        displayRequestDuration: true,
+        filter: true,
+        showExtensions: true,
+        showCommonExtensions: true
+    }
+}));
+
 const authRoutes = require('./routes/auth');
 const deployRoutes = require('./routes/deploy');
 const projectRoutes = require('./routes/project');

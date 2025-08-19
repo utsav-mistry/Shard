@@ -1,8 +1,31 @@
+/**
+ * @fileoverview Environment Variables Service
+ * @description Manages encrypted environment variables for projects with CRUD operations
+ * @module services/envService
+ * @requires ../models/EnvVar
+ * @requires ../models/Project
+ * @requires ../utils/encryptor
+ * @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const EnvVar = require("../models/EnvVar");
 const Project = require("../models/Project");
 const { encrypt, decrypt } = require("../utils/encryptor");
 
-// Create env variable
+/**
+ * Creates a new environment variable for a project
+ * @async
+ * @function addEnvVar
+ * @param {string} projectId - MongoDB ObjectId of the project
+ * @param {string} key - Environment variable key (must be unique per project)
+ * @param {string} value - Environment variable value (will be encrypted)
+ * @param {boolean} [secret=false] - Whether the variable contains sensitive data
+ * @returns {Promise<Object>} Created environment variable document
+ * @throws {Error} If variable with same key already exists for project
+ * @example
+ * const envVar = await addEnvVar('507f1f77bcf86cd799439011', 'API_KEY', 'secret123', true);
+ */
 const addEnvVar = async (projectId, key, value, secret = false) => {
     const session = await EnvVar.startSession();
     session.startTransaction();
@@ -46,7 +69,16 @@ const addEnvVar = async (projectId, key, value, secret = false) => {
     }
 };
 
-// Get all env variables for a project
+/**
+ * Retrieves all environment variables for a project with decrypted values
+ * @async
+ * @function getEnvVars
+ * @param {string} projectId - MongoDB ObjectId of the project
+ * @returns {Promise<Array<Object>>} Array of environment variables with decrypted values
+ * @example
+ * const envVars = await getEnvVars('507f1f77bcf86cd799439011');
+ * console.log(envVars); // [{ _id, key, value, secret, createdAt }]
+ */
 const getEnvVars = async (projectId) => {
     // Get all environment variables for the project
     const envVars = await EnvVar.find({ projectId }).sort({ createdAt: -1 });
@@ -60,7 +92,18 @@ const getEnvVars = async (projectId) => {
     }));
 };
 
-// Get env var by ID (for ownership verification and editing)
+/**
+ * Retrieves a specific environment variable by ID with decrypted value
+ * @async
+ * @function getEnvVarById
+ * @param {string} envVarId - MongoDB ObjectId of the environment variable
+ * @returns {Promise<Object|null>} Environment variable with decrypted value or null if not found
+ * @example
+ * const envVar = await getEnvVarById('507f1f77bcf86cd799439012');
+ * if (envVar) {
+ *   console.log(envVar.value); // Decrypted value
+ * }
+ */
 const getEnvVarById = async (envVarId) => {
     const envVar = await EnvVar.findById(envVarId);
     if (!envVar) return null;
@@ -73,7 +116,19 @@ const getEnvVarById = async (envVarId) => {
     };
 };
 
-// Update a specific env var
+/**
+ * Updates an existing environment variable
+ * @async
+ * @function updateEnvVar
+ * @param {string} envVarId - MongoDB ObjectId of the environment variable
+ * @param {string} key - New environment variable key
+ * @param {string} value - New environment variable value (will be encrypted)
+ * @param {boolean} [secret=false] - Whether the variable contains sensitive data
+ * @returns {Promise<Object>} Updated environment variable document
+ * @throws {Error} If variable not found or key conflicts with existing variable
+ * @example
+ * const updated = await updateEnvVar('507f1f77bcf86cd799439012', 'NEW_API_KEY', 'newvalue', true);
+ */
 const updateEnvVar = async (envVarId, key, value, secret = false) => {
     const session = await EnvVar.startSession();
     session.startTransaction();
@@ -123,7 +178,17 @@ const updateEnvVar = async (envVarId, key, value, secret = false) => {
     }
 };
 
-// Delete a specific env var
+/**
+ * Deletes an environment variable and removes it from the project
+ * @async
+ * @function deleteEnvVar
+ * @param {string} envVarId - MongoDB ObjectId of the environment variable
+ * @returns {Promise<Object>} Deleted environment variable document
+ * @throws {Error} If environment variable not found
+ * @example
+ * const deleted = await deleteEnvVar('507f1f77bcf86cd799439012');
+ * console.log('Deleted:', deleted.key);
+ */
 const deleteEnvVar = async (envVarId) => {
     const session = await EnvVar.startSession();
     session.startTransaction();
@@ -152,6 +217,10 @@ const deleteEnvVar = async (envVarId) => {
     }
 };
 
+/**
+ * @namespace envService
+ * @description Service for managing encrypted environment variables with database transactions
+ */
 module.exports = {
     addEnvVar,
     getEnvVars,

@@ -1,3 +1,11 @@
+/**
+ * @fileoverview GitHub Controller
+ * @description Handles GitHub OAuth integration, repository operations, and deployment setup
+ *              for seamless GitHub-based project imports in the Shard platform
+ * @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const jwt = require('jsonwebtoken');
 const githubService = require('../services/githubService');
 const logger = require('../utils/logger');
@@ -6,7 +14,21 @@ const Project = require('../models/Project');
 const { cache } = require('../services/cacheService');
 
 /**
- * Get GitHub connection status for the current user
+ * Get GitHub integration connection status for authenticated user
+ * @function getStatus
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated user object
+ * @param {string} [req.user.githubIntegrationToken] - GitHub integration access token
+ * @param {string} [req.user.githubIntegrationUsername] - GitHub username
+ * @param {string} [req.user.githubIntegrationId] - GitHub user ID
+ * @param {Object} res - Express response object
+ * @returns {void} Returns connection status and user GitHub information
+ * @description Checks if user has connected GitHub integration for repository access
+ * @note Uses separate integration fields (not auth fields) for GitHub operations
+ * @note Returns avatar URL from user profile or generates GitHub avatar URL
+ * @example
+ * // GET /api/github/status
+ * // Returns: { success: true, data: { connected: true, username: "user", ... } }
  */
 exports.getStatus = (req, res) => {
     try {
@@ -40,7 +62,22 @@ exports.getStatus = (req, res) => {
 };
 
 /**
- * Initiate GitHub OAuth flow
+ * Initiate GitHub OAuth flow for repository integration
+ * @function initiateAuth
+ * @param {Object} req - Express request object
+ * @param {string} [req.query.state] - Base64 encoded state with user token
+ * @param {Object} [req.user] - Authenticated user object (fallback)
+ * @param {Object} res - Express response object
+ * @returns {void} Redirects to GitHub OAuth authorization URL
+ * @throws {AuthError} When no authentication provided or token invalid
+ * @description Starts GitHub OAuth flow with CSRF protection using state parameter
+ * @note Supports both token-in-state and session-based authentication
+ * @note Caches user ID with state for callback verification (10 min TTL)
+ * @note Requests 'repo' and 'user:email' scopes for full repository access
+ * @security Uses UUID state parameter to prevent CSRF attacks
+ * @example
+ * // GET /api/github/auth?state=base64EncodedToken
+ * // Redirects to: https://github.com/login/oauth/authorize?client_id=...
  */
 exports.initiateAuth = (req, res) => {
     try {
@@ -85,7 +122,24 @@ exports.initiateAuth = (req, res) => {
 };
 
 /**
- * Handle GitHub OAuth callback
+ * Handle GitHub OAuth callback and store integration credentials
+ * @async
+ * @function handleCallback
+ * @param {Object} req - Express request object
+ * @param {string} req.query.code - OAuth authorization code from GitHub
+ * @param {string} req.query.state - State parameter for CSRF protection
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>} Redirects to frontend with success/error status
+ * @throws {AuthError} When state is invalid or expired
+ * @throws {OAuthError} When token exchange fails
+ * @description Completes GitHub OAuth flow and stores integration token
+ * @note Exchanges authorization code for access token
+ * @note Updates user record with GitHub integration credentials
+ * @note Cleans up state cache after successful verification
+ * @security Validates state parameter to prevent CSRF attacks
+ * @example
+ * // GET /api/github/callback?code=abc123&state=xyz789
+ * // Redirects to: /app/integrations/github?success=true
  */
 exports.handleCallback = async (req, res) => {
     const { code, state } = req.query;
@@ -130,7 +184,25 @@ exports.handleCallback = async (req, res) => {
 };
 
 /**
- * List user's GitHub repositories
+ * List authenticated user's GitHub repositories with pagination
+ * @async
+ * @function listRepos
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated user object
+ * @param {string} req.user.githubAccessToken - GitHub access token for API calls
+ * @param {number} [req.query.page=1] - Page number for pagination
+ * @param {number} [req.query.perPage=30] - Number of repositories per page
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>} Returns paginated list of user repositories
+ * @throws {BadRequestError} When GitHub integration is not connected
+ * @throws {ServerError} When GitHub API request fails
+ * @description Fetches user's GitHub repositories for project import selection
+ * @note Requires GitHub integration to be connected first
+ * @note Supports pagination for handling large repository lists
+ * @note Used by project creation flow for repository selection
+ * @example
+ * // GET /api/github/repos?page=1&perPage=10
+ * // Returns: { success: true, data: [repo1, repo2, ...] }
  */
 exports.listRepos = async (req, res) => {
     try {
@@ -160,7 +232,23 @@ exports.listRepos = async (req, res) => {
 };
 
 /**
- * Get repository details
+ * Get detailed information for a specific GitHub repository
+ * @async
+ * @function getRepo
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated user object
+ * @param {string} req.user.githubAccessToken - GitHub access token
+ * @param {string} req.params.owner - Repository owner username
+ * @param {string} req.params.repo - Repository name
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>} Returns detailed repository information
+ * @throws {ServerError} When GitHub API request fails or repository not found
+ * @description Fetches comprehensive repository data including metadata and settings
+ * @note Used for project import validation and configuration
+ * @note Returns repository details like description, language, default branch
+ * @example
+ * // GET /api/github/repos/owner/repo-name
+ * // Returns: { success: true, data: { name, description, language, ... } }
  */
 exports.getRepo = async (req, res) => {
     try {
@@ -179,7 +267,26 @@ exports.getRepo = async (req, res) => {
 };
 
 /**
- * List repository contents
+ * List contents of a GitHub repository directory
+ * @async
+ * @function listRepoContents
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated user object
+ * @param {string} req.user.githubAccessToken - GitHub access token
+ * @param {string} req.params.owner - Repository owner username
+ * @param {string} req.params.repo - Repository name
+ * @param {string} [req.query.path=''] - Directory path to list (empty for root)
+ * @param {string} [req.query.ref='main'] - Git reference (branch/tag/commit)
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>} Returns array of files and directories
+ * @throws {ServerError} When GitHub API request fails
+ * @description Lists repository contents for file browser and project structure analysis
+ * @note Supports browsing any directory within the repository
+ * @note Can specify branch, tag, or commit hash via ref parameter
+ * @note Used for project setup and configuration file detection
+ * @example
+ * // GET /api/github/repos/owner/repo/contents?path=src&ref=develop
+ * // Returns: { success: true, data: [file1, dir1, ...] }
  */
 exports.listRepoContents = async (req, res) => {
     try {
@@ -206,7 +313,24 @@ exports.listRepoContents = async (req, res) => {
 };
 
 /**
- * List repository branches
+ * List all branches for a GitHub repository
+ * @async
+ * @function listBranches
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated user object
+ * @param {string} req.user.githubAccessToken - GitHub access token
+ * @param {string} req.params.owner - Repository owner username
+ * @param {string} req.params.repo - Repository name
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>} Returns array of repository branches
+ * @throws {ServerError} When GitHub API request fails
+ * @description Fetches all branches for branch selection during project setup
+ * @note Used in project creation flow for branch selection
+ * @note Returns branch names and commit information
+ * @note Helps users choose deployment branch for their project
+ * @example
+ * // GET /api/github/repos/owner/repo/branches
+ * // Returns: { success: true, data: [{ name: "main", commit: {...} }, ...] }
  */
 exports.listBranches = async (req, res) => {
     try {
@@ -225,7 +349,34 @@ exports.listBranches = async (req, res) => {
 };
 
 /**
- * Set up a new deployment from GitHub repository
+ * Set up new project deployment from GitHub repository
+ * @async
+ * @function setupDeployment
+ * @param {Object} req - Express request object
+ * @param {Object} req.user - Authenticated user object
+ * @param {string} req.user.githubAccessToken - GitHub access token
+ * @param {string} req.user.id - User ID for project ownership
+ * @param {string} req.body.owner - Repository owner username
+ * @param {string} req.body.repo - Repository name
+ * @param {string} [req.body.branch='main'] - Deployment branch
+ * @param {string} [req.body.rootDir=''] - Root directory for deployment
+ * @param {string} req.body.projectName - Project name for Shard platform
+ * @param {string} req.body.framework - Framework type (mern, flask, django)
+ * @param {Array} [req.body.envVars=[]] - Environment variables array
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>} Returns project and deployment information
+ * @throws {ValidationError} When required fields are missing
+ * @throws {NotFoundError} When repository is not accessible
+ * @throws {ServerError} When project creation or deployment fails
+ * @description Creates new project from GitHub repository and triggers initial deployment
+ * @note Validates repository access before project creation
+ * @note Generates unique subdomain with random words
+ * @note Sets up environment variables with encryption for secrets
+ * @note Triggers initial deployment automatically after project creation
+ * @example
+ * // POST /api/github/setup-deployment
+ * // Body: { owner: "user", repo: "app", projectName: "My App", framework: "mern" }
+ * // Returns: { success: true, data: { projectId, deploymentId, subdomain, ... } }
  */
 exports.setupDeployment = async (req, res) => {
     try {
@@ -329,7 +480,15 @@ exports.setupDeployment = async (req, res) => {
     }
 };
 
-// Helper functions
+/**
+ * Get default build command for specified framework
+ * @private
+ * @function getDefaultBuildCommand
+ * @param {string} framework - Framework name (react, nextjs, node, etc.)
+ * @returns {string} Default build command for the framework
+ * @description Returns appropriate build command based on project framework
+ * @note Supports popular frameworks with fallback to npm install
+ */
 function getDefaultBuildCommand(framework) {
     const commands = {
         'react': 'npm install && npm run build',
@@ -345,6 +504,15 @@ function getDefaultBuildCommand(framework) {
     return commands[framework.toLowerCase()] || 'npm install';
 }
 
+/**
+ * Get default start command for specified framework
+ * @private
+ * @function getDefaultStartCommand
+ * @param {string} framework - Framework name (react, nextjs, node, etc.)
+ * @returns {string} Default start command for the framework
+ * @description Returns appropriate start command based on project framework
+ * @note Supports popular frameworks with fallback to npm start
+ */
 function getDefaultStartCommand(framework) {
     const commands = {
         'react': 'npm start',
@@ -360,11 +528,32 @@ function getDefaultStartCommand(framework) {
     return commands[framework.toLowerCase()] || 'npm start';
 }
 
+/**
+ * Encrypt sensitive environment variable values
+ * @private
+ * @function encryptValue
+ * @param {string} value - Plain text value to encrypt
+ * @returns {string} Base64 encoded encrypted value
+ * @description Basic encryption for environment variable values
+ * @note This is a simple base64 encoding - use proper encryption in production
+ * @todo Implement proper encryption using crypto module
+ */
 function encryptValue(value) {
     // In a real app, use proper encryption
     return Buffer.from(value).toString('base64');
 }
 
+/**
+ * Generate custom domain URL for deployed project
+ * @private
+ * @function getCustomDomain
+ * @param {string} framework - Project framework (mern, django, flask)
+ * @param {string} subdomain - Project subdomain
+ * @returns {string} Custom domain URL for the deployed project
+ * @description Generates appropriate URL based on framework port configuration
+ * @note Uses predefined port mapping for different tech stacks
+ * @note Returns localhost URLs for development environment
+ */
 function getCustomDomain(framework, subdomain) {
     const PORT_CONFIG = {
         mern: { backend: 12000 },
@@ -385,7 +574,24 @@ function getCustomDomain(framework, subdomain) {
 }
 
 /**
- * Handle GitHub integration callback (separate from auth login)
+ * Handle GitHub integration callback for repository access (separate from auth)
+ * @async
+ * @function handleIntegrationCallback
+ * @param {Object} req - Express request object
+ * @param {string} req.query.code - OAuth authorization code from GitHub
+ * @param {string} req.query.state - State parameter for integration flow
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>} Redirects to integrations page with status
+ * @throws {AuthError} When integration state is invalid or expired
+ * @throws {OAuthError} When token exchange fails
+ * @description Handles OAuth callback specifically for GitHub integration (not login)
+ * @note Separate from authentication callback - used only for repository access
+ * @note Updates user with integration-specific GitHub credentials
+ * @note Uses different cache key pattern for integration state
+ * @security Validates integration state to prevent CSRF attacks
+ * @example
+ * // GET /api/github/integration/callback?code=abc123&state=integration-xyz
+ * // Redirects to: /app/integrations?github_connected=true
  */
 exports.handleIntegrationCallback = async (req, res) => {
     const { code, state } = req.query;

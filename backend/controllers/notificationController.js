@@ -1,10 +1,40 @@
+/**
+ * @fileoverview Notification Controller
+ * @description Handles email notifications for deployment events, user registration,
+ *              and system communications for the Shard platform
+ * @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const emailService = require('../services/emailService');
 const User = require('../models/User');
 const Project = require('../models/Project');
 const Deployment = require('../models/Deployment');
 const logger = require('../utils/logger');
 
-// Send deployment notification
+/**
+ * Send deployment status notification email to user
+ * @async
+ * @function sendDeploymentNotification
+ * @param {Object} req - Express request object
+ * @param {string} req.body.email - Recipient email address
+ * @param {string} req.body.projectId - MongoDB ObjectId of the project
+ * @param {string} req.body.deploymentId - MongoDB ObjectId of the deployment
+ * @param {string} req.body.status - Deployment status (started, running, success, completed, failed, error)
+ * @param {string} [req.body.errorMessage] - Error message for failed deployments
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>} Returns success/failure response
+ * @throws {ValidationError} When required fields are missing
+ * @throws {NotFoundError} When project or deployment not found
+ * @throws {ServerError} When email sending fails
+ * @description Sends appropriate email based on deployment status
+ * @note Supports multiple status types with different email templates
+ * @note Includes project URL for successful deployments
+ * @note Called by deployment worker to notify users of status changes
+ * @example
+ * // POST /api/notifications/deployment
+ * // Body: { email: "user@example.com", projectId: "...", deploymentId: "...", status: "success" }
+ */
 const sendDeploymentNotification = async (req, res) => {
     try {
         const { email, projectId, deploymentId, status, errorMessage } = req.body;
@@ -98,7 +128,25 @@ const sendDeploymentNotification = async (req, res) => {
     }
 };
 
-// Send welcome email
+/**
+ * Send welcome email to newly registered user
+ * @async
+ * @function sendWelcomeEmail
+ * @param {Object} req - Express request object
+ * @param {string} req.body.email - New user's email address
+ * @param {string} req.body.userName - New user's display name
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>} Returns success/failure response
+ * @throws {ValidationError} When email or userName is missing
+ * @throws {ServerError} When email sending fails
+ * @description Sends welcome email with platform introduction and getting started guide
+ * @note Called during user registration process
+ * @note Includes platform features and next steps for new users
+ * @note Non-blocking operation - registration succeeds even if email fails
+ * @example
+ * // POST /api/notifications/welcome
+ * // Body: { email: "newuser@example.com", userName: "John Doe" }
+ */
 const sendWelcomeEmail = async (req, res) => {
     try {
         const { email, userName } = req.body;
@@ -136,7 +184,22 @@ const sendWelcomeEmail = async (req, res) => {
     }
 };
 
-// Test email configuration
+/**
+ * Test email service configuration and connectivity
+ * @async
+ * @function testEmailConfig
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>} Returns email service status
+ * @throws {ServerError} When email service configuration is invalid
+ * @description Verifies SMTP connection and email service configuration
+ * @note Used for system health checks and troubleshooting
+ * @note Tests actual SMTP connection without sending emails
+ * @note Helps administrators verify email setup during deployment
+ * @example
+ * // GET /api/notifications/test-config
+ * // Returns: { success: true, message: "Email service is configured correctly" }
+ */
 const testEmailConfig = async (req, res) => {
     try {
         const isConnected = await emailService.verifyConnection();
@@ -163,6 +226,11 @@ const testEmailConfig = async (req, res) => {
     }
 };
 
+/**
+ * Export notification controller functions
+ * @module notificationController
+ * @description Provides email notification services for deployment events and user communications
+ */
 module.exports = {
     sendDeploymentNotification,
     sendWelcomeEmail,

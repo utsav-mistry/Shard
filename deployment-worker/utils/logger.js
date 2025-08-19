@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Winston Logger Configuration
+ * @description Centralized logging system for deployment worker with file rotation and step tracking
+ * @author Utsav Mistry
+ * @version 0.2.3
+ */
+
 const winston = require('winston');
 const { format } = require('winston');
 require('winston-daily-rotate-file');
@@ -6,14 +13,22 @@ const axios = require('axios');
 
 const { combine, timestamp, printf, colorize, errors } = format;
 
-// Define log format
+/**
+ * Custom log format for structured logging
+ * @type {winston.Logform.Format}
+ * @description Formats log entries with timestamp, level, message, metadata, and stack traces
+ */
 const logFormat = printf(({ level, message, timestamp, stack, ...meta }) => {
   const metaString = Object.keys(meta).length ? `\n${JSON.stringify(meta, null, 2)}` : '';
   const stackTrace = stack ? `\n${stack}` : '';
   return `${timestamp} [${level.toUpperCase()}] ${message}${metaString}${stackTrace}`;
 });
 
-// Create transports
+/**
+ * Winston transport configurations
+ * @type {Array<winston.transport>}
+ * @description Console and daily rotating file transports for comprehensive logging
+ */
 const transports = [
   // Console transport with colors
   new winston.transports.Console({
@@ -42,7 +57,11 @@ const transports = [
   })
 ];
 
-// Create logger instance
+/**
+ * Main Winston logger instance
+ * @type {winston.Logger}
+ * @description Configured logger with console and file outputs, error handling, and metadata
+ */
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: combine(
@@ -55,7 +74,10 @@ const logger = winston.createLogger({
   exitOnError: false, // Don't exit on handled exceptions
 });
 
-// Handle uncaught exceptions
+/**
+ * Production error handling setup
+ * @description Handles uncaught exceptions and unhandled promise rejections in production
+ */
 if (process.env.NODE_ENV === 'production') {
   process.on('uncaughtException', (error) => {
     logger.error('Uncaught Exception:', error);
@@ -67,14 +89,34 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-// Add stream for morgan
+/**
+ * Morgan HTTP request logging stream
+ * @type {Object}
+ * @property {Function} write - Stream write function for Morgan middleware
+ * @description Integrates Morgan HTTP request logging with Winston logger
+ */
 logger.stream = {
   write: (message) => {
     logger.info(message.trim());
   },
 };
 
-// Helper function to log deployment steps
+/**
+ * Log deployment step with backend synchronization
+ * @async
+ * @function logStep
+ * @param {string} projectId - Unique project identifier
+ * @param {string} deploymentId - Unique deployment identifier
+ * @param {string} step - Deployment step name (setup, config, deploy, complete, error)
+ * @param {string} message - Step description or status message
+ * @param {string} [token=null] - JWT authentication token for backend updates
+ * @returns {Promise<void>} Resolves when logging is complete
+ * @description Logs deployment step locally and optionally syncs with backend database.
+ * Provides structured logging for deployment pipeline tracking and debugging.
+ * @example
+ * await logStep('proj123', 'deploy456', 'setup', 'Cloning repository', token);
+ * await logStep('proj123', 'deploy456', 'error', 'Build failed', token);
+ */
 const logStep = async (projectId, deploymentId, step, message, token = null) => {
   const logMessage = `[Project: ${projectId}] [Deployment: ${deploymentId}] ${step.toUpperCase()}: ${message}`;
   logger.info(logMessage);
@@ -99,5 +141,10 @@ const logStep = async (projectId, deploymentId, step, message, token = null) => 
   }
 };
 
+/**
+ * Export logger and utilities
+ * @module logger
+ * @description Winston logger with deployment step tracking and HTTP request logging support
+ */
 module.exports = logger;
 module.exports.logStep = logStep;

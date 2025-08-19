@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Streaming Deployment Job Processor
+ * @description Real-time deployment processor with Socket.io streaming support
+ * @author Utsav Mistry
+ * @version 0.2.3
+ */
+
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
@@ -15,7 +22,16 @@ import { checkDockerStatus } from '../utils/dockerChecker.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Function to update deployment with AI review results
+/**
+ * Update deployment record with AI review results
+ * @async
+ * @function updateDeploymentWithAIResults
+ * @param {string} deploymentId - Unique deployment identifier
+ * @param {Object} aiResults - AI analysis results from analyzeRepo
+ * @param {string} token - JWT authentication token
+ * @returns {Promise<void>} Resolves when update is complete or fails silently
+ * @description Stores AI review results in backend for frontend display. Non-critical operation.
+ */
 const updateDeploymentWithAIResults = async (deploymentId, aiResults, token) => {
     try {
         const response = await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deploy/ai-results`, {
@@ -37,7 +53,20 @@ const updateDeploymentWithAIResults = async (deploymentId, aiResults, token) => 
     }
 };
 
-// Function to update deployment with commit information
+/**
+ * Update deployment record with Git commit information
+ * @async
+ * @function updateDeploymentWithCommitInfo
+ * @param {string} deploymentId - Unique deployment identifier
+ * @param {Object} commitInfo - Git commit details
+ * @param {string} commitInfo.commitHash - Git commit hash
+ * @param {string} commitInfo.commitMessage - Commit message
+ * @param {string} commitInfo.author - Commit author
+ * @param {string} commitInfo.commitDate - Commit timestamp
+ * @param {string} token - JWT authentication token
+ * @returns {Promise<void>} Resolves when update is complete or fails silently
+ * @description Updates deployment record with Git metadata for tracking. Non-critical operation.
+ */
 const updateDeploymentWithCommitInfo = async (deploymentId, commitInfo, token) => {
     try {
         const response = await axios.patch(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deploy/${deploymentId}`, {
@@ -74,8 +103,31 @@ if (!fs.existsSync(CONFIG.LOG_DIR)) {
 
 /**
  * Process deployment job with real-time streaming logs
- * @param {Object} job - Deployment job data
- * @param {Object} socket - Socket.io connection for real-time streaming
+ * @async
+ * @function processJobWithStreaming
+ * @param {Object} job - Deployment job object
+ * @param {string} job.projectId - Unique project identifier
+ * @param {string} job.repoUrl - Git repository URL to deploy
+ * @param {string} job.stack - Technology stack ('mern', 'django', 'flask')
+ * @param {string} job.subdomain - Subdomain for deployment
+ * @param {string} job.userEmail - User email for notifications
+ * @param {string} job.deploymentId - Unique deployment identifier
+ * @param {string} job.token - JWT authentication token
+ * @param {Object} [socket=null] - Socket.io connection for real-time streaming
+ * @returns {Promise<void>} Resolves when deployment is complete
+ * @throws {Error} Deployment pipeline errors
+ * @description Complete streaming deployment pipeline with real-time log updates.
+ * Provides live feedback through Socket.io for enhanced user experience.
+ * @example
+ * await processJobWithStreaming({
+ *   projectId: 'proj123',
+ *   repoUrl: 'https://github.com/user/repo.git',
+ *   stack: 'mern',
+ *   subdomain: 'myapp',
+ *   userEmail: 'user@example.com',
+ *   deploymentId: 'deploy456',
+ *   token: 'jwt_token'
+ * }, socketConnection);
  */
 const processJobWithStreaming = async (job, socket = null) => {
     const {
@@ -252,6 +304,21 @@ const processJobWithStreaming = async (job, socket = null) => {
     }
 };
 
+/**
+ * Handle deployment errors with streaming support
+ * @async
+ * @function handleDeploymentError
+ * @param {Error} error - The error that occurred during deployment
+ * @param {string} projectId - Unique project identifier
+ * @param {string} deploymentId - Unique deployment identifier
+ * @param {string} userEmail - User email for notifications
+ * @param {string} logPath - Path to deployment log file
+ * @param {string} token - JWT authentication token
+ * @param {StreamingLogger} [streamLogger=null] - Optional streaming logger instance
+ * @returns {Promise<void>} Resolves when error handling is complete
+ * @description Logs error details and updates status with streaming support.
+ * Provides real-time error feedback through Socket.io when available.
+ */
 const handleDeploymentError = async (error, projectId, deploymentId, userEmail, logPath, token, streamLogger = null) => {
     const errorDetails = {
         message: error.message,
@@ -285,4 +352,9 @@ const handleDeploymentError = async (error, projectId, deploymentId, userEmail, 
     }
 };
 
+/**
+ * Export streaming job processing functions
+ * @module streamingJobProcessor
+ * @description Real-time deployment pipeline processor with Socket.io streaming
+ */
 export { processJobWithStreaming };

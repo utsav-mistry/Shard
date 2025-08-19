@@ -1,16 +1,34 @@
+/**
+ * @fileoverview Deployment Status Update Service
+ * @description Service for updating deployment status in backend database
+ * @author Utsav Mistry
+ * @version 0.2.3
+ */
+
 const axios = require('axios');
 
 /**
- * Updates the deployment status in the backend database
- * @param {string} deploymentId - The ID of the deployment to update
- * @param {string} status - The new status (pending, running, success, failed)
- * @param {string} token - Authentication token for API access
+ * Update deployment status in backend database
+ * @async
+ * @function updateDeploymentStatus
+ * @param {string} deploymentId - Unique deployment identifier
+ * @param {string} status - New deployment status ('pending', 'reviewing', 'configuring', 'building', 'success', 'failed')
+ * @param {string} token - JWT authentication token for API access
+ * @param {Object} [additionalData] - Optional additional data to include in update
+ * @returns {Promise<void>} Resolves when status is updated or fails silently
+ * @throws {Error} Network or authentication errors (caught internally)
+ * @description Updates deployment status in backend database via REST API.
+ * Fails silently if backend is unavailable to prevent deployment interruption.
+ * @example
+ * await updateDeploymentStatus('deploy123', 'building', 'jwt_token');
+ * await updateDeploymentStatus('deploy123', 'failed', 'jwt_token', { reason: 'Build error' });
  */
-const updateDeploymentStatus = async (deploymentId, status, token) => {
+const updateDeploymentStatus = async (deploymentId, status, token, additionalData = {}) => {
     try {
         await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deploy/update-status`, {
             deploymentId,
-            status
+            status,
+            ...additionalData
         }, {
             headers: {
                 Authorization: `Bearer ${token}`
@@ -23,4 +41,9 @@ const updateDeploymentStatus = async (deploymentId, status, token) => {
     }
 };
 
+/**
+ * Export status update functions
+ * @module statusUpdater
+ * @description Service for updating deployment status in backend database
+ */
 module.exports = { updateDeploymentStatus };

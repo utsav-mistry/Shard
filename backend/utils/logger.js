@@ -1,3 +1,15 @@
+/**
+ * @fileoverview Logging Utility
+ * @description Configures and exports a Winston logger with file rotation,
+ * console output, and structured logging capabilities
+ * @module utils/logger
+ * @requires winston
+ * @requires path
+ * @requires fs
+ * @author Utsav Mistry
+ * @version 1.0.0
+ */
+
 const winston = require('winston');
 const { createLogger, format, transports } = winston;
 const { combine, timestamp, printf, colorize, json } = format;
@@ -10,7 +22,10 @@ if (!fs.existsSync(logDir)) {
     fs.mkdirSync(logDir, { recursive: true });
 }
 
-// Custom log levels
+/**
+ * Custom log levels for the application
+ * @enum {number}
+ */
 const levels = {
     error: 0,
     warn: 1,
@@ -20,7 +35,10 @@ const levels = {
     silly: 5
 };
 
-// Custom colors for different log levels
+/**
+ * Custom colors for log levels
+ * @enum {string}
+ */
 const colors = {
     error: 'red',
     warn: 'yellow',
@@ -33,15 +51,25 @@ const colors = {
 // Add colors to winston
 winston.addColors(colors);
 
-// Custom format for console output
+/**
+ * Custom format for console output
+ * @private
+ * @function consoleFormat
+ * @param {Object} info - Log information object
+ * @param {string} info.level - Log level
+ * @param {string} info.message - Log message
+ * @param {string} info.timestamp - Timestamp
+ * @param {string} [info.stack] - Error stack trace if available
+ * @returns {string} Formatted log message
+ */
 const consoleFormat = printf(({ level, message, timestamp, stack, ...meta }) => {
     let msg = `${timestamp} [${level}]: ${message}`;
-    
+
     // Add stack trace if available
     if (stack) {
         msg += `\n${stack}`;
     }
-    
+
     // Add additional metadata if present
     const metaKeys = Object.keys(meta);
     if (metaKeys.length > 0) {
@@ -59,11 +87,27 @@ const consoleFormat = printf(({ level, message, timestamp, stack, ...meta }) => 
             msg += ' [Error parsing metadata]';
         }
     }
-    
+
     return msg;
 });
 
-// Create logger instance
+/**
+ * Main logger instance configured with multiple transports
+ * @type {winston.Logger}
+ * @example
+ * // Basic usage
+ * logger.info('Server started on port 3000');
+ * 
+ * // With metadata
+ * logger.warn('High memory usage', { memory: process.memoryUsage() });
+ * 
+ * // Error logging with stack trace
+ * try {
+ *   // Some code that might throw
+ * } catch (error) {
+ *   logger.error('Operation failed', error);
+ * }
+ */
 const logger = createLogger({
     levels,
     level: process.env.LOG_LEVEL || 'INFO',
@@ -83,7 +127,7 @@ const logger = createLogger({
             ),
             level: process.env.CONSOLE_LOG_LEVEL || 'DEBUG'
         }),
-        
+
         // Error logs file
         new transports.File({
             filename: path.join(logDir, 'error.log'),
@@ -92,7 +136,7 @@ const logger = createLogger({
             maxFiles: 5,
             tailable: true
         }),
-        
+
         // Combined logs file
         new transports.File({
             filename: path.join(logDir, 'combined.log'),
@@ -100,7 +144,7 @@ const logger = createLogger({
             maxFiles: 5,
             tailable: true
         }),
-        
+
         // HTTP request logs
         new transports.File({
             filename: path.join(logDir, 'http.log'),

@@ -1,13 +1,35 @@
+/**
+ * @fileoverview Streaming Logger for Real-time Command Output
+ * @description Enhanced streaming logger that handles real-time command execution output
+ * with Socket.io integration for web-based streaming. Supports git, docker, and other CLI commands.
+ * @module utils/streamingLogger
+ * @requires child_process
+ * @requires fs
+ * @requires readline
+ * @requires ./logger
+ * @author Utsav Mistry
+ * @version 0.2.3
+ */
+
 const { spawn } = require('child_process');
 const { createReadStream } = require('fs');
 const { createInterface } = require('readline');
-const logger = require('../utils/logger');
+const logger = require('./logger');
 
 /**
- * Enhanced streaming logger for real-time line-by-line command output
- * Handles git clone, docker build, and docker run with Socket.io integration
+ * @class StreamingLogger
+ * @classdesc Handles streaming command output with real-time processing and Socket.io integration
+ * @param {Object} socket - Socket.io socket instance for real-time updates
+ * @param {string} projectId - Unique identifier for the project
+ * @param {string} deploymentId - Unique identifier for the deployment
+ * @example
+ * const logger = new StreamingLogger(socket, 'project-123', 'deploy-456');
+ * await logger.executeCommand('docker', ['build', '-t', 'my-image', '.'], {
+ *   cwd: '/path/to/project',
+ *   step: 'build',
+ *   timeout: 300000
+ * });
  */
-
 class StreamingLogger {
     constructor(socket, projectId, deploymentId) {
         this.socket = socket;
@@ -16,7 +38,24 @@ class StreamingLogger {
     }
 
     /**
-     * Execute command with real-time line-by-line streaming
+     * Executes a command with real-time line-by-line output streaming
+     * @async
+     * @method executeCommand
+     * @param {string} command - The command to execute (e.g., 'docker', 'git', 'npm')
+     * @param {string[]} args - Array of command-line arguments
+     * @param {Object} [options] - Command execution options
+     * @param {string} [options.cwd] - Current working directory
+     * @param {Object} [options.env] - Environment variables
+     * @param {string} [options.step='unknown'] - Deployment step name for logging
+     * @param {number} [options.timeout] - Execution timeout in milliseconds
+     * @returns {Promise<Object>} Result object with exit code and error status
+     * @throws {Error} If command execution fails or times out
+     * @example
+     * await logger.executeCommand('docker', ['build', '-t', 'my-image', '.'], {
+     *   cwd: '/app',
+     *   step: 'build',
+     *   timeout: 300000
+     * });
      */
     async executeCommand(command, args, options = {}) {
         return new Promise((resolve, reject) => {
@@ -97,7 +136,14 @@ class StreamingLogger {
     }
 
     /**
-     * Process buffer content line by line
+     * Processes buffer content line by line
+     * @private
+     * @method processBuffer
+     * @param {string} buffer - The buffer containing command output
+     * @param {string} source - Output source ('stdout' or 'stderr')
+     * @param {string} step - Current deployment step
+     * @param {Function} callback - Callback to process each complete line
+     * @returns {void}
      */
     processBuffer(buffer, source, step, callback) {
         const lines = buffer.split('\n');
@@ -111,12 +157,27 @@ class StreamingLogger {
     }
 
     /**
-     * Emit log to frontend via Socket.io
+     * Emits log message to frontend via Socket.io
+     * @private
+     * @method emitLog
+     * @param {string} message - The log message to emit
+     * @param {string} [level='info'] - Log level ('info', 'error', 'success')
+     * @param {string} [step='unknown'] - Deployment step name
+     * @returns {void}
      */
     emitLog(message, level = 'info', step = 'unknown') {
         const timestamp = new Date().toISOString();
         
-        // Convert technical messages to user-friendly ones
+        /**
+         * Formats a technical message into user-friendly format
+         * @private
+         * @method formatUserFriendlyMessage
+         * @param {string} rawMessage - The raw message from command output
+         * @param {string} currentStep - Current deployment step
+         * @returns {string} Formatted user-friendly message
+         * @description Converts technical command output into human-readable messages
+         * that are more understandable for end users.
+         */
         const formatUserFriendlyMessage = (rawMessage, currentStep) => {
             const msg = rawMessage.trim();
             
@@ -257,7 +318,14 @@ class StreamingLogger {
     }
 
     /**
-     * Clone repository with real-time streaming
+     * Clones a repository with real-time streaming
+     * @async
+     * @method cloneRepository
+     * @param {string} repoUrl - URL of the repository to clone
+     * @param {string} targetPath - Path to clone the repository into
+     * @param {string} [branch='main'] - Branch to clone
+     * @returns {Promise<Object>} Result object with success status and cloned path
+     * @throws {Error} If cloning fails
      */
     async cloneRepository(repoUrl, targetPath, branch = 'main') {
         this.emitLog(`Starting repository clone: ${repoUrl}`, 'info', 'clone');
@@ -279,7 +347,14 @@ class StreamingLogger {
     }
 
     /**
-     * Build Docker image with real-time streaming
+     * Builds a Docker image with streaming output
+     * @async
+     * @method buildDockerImage
+     * @param {string} contextPath - Path to the build context
+     * @param {string} dockerfilePath - Path to the Dockerfile
+     * @param {string} imageName - Name for the built image
+     * @returns {Promise<void>}
+     * @throws {Error} If the build fails
      */
     async buildDockerImage(contextPath, dockerfilePath, imageName) {
         // Check if project image already exists
@@ -317,7 +392,11 @@ class StreamingLogger {
     }
 
     /**
-     * Check if Docker image exists
+     * Checks if a Docker image exists
+     * @async
+     * @method checkImageExists
+     * @param {string} imageName - Name of the image to check
+     * @returns {Promise<boolean>} True if the image exists
      */
     async checkImageExists(imageName) {
         try {
@@ -332,7 +411,11 @@ class StreamingLogger {
     }
 
     /**
-     * Clean up old images with the same name (skip for project-based images)
+     * Cleans up old images with the same name (skip for project-based images)
+     * @async
+     * @method cleanupOldImages
+     * @param {string} imageName - Name of the image to clean up
+     * @returns {Promise<void>}
      */
     async cleanupOldImages(imageName) {
         // Don't clean up project images - reuse them for efficiency
@@ -354,7 +437,10 @@ class StreamingLogger {
     }
 
     /**
-     * Clean up dangling images
+     * Cleans up dangling images
+     * @async
+     * @method cleanupDanglingImages
+     * @returns {Promise<void>}
      */
     async cleanupDanglingImages() {
         try {
@@ -370,7 +456,17 @@ class StreamingLogger {
     }
 
     /**
-     * Run Docker container with real-time streaming
+     * Runs a Docker container with streaming output
+     * @async
+     * @method runDockerContainer
+     * @param {string} imageName - Name of the Docker image to run
+     * @param {string} containerName - Name to assign to the container
+     * @param {Object} options - Container options
+     * @param {Array<Object>} options.ports - Port mappings
+     * @param {string} [options.envFile] - Path to .env file
+     * @param {string} [options.memory] - Memory limit (e.g., '512m')
+     * @returns {Promise<void>}
+     * @throws {Error} If container fails to start
      */
     async runDockerContainer(imageName, containerName, options = {}) {
         this.emitLog(`Starting Docker container: ${containerName}`, 'info', 'deploy');
@@ -420,7 +516,11 @@ class StreamingLogger {
     }
 
     /**
-     * Verify container is running
+     * Verifies a container is running
+     * @async
+     * @method verifyContainerRunning
+     * @param {string} containerName - Name of the container to verify
+     * @returns {Promise<boolean>} True if the container is running
      */
     async verifyContainerRunning(containerName) {
         try {
@@ -436,7 +536,10 @@ class StreamingLogger {
     }
 
     /**
-     * Stream runtime logs from running container
+     * Streams runtime logs from a running container
+     * @method streamRuntimeLogs
+     * @param {string} containerName - Name of the container to stream logs from
+     * @returns {void}
      */
     streamRuntimeLogs(containerName) {
         this.emitLog(`Starting runtime log streaming for ${containerName}`, 'info', 'runtime');
@@ -448,6 +551,11 @@ class StreamingLogger {
         let stdoutBuffer = '';
         let stderrBuffer = '';
 
+        /**
+         * Handles stdout line by line
+         * @event child.stdout#data
+         * @param {Buffer} data - The data from stdout
+         */
         child.stdout.on('data', (data) => {
             stdoutBuffer += data.toString();
             this.processBuffer(stdoutBuffer, 'stdout', 'runtime', (line, remaining) => {
@@ -456,6 +564,11 @@ class StreamingLogger {
             });
         });
 
+        /**
+         * Handles stderr line by line
+         * @event child.stderr#data
+         * @param {Buffer} data - The data from stderr
+         */
         child.stderr.on('data', (data) => {
             stderrBuffer += data.toString();
             this.processBuffer(stderrBuffer, 'stderr', 'runtime', (line, remaining) => {
@@ -464,10 +577,20 @@ class StreamingLogger {
             });
         });
 
+        /**
+         * Handles process completion
+         * @event child#close
+         * @param {number} code - The exit code of the process
+         */
         child.on('close', (code) => {
             this.emitLog(`Runtime log streaming ended for ${containerName} (code: ${code})`, 'info', 'runtime');
         });
 
+        /**
+         * Handles process errors
+         * @event child#error
+         * @param {Error} error - The error that occurred
+         */
         child.on('error', (error) => {
             this.emitLog(`Runtime log streaming error: ${error.message}`, 'error', 'runtime');
         });
@@ -477,7 +600,9 @@ class StreamingLogger {
     }
 
     /**
-     * Stop runtime log streaming
+     * Stops runtime log streaming
+     * @method stopRuntimeLogs
+     * @returns {void}
      */
     stopRuntimeLogs() {
         if (this.runtimeLogProcess) {
@@ -488,7 +613,12 @@ class StreamingLogger {
     }
 
     /**
-     * Clean up existing container
+     * Cleans up a Docker container by name
+     * @async
+     * @method cleanupContainer
+     * @param {string} containerName - Name of the container to clean up
+     * @returns {Promise<boolean>} True if cleanup was successful
+     * @description Stops and removes a Docker container if it exists
      */
     async cleanupContainer(containerName) {
         this.emitLog(`Cleaning up existing container: ${containerName}`, 'info', 'cleanup');
@@ -511,4 +641,8 @@ class StreamingLogger {
     }
 }
 
+/**
+ * @module streamingLogger
+ * @description Exports the StreamingLogger class for real-time command output streaming
+ */
 module.exports = StreamingLogger;
