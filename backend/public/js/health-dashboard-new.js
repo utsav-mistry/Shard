@@ -3,9 +3,12 @@ const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 const host = window.location.host;
 const socketUrl = `${protocol}//${host}/socket.io`;
 
-// Track connection state
+// Track connection state and refresh interval
 let socket = null;
 let isConnected = false;
+let refreshInterval = null;
+let lastUpdatedInterval = null;
+const REFRESH_INTERVAL = 10000; // 10 seconds
 
 // Connection status element
 const connectionStatus = document.getElementById('connectionStatus');
@@ -66,11 +69,24 @@ function setupSocketHandlers() {
         isConnected = true;
         updateConnectionUI(true);
 
-        // Request initial data on connect
+                // Request initial data on connect
         console.log('Requesting initial health data...');
-        socket.emit('request-health', { timestamp: Date.now() }, (response) => {
-            console.log('Initial health data response:', response);
-        });
+        const requestHealthUpdate = () => {
+            if (isConnected) {
+                socket.emit('request-health', { timestamp: Date.now() }, (response) => {
+                    console.log('Health data response:', response);
+                });
+            }
+        };
+        
+        // Initial request
+        requestHealthUpdate();
+        
+        // Set up auto-refresh
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+        }
+        refreshInterval = setInterval(requestHealthUpdate, REFRESH_INTERVAL);
     });
 
     socket.on('connect_error', (error) => {
@@ -91,6 +107,12 @@ function setupSocketHandlers() {
         }
         isConnected = false;
         updateConnectionUI(false);
+        
+        // Clear refresh interval on disconnect
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+            refreshInterval = null;
+        }
     });
 
     socket.on('reconnecting', (attempt) => {
@@ -117,33 +139,30 @@ function setupSocketHandlers() {
     socket.on('health-data', (data) => {
         console.log('Received health data:', data);
 
-        // Debug: Log the data structure for charts
-        console.log('Chart data structure:', {
-            cpu: data.cpu,
-            memory: data.memory,
-            network: data.network
-        });
-
         // Update last updated timestamp
-        const now = new Date();
-        const lastUpdatedEl = document.getElementById('lastUpdated');
-        if (lastUpdatedEl) {
-            lastUpdatedEl.innerHTML = `Last updated: <span>${now.toLocaleTimeString()}</span>`;
+        const updateLastUpdatedTime = () => {
+            const now = new Date();
+            const lastUpdatedEl = document.getElementById('lastUpdated');
+            if (lastUpdatedEl) {
+                lastUpdatedEl.innerHTML = `Last updated: <span>${now.toLocaleTimeString()}</span>`;
+            }
+        };
+        
+        // Initial update and set up interval to keep trying if element not found yet
+        updateLastUpdatedTime();
+        
+        // If element not found, try again after a short delay
+        if (!document.getElementById('lastUpdated') && !this.lastUpdatedInterval) {
+            this.lastUpdatedInterval = setInterval(() => {
+                if (document.getElementById('lastUpdated')) {
+                    updateLastUpdatedTime();
+                    clearInterval(this.lastUpdatedInterval);
+                    this.lastUpdatedInterval = null;
+                }
+            }, 100);
         }
 
-        // Update charts if the function is available
-        if (typeof window.updateCharts === 'function') {
-            console.log('Calling updateCharts with data:', {
-                cpuUsage: data.cpu?.usage,
-                load1m: data.cpu?.load1m,
-                memoryUsed: data.memory?.used,
-                heapUsed: data.memory?.heapUsed,
-                external: data.memory?.external,
-                networkIn: data.network?.rx,
-                networkOut: data.network?.tx
-            });
-            window.updateCharts(data);
-        }
+       
 
         // Update overall status
         updateStatusIndicator('serverStatus', data.status === 'ok' ? 'ok' : 'error');
@@ -545,6 +564,18 @@ function ensureDockerStatusSection() {
     // Insert after server info section
     serverInfoSection.parentNode.insertBefore(dockerSection, serverInfoSection.nextSibling);
 }
+
+// Clean up on page unload
+window.addEventListener('beforeunload', () => {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+    if (lastUpdatedInterval) {
+        clearInterval(lastUpdatedInterval);    }
+    if (socket) {
+        socket.disconnect();
+    }
+});
 
 // Initialize connection toggle button
 document.addEventListener('DOMContentLoaded', () => {

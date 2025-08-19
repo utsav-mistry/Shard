@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import { fileURLToPath } from 'url';
-import { updateDeploymentStatus } from './statusUpdater.js';
+import statusUpdater from './statusUpdater.js';
 import logger, { logStep } from '../utils/logger.js';
 import { sendDeploymentNotification } from './emailNotifier.js';
 import { injectEnv, fetchEnvVars } from './envInjector.js';
@@ -108,7 +108,7 @@ const processJobWithStreaming = async (job, socket = null) => {
         }
 
         // Update deployment status to running
-        await updateDeploymentStatus(deploymentId, "running", token);
+        await statusUpdater.updateDeploymentStatus(deploymentId, "running", token);
 
         if (streamLogger) {
             streamLogger.emitLog("Docker daemon is running", 'success', 'init');
@@ -142,6 +142,8 @@ const processJobWithStreaming = async (job, socket = null) => {
             streamLogger.emitLog("Starting AI code review", 'info', 'ai-review');
         }
 
+        // Mark status: reviewing
+        await statusUpdater.updateDeploymentStatus(deploymentId, "reviewing", token);
         const aiReviewResult = await analyzeRepo(localPath, deploymentId);
         const { verdict, issues, issueCount, severity_breakdown, linter_count, ai_count } = aiReviewResult;
 
@@ -158,7 +160,7 @@ const processJobWithStreaming = async (job, socket = null) => {
 
             fs.appendFileSync(logPath, `AI_REVIEW_DENIED: ${JSON.stringify(aiReviewResult, null, 2)}\n`);
             await sendDeploymentNotification(userEmail, projectId, "ai_denied");
-            await updateDeploymentStatus(deploymentId, "failed", token);
+            await statusUpdater.updateDeploymentStatus(deploymentId, "failed", token);
             return;
         }
 
@@ -172,7 +174,7 @@ const processJobWithStreaming = async (job, socket = null) => {
 
             fs.appendFileSync(logPath, `AI_REVIEW_MANUAL: ${JSON.stringify(aiReviewResult, null, 2)}\n`);
             await sendDeploymentNotification(userEmail, projectId, "ai_manual_review");
-            await updateDeploymentStatus(deploymentId, "pending_review", token);
+            await statusUpdater.updateDeploymentStatus(deploymentId, "pending_review", token);
             return;
         }
 
@@ -190,6 +192,8 @@ const processJobWithStreaming = async (job, socket = null) => {
             streamLogger.emitLog("Configuring environment variables", 'info', 'config');
         }
 
+        // Mark status: configuring
+        await statusUpdater.updateDeploymentStatus(deploymentId, "configuring", token);
         const envVars = await fetchEnvVars(projectId, token, logPath);
         const envResult = await injectEnv(localPath, envVars, projectId);
 
@@ -216,6 +220,8 @@ const processJobWithStreaming = async (job, socket = null) => {
             streamLogger.emitLog("Starting Docker deployment", 'info', 'deploy');
         }
 
+        // Mark status: building
+        await statusUpdater.updateDeploymentStatus(deploymentId, "building", token);
         await cleanupExistingContainer(containerName);
         const dockerResult = await deployContainer(localPath, stack, subdomain, projectId, deploymentId, socket);
 
@@ -232,7 +238,7 @@ const processJobWithStreaming = async (job, socket = null) => {
             streamLogger.emitLog(`SUCCESS: ${successMessage}`, 'success', 'complete');
         }
 
-        await updateDeploymentStatus(deploymentId, "success", token);
+        await statusUpdater.updateDeploymentStatus(deploymentId, "success", token);
         await sendDeploymentNotification(userEmail, projectId, "success");
 
     } catch (error) {
@@ -268,7 +274,7 @@ const handleDeploymentError = async (error, projectId, deploymentId, userEmail, 
             timestamp: new Date().toISOString()
         });
 
-        await updateDeploymentStatus(deploymentId, "failed", token);
+        await statusUpdater.updateDeploymentStatus(deploymentId, "failed", token);
         await sendDeploymentNotification(userEmail, projectId, "failed");
     } catch (err) {
         console.error("Error handling failed:", err.message);

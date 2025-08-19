@@ -148,15 +148,28 @@ const DeploymentProgress = () => {
     if (socketRef.current) return;
     const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
     socketRef.current = io(backendUrl, {
+      path: '/socket.io',
       transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
       timeout: 10000,
-      forceNew: true
+      forceNew: true,
+      withCredentials: true,
+      extraHeaders: {
+        'Access-Control-Allow-Origin': window.location.origin
+      }
     });
 
+    // Connection established
     socketRef.current.on('connect', () => {
       console.log('Connected to Socket.IO server for deployment logs');
+      // Subscribe to deployment logs for this specific deployment
+      socketRef.current.emit('subscribe-deployment-logs', id);
     });
 
+    // Handle incoming deployment logs
     socketRef.current.on('deployment-log', (logEntry) => {
       try {
         if (logEntry.deploymentId === id) {
@@ -165,6 +178,7 @@ const DeploymentProgress = () => {
             {
               ...logEntry,
               id: `${logEntry.timestamp || logEntry.ts || Date.now()}-${Math.random()}`,
+              timestamp: logEntry.timestamp || new Date().toISOString()
             }
           ]);
           setTimeout(() => logsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 120);
@@ -174,12 +188,40 @@ const DeploymentProgress = () => {
       }
     });
 
-    socketRef.current.on('disconnect', () => {
-      console.log('Disconnected from Socket.IO server');
+    // Handle disconnection
+    socketRef.current.on('disconnect', (reason) => {
+      console.log('Disconnected from Socket.IO server. Reason:', reason);
+      if (reason === 'io server disconnect') {
+        // The server intentionally disconnected the socket, don't try to reconnect
+        console.log('Server intentionally disconnected the socket');
+      }
     });
 
-    socketRef.current.on('connect_error', (err) => {
-      console.error('Socket.IO connect_error:', err);
+    // Handle connection errors
+    socketRef.current.on('connect_error', (error) => {
+      console.error('Socket.IO connection error:', error.message);
+      console.error('Error details:', error);
+      
+      // Attempt to reconnect after a delay
+      setTimeout(() => {
+        if (socketRef.current && socketRef.current.disconnected) {
+          console.log('Attempting to reconnect to Socket.IO server...');
+          socketRef.current.connect();
+        }
+      }, 2000);
+    });
+
+    // Handle reconnection events
+    socketRef.current.on('reconnect_attempt', (attempt) => {
+      console.log(`Reconnection attempt ${attempt}`);
+    });
+
+    socketRef.current.on('reconnect', (attempt) => {
+      console.log(`Successfully reconnected after ${attempt} attempts`);
+    });
+
+    socketRef.current.on('reconnect_failed', () => {
+      console.error('Failed to reconnect to Socket.IO server');
     });
   };
 
@@ -229,16 +271,25 @@ const DeploymentProgress = () => {
 
   useEffect(() => {
     fetchData();
-    if (isLiveLogsEnabled) initializeSocket();
+    if (isLiveLogsEnabled) {
+      initializeSocket();
+    }
 
     const interval = setInterval(() => {
-      if (deployment && ['pending', 'reviewing', 'configuring', 'building', 'deploying'].includes(deployment.status)) {
+      if (deployment && ['queued', 'pending', 'running', 'reviewing', 'configuring', 'building', 'deploying'].includes(deployment.status)) {
         fetchData();
       }
     }, 5000);
 
+    // Cleanup function
     return () => {
       clearInterval(interval);
+      
+      // Unsubscribe from deployment logs before cleanup
+      if (socketRef.current && socketRef.current.connected) {
+        socketRef.current.emit('unsubscribe-deployment-logs', id);
+      }
+      
       cleanupSocket();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -258,7 +309,10 @@ const DeploymentProgress = () => {
   const getCurrentStep = () => {
     if (!deployment) return 0;
     switch (deployment.status) {
-      case 'pending': return 0;
+      case 'queued':
+      case 'pending':
+      case 'running':
+        return 0;
       case 'reviewing': return 1;
       case 'configuring': return 2;
       case 'building':

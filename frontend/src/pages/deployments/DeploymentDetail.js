@@ -318,6 +318,13 @@ const DeploymentDetail = () => {
                     }
                   } catch (err) {
                     console.error('Error redeploying:', err);
+                    // If a deployment is already in progress, redirect to its progress page
+                    const status = err?.response?.status;
+                    const existingId = err?.response?.data?.data?.existingDeploymentId;
+                    if (status === 409 && existingId) {
+                      navigate(`/app/deployments/${existingId}/progress`);
+                      return;
+                    }
                     setError(`Failed to redeploy: ${err.message}`);
                   }
                 }}
@@ -336,12 +343,19 @@ const DeploymentDetail = () => {
                       const response = await api.post(`/api/deployments/retry/${deployment._id}`, {});
                       if (response.data && response.data.success) {
                         const newDeploymentId = response.data.data._id;
-                        navigate(`/app/deployments/${newDeploymentId}`);
+                        navigate(`/app/deployments/${newDeploymentId}/progress`);
                       } else {
                         throw new Error(response.data?.message || 'Failed to get new deployment details');
                       }
                     } catch (err) {
                       console.error('Error retrying deployment:', err);
+                      // If a deployment is already in progress, redirect to its progress page
+                      const status = err?.response?.status;
+                      const existingId = err?.response?.data?.data?.existingDeploymentId;
+                      if (status === 409 && existingId) {
+                        navigate(`/app/deployments/${existingId}/progress`);
+                        return;
+                      }
                       setError('Failed to retry deployment');
                     }
                   }}
@@ -359,7 +373,7 @@ const DeploymentDetail = () => {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            
+
             {/* AI Code Review Results */}
             {deployment.aiReviewResults && (
               <div className="border-2 border-black-900 dark:border-white-100">
@@ -367,7 +381,7 @@ const DeploymentDetail = () => {
                   <h3 className="text-lg font-bold text-black-900 dark:text-white-100">Code Review Results</h3>
                 </div>
                 <div className="p-6">
-                  <CodeIssuesList 
+                  <CodeIssuesList
                     issues={deployment.aiReviewResults.issues || []}
                     title="AI Analysis & Linter Results"
                   />

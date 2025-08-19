@@ -22,7 +22,7 @@ const DeploymentSchema = new mongoose.Schema(
         status: {
             type: String,
             enum: {
-                values: ['pending', 'reviewing', 'configuring', 'building', 'deploying', 'running', 'success', 'failed', 'cancelled'],
+                values: ['pending', 'reviewing', 'configuring', 'building', 'deploying', 'running', 'success', 'failed', 'cancelled','queued'],
                 message: 'Status {VALUE} is not supported'
             },
             default: 'pending',
