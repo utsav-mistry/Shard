@@ -1,7 +1,33 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../../utils/axiosConfig';
 import { ArrowLeft, Server, Clock, CheckCircle, XCircle, AlertTriangle, Key, Trash2, Settings, Activity, Globe } from 'lucide-react';
+
+/* --- IntersectionObserver hook for reveal animations --- */
+function useReveal(options = { root: null, rootMargin: "0px", threshold: 0.15 }) {
+  const refs = useRef([]);
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.dataset.reveal = "true";
+        }
+      });
+    }, options);
+
+    refs.current.forEach((r) => r && observer.observe(r));
+    return () => {
+      refs.current.forEach((r) => r && observer.unobserve(r));
+      observer.disconnect();
+    };
+  }, [options]);
+
+  const setRef = (el, idx) => {
+    refs.current[idx] = el;
+  };
+
+  return { setRef };
+}
 
 const ProjectDetail = () => {
   const { id } = useParams();
@@ -232,19 +258,21 @@ const ProjectDetail = () => {
     }
   };
 
+  const { setRef } = useReveal();
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-none h-12 w-12 border-t-2 border-b-2 border-black-900 dark:border-white-100"></div>
+      <div className="flex items-center justify-center min-h-[400px] bg-white dark:bg-black">
+        <div className="animate-spin border-2 border-black dark:border-white border-t-transparent h-8 w-8" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 p-4 rounded-none border-2 border-red-600 dark:border-red-400 flex items-center">
-        <AlertTriangle className="h-5 w-5 mr-2" />
-        <span className="font-medium">{error}</span>
+      <div className="p-6 border-2 border-red-500 bg-red-50 dark:bg-red-900/20 shadow-[-6px_6px_0_rgba(239,68,68,0.8)] dark:shadow-[-6px_6px_0_rgba(239,68,68,0.3)] flex items-center space-x-4">
+        <AlertTriangle className="w-6 h-6 text-red-500 flex-shrink-0" />
+        <span className="text-red-700 dark:text-red-300 font-medium">{error}</span>
       </div>
     );
   }
@@ -263,520 +291,482 @@ const ProjectDetail = () => {
 
   if (!project) {
     return (
-      <div className="bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 p-4 rounded-none border-2 border-yellow-600 dark:border-yellow-400 flex items-center">
-        <AlertTriangle className="h-5 w-5 mr-2" />
-        <span className="font-medium">Project not found</span>
+      <div className="p-6 border-2 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 shadow-[-6px_6px_0_rgba(245,158,11,0.8)] dark:shadow-[-6px_6px_0_rgba(245,158,11,0.3)] flex items-center space-x-4">
+        <AlertTriangle className="w-6 h-6 text-yellow-500 flex-shrink-0" />
+        <span className="text-yellow-700 dark:text-yellow-300 font-medium">Project not found</span>
       </div>
     );
   }
 
   return (
-    <div className="p-8">
-      {/* Vercel-style header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center">
-          <button
-            onClick={() => navigate('/app/projects')}
-            className="group relative mr-4 p-2 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 rounded-none border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:scale-110 overflow-hidden"
-          >
-            <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-            <ArrowLeft className="h-4 w-4 relative z-10" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-black-900 dark:text-white-100">{project.name}</h1>
-            <p className="text-black-600 dark:text-white-400 text-sm mt-1 font-medium">
-              {project.subdomain ? `${project.subdomain}.localhost` : project.repoUrl}
-            </p>
+    <div className="relative min-h-screen bg-white dark:bg-black text-black dark:text-white">
+      {/* Grid background */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(to right, rgba(0,0,0,0.16) 0 1px, transparent 1px 32px),
+            repeating-linear-gradient(to bottom, rgba(0,0,0,0.16) 0 1px, transparent 1px 32px)
+          `,
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0 hidden dark:block"
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(to right, rgba(255,255,255,0.16) 0 1px, transparent 1px 32px),
+            repeating-linear-gradient(to bottom, rgba(255,255,255,0.16) 0 1px, transparent 1px 32px)
+          `,
+        }}
+      />
+
+      {/* Reveal animation styles */}
+      <style>{`
+        [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity 700ms ease, transform 700ms ease; }
+        [data-reveal="true"] { opacity: 1; transform: translateY(0); }
+      `}</style>
+
+      <main className="relative z-10 px-10 py-16">
+        {/* Header */}
+        <div ref={(el) => setRef(el, 0)} data-reveal className="flex items-center justify-between mb-12">
+          <div className="flex items-center">
+            <button
+              onClick={() => navigate('/app/projects')}
+              className="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 border-2 border-black dark:border-white mr-6 transition-colors duration-200"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <div>
+              <h1 className="text-5xl font-extrabold mb-2">{project.name}</h1>
+              <p className="text-lg text-gray-700 dark:text-gray-300">
+                {project.subdomain ? `${project.subdomain}.localhost` : project.repoUrl}
+              </p>
+            </div>
+          </div>
+          <div className="flex space-x-4">
+            <button
+              onClick={showDeploymentStatus}
+              className="inline-flex items-center justify-center px-6 py-3 font-medium 
+            bg-white-100 dark:bg-black-800 
+           text-white dark:text-black hover:text-black dark:hover:text-white border-2 border-black dark:border-white 
+             transition-colors duration-300 cursor-pointer rounded-none shadow-sm mt-6 sm:mt-0"
+            >
+              {deployments.length > 0 ? 'View Deployment' : 'Deploy'}
+            </button>
+            <button
+              onClick={() => setDeleteModalOpen(true)}
+              className="inline-flex items-center justify-center px-6 py-3 font-medium
+             bg-white-100 dark:bg-black-800
+             text-red-600 dark:text-red-600
+             border-2 border-red-600 dark:border-red-600
+             transition-colors duration-300 cursor-pointer rounded-none shadow-sm mt-6 sm:mt-0"
+            >
+              <Trash2 className="mr-2 h-5 w-5" />
+              Delete
+            </button>
+
+
+
           </div>
         </div>
-        <div className="flex space-x-3">
-          <button
-            onClick={showDeploymentStatus}
-            className="group relative inline-flex items-center px-4 py-2 text-sm font-bold bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 hover:text-black-900 dark:hover:text-white-100 rounded-none border-2 border-black-900 dark:border-white-100 hover:scale-105 transition-all duration-200 shadow-sm overflow-hidden"
-          >
-            <span className="absolute inset-0 w-full h-full bg-white-100 dark:bg-black-900 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-            <span className="relative z-10 transition-colors duration-200">
-              {deployments.length > 0 ? 'View Deployment' : 'Deploy'}
-            </span>
-          </button>
-          <button
-            onClick={() => setDeleteModalOpen(true)}
-            className="group relative inline-flex items-center px-4 py-2 text-sm font-bold border-2 border-red-600 text-red-600 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900 rounded-none transition-all duration-200 overflow-hidden hover:scale-105"
-          >
-            <span className="absolute inset-0 w-full h-full bg-red-600 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-            <span className="relative z-10 flex items-center">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </span>
-          </button>
-        </div>
-      </div>
 
-      {/* Consistent tabs design */}
-      <div className="border-black-900 dark:border-white-100 mb-6">
-        <nav className="-mb-px flex space-x-2">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`group relative px-4 py-2 text-sm font-bold transition-all duration-200 overflow-hidden flex items-center rounded-none border-2 ${activeTab === 'overview'
-              ? 'border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900'
-              : 'border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900'
-              }`}
-          >
-            {activeTab !== 'overview' && (
-              <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-            )}
-            <span className="relative z-10">Overview</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('deployments')}
-            className={`group relative px-4 py-2 text-sm font-bold transition-all duration-200 overflow-hidden flex items-center rounded-none border-2 ${activeTab === 'deployments'
-              ? 'border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900'
-              : 'border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900'
-              }`}
-          >
-            {activeTab !== 'deployments' && (
-              <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-            )}
-            <span className="relative z-10 flex items-center">
-              <Activity className="w-4 h-4 mr-1" />
+        {/* Tabs */}
+        <div ref={(el) => setRef(el, 1)} data-reveal className="mb-8">
+          <nav className="flex space-x-4">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`px-6 py-3 text-base font-bold border-2 transition-colors duration-300 ${activeTab === 'overview'
+                ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black'
+                : 'border-black dark:border-white  text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black'
+                }`}
+            >
+              Overview
+            </button>
+            <button
+              onClick={() => setActiveTab('deployments')}
+              className={`px-6 py-3 text-base font-bold border-2 transition-colors duration-300 flex items-center ${activeTab === 'deployments'
+                ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black'
+                : 'border-black dark:border-white  text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black'
+                }`}
+            >
+              <Activity className="w-5 h-5 mr-2" />
               Deployments
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab('environment')}
-            className={`group relative px-4 py-2 text-sm font-bold transition-all duration-200 overflow-hidden flex items-center rounded-none border-2 ${activeTab === 'environment'
-              ? 'border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900'
-              : 'border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900'
-              }`}
-          >
-            {activeTab !== 'settings' && (
-              <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-            )}
-            <span className="relative z-10 flex items-center">
-                            <Key className="w-4 h-4 mr-1" />
+            </button>
+            <button
+              onClick={() => setActiveTab('environment')}
+              className={`px-6 py-3 text-base font-bold border-2 transition-colors duration-300 flex items-center ${activeTab === 'environment'
+                ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black'
+                : 'border-black dark:border-white text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black'
+                }`}
+            >
+              <Key className="w-5 h-5 mr-2" />
               Environment
-            </span>
-          </button>
-        </nav>
-      </div>
+            </button>
+          </nav>
+        </div>
 
-      {/* Tab Content */}
-      {activeTab === 'overview' && (
-        <div className="space-y-8">
-          {/* Project Info Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none p-6 shadow-sm">
-              <div className="flex items-center">
-                <Globe className="h-5 w-5 text-black-900 dark:text-white-100 mr-2" />
-                <h3 className="text-sm font-bold text-black-900 dark:text-white-100">Production</h3>
-              </div>
-              <div className="mt-2">
+        {/* Tab Content */}
+        {activeTab === 'overview' && (
+          <div className="space-y-8">
+            {/* Project Info Cards */}
+            <div ref={(el) => setRef(el, 2)} data-reveal className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="p-6 bg-gray-50 dark:bg-gray-900 border-2 border-black dark:border-white shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)]">
+                <div className="flex items-center mb-3">
+                  <Globe className="h-5 w-5 text-black dark:text-white mr-2" />
+                  <h3 className="text-sm font-bold text-black dark:text-white">Production</h3>
+                </div>
                 <a
                   href={project.subdomain ? `http://${project.subdomain}.localhost:${project.framework === 'mern' ? '12000' : project.framework === 'django' ? '13000' : '14000'}` : `http://localhost:3000`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all font-medium"
+                  className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
                 >
                   {project.subdomain ? `${project.subdomain}.localhost` : 'localhost:3000'}
                 </a>
               </div>
-            </div>
 
-            <div className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none p-6 shadow-sm">
-              <div className="flex items-center">
-                <Server className="h-5 w-5 text-black-900 dark:text-white-100 mr-2" />
-                <h3 className="text-sm font-bold text-black-900 dark:text-white-100">Framework</h3>
+              <div className="p-6 bg-gray-50 dark:bg-gray-900 border-2 border-black dark:border-white shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)]">
+                <div className="flex items-center mb-3">
+                  <Server className="h-5 w-5 text-black dark:text-white mr-2" />
+                  <h3 className="text-sm font-bold text-black dark:text-white">Framework</h3>
+                </div>
+                <span className="text-sm text-gray-700 dark:text-gray-300 font-medium capitalize">{project.framework}</span>
               </div>
-              <div className="mt-2">
-                <span className="text-sm text-black-600 dark:text-white-400 font-medium capitalize">{project.framework}</span>
-              </div>
-            </div>
 
-            <div className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none p-6 shadow-sm">
-              <div className="flex items-center">
-                <Activity className="h-5 w-5 text-black-900 dark:text-white-100 mr-2" />
-                <h3 className="text-sm font-bold text-black-900 dark:text-white-100">Last Deploy</h3>
-              </div>
-              <div className="mt-2">
-                <span className="text-sm text-black-600 dark:text-white-400 font-medium">
+              <div className="p-6 bg-gray-50 dark:bg-gray-900 border-2 border-black dark:border-white shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)]">
+                <div className="flex items-center mb-3">
+                  <Activity className="h-5 w-5 text-black dark:text-white mr-2" />
+                  <h3 className="text-sm font-bold text-black dark:text-white">Last Deploy</h3>
+                </div>
+                <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
                   {deployments.length > 0 ? new Date(deployments[0].createdAt).toLocaleDateString() : 'Never'}
                 </span>
               </div>
-            </div>
 
-            <div className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none p-6 shadow-sm">
-              <div className="flex items-center">
-                <Globe className="h-5 w-5 text-black-900 dark:text-white-100 mr-2" />
-                <h3 className="text-sm font-bold text-black-900 dark:text-white-100">Status</h3>
-              </div>
-              <div className="mt-2">
-                <span className="inline-flex items-center px-2 py-1 rounded-none text-xs font-bold border-2 bg-green-50 text-green-700 border-green-400 shadow-green-100/50 dark:bg-green-900/30 dark:text-green-300 dark:border-green-600">
+              <div className="p-6 bg-gray-50 dark:bg-gray-900 border-2 border-black dark:border-white shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)]">
+                <div className="flex items-center mb-3">
+                  <Globe className="h-5 w-5 text-black dark:text-white mr-2" />
+                  <h3 className="text-sm font-bold text-black dark:text-white">Status</h3>
+                </div>
+                <span className="inline-flex items-center px-3 py-1 text-xs font-bold border-2 bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-200 dark:border-green-700">
                   {project.status?.toUpperCase() || 'ACTIVE'}
                 </span>
               </div>
             </div>
-          </div>
 
-          {/* Additional Project Details */}
-          <div className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none p-6 shadow-lg shadow-black/10 dark:shadow-white/10">
-            <h3 className="text-lg font-bold text-black-900 dark:text-white-100 mb-4">Project Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Owner</h4>
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-black-900 dark:bg-white-100 rounded-none flex items-center justify-center">
-                    <span className="text-white-100 dark:text-black-900 text-sm font-bold">
-                      {project.ownerId?.name?.charAt(0) || 'U'}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-black-900 dark:text-white-100">{project.ownerId?.name || 'Unknown'}</p>
-                    <p className="text-xs text-black-600 dark:text-white-400">{project.ownerId?.email || 'No email'}</p>
+            {/* Additional Project Details */}
+            <div ref={(el) => setRef(el, 3)} data-reveal className="p-8 bg-gray-50 dark:bg-gray-900 border-2 border-black dark:border-white shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)]">
+              <h3 className="text-xl font-bold text-black dark:text-white mb-6">Project Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Owner</h4>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-black-900 dark:bg-white-100 rounded-none flex items-center justify-center">
+                      <span className="text-white-100 dark:text-black-900 text-sm font-bold">
+                        {project.ownerId?.name?.charAt(0) || 'U'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-black-900 dark:text-white-100">{project.ownerId?.name || 'Unknown'}</p>
+                      <p className="text-xs text-black-600 dark:text-white-400">{project.ownerId?.email || 'No email'}</p>
+                    </div>
                   </div>
                 </div>
+                <div>
+                  <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Repository</h4>
+                  <a
+                    href={project.repoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all font-medium break-all"
+                  >
+                    {project.repoUrl}
+                  </a>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Subdomain</h4>
+                  <p className="text-sm text-black-600 dark:text-white-400 font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 border border-gray-300 dark:border-gray-700 rounded-none">
+                    {project.subdomain || 'Not assigned'}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Created</h4>
+                  <p className="text-sm text-black-600 dark:text-white-400 font-medium">
+                    {new Date(project.createdAt).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Repository</h4>
-                <a
-                  href={project.repoUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all font-medium break-all"
-                >
-                  {project.repoUrl}
-                </a>
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Subdomain</h4>
-                <p className="text-sm text-black-600 dark:text-white-400 font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 border border-gray-300 dark:border-gray-700 rounded-none">
-                  {project.subdomain || 'Not assigned'}
-                </p>
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Created</h4>
-                <p className="text-sm text-black-600 dark:text-white-400 font-medium">
-                  {new Date(project.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
+            </div>
+
+            {/* Build Settings */}
+            <div className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none p-6 shadow-lg shadow-black/10 dark:shadow-white/10">
+              <h3 className="text-lg font-bold text-black-900 dark:text-white-100 mb-4">Build Configuration</h3>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Build Command</h4>
+                  <p className="text-sm text-black-600 dark:text-white-400 font-mono bg-gray-100 dark:bg-gray-800 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-none">
+                    {project.settings?.buildCommand || 'npm install && npm run build'}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Start Command</h4>
+                  <p className="text-sm text-black-600 dark:text-white-400 font-mono bg-gray-100 dark:bg-gray-800 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-none">
+                    {project.settings?.startCommand || 'npm start'}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Deploy Mode</h4>
+                  <span className="inline-flex items-center px-2 py-1 rounded-none text-xs font-bold border-2 bg-blue-50 text-blue-700 border-blue-400 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600">
+                    MANUAL ONLY
+                  </span>
+                </div>
               </div>
             </div>
           </div>
+        )}
 
-          {/* Build Settings */}
-          <div className="bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none p-6 shadow-lg shadow-black/10 dark:shadow-white/10">
-            <h3 className="text-lg font-bold text-black-900 dark:text-white-100 mb-4">Build Configuration</h3>
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Build Command</h4>
-                <p className="text-sm text-black-600 dark:text-white-400 font-mono bg-gray-100 dark:bg-gray-800 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-none">
-                  {project.settings?.buildCommand || 'npm install && npm run build'}
-                </p>
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Start Command</h4>
-                <p className="text-sm text-black-600 dark:text-white-400 font-mono bg-gray-100 dark:bg-gray-800 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-none">
-                  {project.settings?.startCommand || 'npm start'}
-                </p>
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Deploy Mode</h4>
-                <span className="inline-flex items-center px-2 py-1 rounded-none text-xs font-bold border-2 bg-blue-50 text-blue-700 border-blue-400 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600">
-                  MANUAL ONLY
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'deployments' && (
-        <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none overflow-hidden shadow-md">
-          <div className="px-6 py-4 border-b-2 border-black-900 dark:border-white-100 flex justify-between items-center">
-            <h2 className="text-xl font-bold text-black-900 dark:text-white-100">All Deployments</h2>
-            <button
-              onClick={showDeploymentStatus}
-              className="group relative inline-flex items-center px-3 py-2 border-2 border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 text-sm font-bold rounded-none transition-all duration-200 overflow-hidden"
-            >
-              <span className="relative z-10">{deployments.length > 0 ? 'View Status' : 'Deploy'}</span>
-            </button>
-          </div>
-          {deployments.length === 0 ? (
-            <div className="px-6 py-8 text-center text-black-600 dark:text-white-400">
-              <div className="bg-black-900 dark:bg-white-100 p-4 rounded-none mb-4 inline-block">
-                <Server className="h-12 w-12 text-white-100 dark:text-black-900" />
-              </div>
-              <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-2">No deployments yet</h3>
-              <p className="text-sm mb-4 font-medium">Deploy your project to see it live on the web.</p>
+        {activeTab === 'deployments' && (
+          <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none overflow-hidden shadow-md">
+            <div className="px-6 py-4 border-b-2 border-black-900 dark:border-white-100 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-black-900 dark:text-white-100">All Deployments</h2>
               <button
-                onClick={triggerNewDeployment}
-                className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 text-sm font-bold rounded-none transition-all duration-200 overflow-hidden"
+                onClick={showDeploymentStatus}
+                className="group relative inline-flex items-center px-3 py-2 border-2 border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 text-sm font-bold rounded-none transition-all duration-200 overflow-hidden"
               >
-                <span className="relative z-10">Deploy Now</span>
+                <span className="relative z-10">{deployments.length > 0 ? 'View Status' : 'Deploy'}</span>
               </button>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-black-900 dark:divide-white-100">
-                <thead className="bg-white-200 dark:bg-black-600">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
-                      Commit
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
-                      Created
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
-                      Finished
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white-100 dark:bg-black-700 divide-y divide-black-900 dark:divide-white-100">
-                  {deployments.map((deployment, index) => {
-                    const isLatest = index === 0;
-                    return (
-                    <tr key={deployment._id} className="hover:bg-white-200 dark:hover:bg-black-600 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col">
-                          <div className="text-sm font-bold text-black-900 dark:text-white-100">
-                            {deployment.commitMessage ?
-                              deployment.commitMessage.length > 50 ?
-                                `${deployment.commitMessage.substring(0, 50)}...` :
-                                deployment.commitMessage
-                              : 'No commit message'
-                            }
-                          </div>
-                          <div className="text-xs text-black-600 dark:text-white-400 font-medium">
-                            {deployment.commitHash ? deployment.commitHash.substring(0, 8) : 'No commit hash'}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          {getStatusBadge(deployment.status)}
-                          {!isLatest && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 font-bold">
-                              Deprecated
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black-600 dark:text-white-400 font-medium">
-                        {new Date(deployment.createdAt).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black-600 dark:text-white-400 font-medium">
-                        {deployment.finishedAt ? new Date(deployment.finishedAt).toLocaleString() : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center space-x-3">
-                          <Link
-                            to={`/app/deployments/${deployment._id}`}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all font-bold"
-                          >
-                            View
-                          </Link>
-                          <button
-                            onClick={() => handleDeleteDeployment(deployment._id)}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 border-b-2 border-transparent hover:border-red-600 dark:hover:border-red-400 transition-all font-bold"
-                            title="Delete deployment"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )})}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'environment' && (
-        <div className="space-y-8">
-          {/* Environment Variables */}
-          <div className="bg-white-100 dark:bg-black-900 shadow-md rounded-none overflow-hidden border-2 border-black-200 dark:border-white-700">
-            <div className="px-6 py-4 border-b-2 border-black-200 dark:border-white-700 flex justify-between items-center">
-              <h2 className="text-lg font-medium text-black-900 dark:text-white-100">Environment Variables</h2>
-              <Link
-                to={`/app/environment/${id}/new`}
-                className="inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 rounded-none shadow-md text-sm font-medium text-white-100 bg-black-900 dark:text-black-900 dark:bg-white-100 hover:shadow-lg hover:translate-y-[-2px] transition-all duration-200 focus:outline-none"
-              >
-                Add Variable
-              </Link>
-            </div>
-            {envVars.length === 0 ? (
-              <div className="px-6 py-4 text-center text-black-500 dark:text-white-400">
-                <Key className="mx-auto h-12 w-12 text-black-400 dark:text-white-500 mb-2" />
-                <p>No environment variables found</p>
-                <p className="text-sm mt-1">Add environment variables to configure your application</p>
+            {deployments.length === 0 ? (
+              <div className="px-6 py-8 text-center text-black-600 dark:text-white-400">
+                <div className="bg-black-900 dark:bg-white-100 p-4 rounded-none mb-4 inline-block">
+                  <Server className="h-12 w-12 text-white-100 dark:text-black-900" />
+                </div>
+                <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-2">No deployments yet</h3>
+                <p className="text-sm mb-4 font-medium">Deploy your project to see it live on the web.</p>
+                <button
+                  onClick={triggerNewDeployment}
+                  className="group relative inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 text-sm font-bold rounded-none transition-all duration-200 overflow-hidden"
+                >
+                  <span className="relative z-10">Deploy Now</span>
+                </button>
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-black-200 dark:divide-white-700">
-                  <thead className="bg-white-200 dark:bg-black-800">
+                <table className="min-w-full divide-y divide-black-900 dark:divide-white-100">
+                  <thead className="bg-white-200 dark:bg-black-600">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-black-500 dark:text-white-400 uppercase tracking-wider">
-                        Key
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
+                        Commit
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-black-500 dark:text-white-400 uppercase tracking-wider">
-                        Value
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
+                        Status
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-black-500 dark:text-white-400 uppercase tracking-wider">
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
                         Created
                       </th>
-                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-black-500 dark:text-white-400 uppercase tracking-wider">
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
+                        Finished
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-right text-xs font-bold text-black-900 dark:text-white-100 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white-100 dark:bg-black-900 divide-y divide-black-200 dark:divide-white-700">
-                    {envVars.map((envVar) => (
-                      <tr key={envVar._id} className="hover:bg-white-200 dark:hover:bg-black-800 transition-colors duration-200">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-black-900 dark:text-white-100">
-                          {envVar.key}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-black-500 dark:text-white-400">
-                          ••••••••••••
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-black-500 dark:text-white-400">
-                          {new Date(envVar.createdAt).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <Link
-                            to={`/app/environment/${id}/edit/${envVar._id}`}
-                            className="text-black-600 hover:text-black-900 dark:text-white-400 dark:hover:text-white-100 border-b-2 border-transparent hover:border-black-900 dark:hover:border-white-100 transition-all duration-200 mr-4"
-                          >
-                            Edit
-                          </Link>
-                          <button
-                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                            onClick={() => handleDeleteEnvVar(envVar._id)}
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                  <tbody className="bg-white-100 dark:bg-black-700 divide-y divide-black-900 dark:divide-white-100">
+                    {deployments.map((deployment, index) => {
+                      const isLatest = index === 0;
+                      return (
+                        <tr key={deployment._id} className="hover:bg-white-200 dark:hover:bg-black-600 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex flex-col">
+                              <div className="text-sm font-bold text-black-900 dark:text-white-100">
+                                {deployment.commitMessage ?
+                                  deployment.commitMessage.length > 50 ?
+                                    `${deployment.commitMessage.substring(0, 50)}...` :
+                                    deployment.commitMessage
+                                  : 'No commit message'
+                                }
+                              </div>
+                              <div className="text-xs text-black-600 dark:text-white-400 font-medium">
+                                {deployment.commitHash ? deployment.commitHash.substring(0, 8) : 'No commit hash'}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-2">
+                              {getStatusBadge(deployment.status)}
+                              {!isLatest && (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 font-bold">
+                                  Deprecated
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-black-600 dark:text-white-400 font-medium">
+                            {new Date(deployment.createdAt).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-black-600 dark:text-white-400 font-medium">
+                            {deployment.finishedAt ? new Date(deployment.finishedAt).toLocaleString() : '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex items-center space-x-3">
+                              <Link
+                                to={`/app/deployments/${deployment._id}`}
+                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 border-b-2 border-transparent hover:border-blue-600 dark:hover:border-blue-400 transition-all font-bold"
+                              >
+                                View
+                              </Link>
+                              <button
+                                onClick={() => handleDeleteDeployment(deployment._id)}
+                                className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 border-b-2 border-transparent hover:border-red-600 dark:hover:border-red-400 transition-all font-bold"
+                                title="Delete deployment"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Generic Delete Confirmation Modal */}
-      {deleteModalOpen && itemToDelete && (
-        <div className="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 dark:bg-gray-900 opacity-75"></div>
-            </div>
-
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 sm:mx-0 sm:h-10 sm:w-10">
-                    <Trash2 className="h-6 w-6 text-red-600 dark:text-red-400" />
-                  </div>
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100" id="modal-title">
-                      {`Delete ${deleteType === 'deployment' ? 'Deployment' : 'Environment Variable'}`}
-                    </h3>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Are you sure you want to delete this {deleteType === 'deployment' ? 'deployment' : 'environment variable'}? This action cannot be undone.
-                      </p>
-                    </div>
-                  </div>
+        {activeTab === 'environment' && (
+          <div className="space-y-8">
+            {/* Environment Variables */}
+            <div className="bg-white-100 dark:bg-black-900 shadow-md rounded-none overflow-hidden border-2 border-black-200 dark:border-white-700">
+              <div className="px-6 py-4 border-b-2 border-black-200 dark:border-white-700 flex justify-between items-center">
+                <h2 className="text-lg font-medium text-black-900 dark:text-white-100">Environment Variables</h2>
+                <Link
+                  to={`/app/environment/${id}/new`}
+                  className="inline-flex items-center px-4 py-2 border-2 border-black-900 dark:border-white-100 rounded-none shadow-md text-sm font-medium text-white-100 bg-black-900 dark:text-black-900 dark:bg-white-100 hover:shadow-lg hover:translate-y-[-2px] transition-all duration-200 focus:outline-none"
+                >
+                  Add Variable
+                </Link>
+              </div>
+              {envVars.length === 0 ? (
+                <div className="px-6 py-4 text-center text-black-500 dark:text-white-400">
+                  <Key className="mx-auto h-12 w-12 text-black-400 dark:text-white-500 mb-2" />
+                  <p>No environment variables found</p>
+                  <p className="text-sm mt-1">Add environment variables to configure your application</p>
                 </div>
-              </div>
-              <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="button"
-                  onClick={confirmDelete}
-                  disabled={deleteLoading}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-                >
-                  {deleteLoading ? 'Deleting...' : 'Delete'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeleteModalOpen(false)}
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-black-200 dark:divide-white-700">
+                    <thead className="bg-white-200 dark:bg-black-800">
+                      <tr>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-black-500 dark:text-white-400 uppercase tracking-wider">
+                          Key
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-black-500 dark:text-white-400 uppercase tracking-wider">
+                          Value
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-black-500 dark:text-white-400 uppercase tracking-wider">
+                          Created
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-black-500 dark:text-white-400 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white-100 dark:bg-black-900 divide-y divide-black-200 dark:divide-white-700">
+                      {envVars.map((envVar) => (
+                        <tr key={envVar._id} className="hover:bg-white-200 dark:hover:bg-black-800 transition-colors duration-200">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-black-900 dark:text-white-100">
+                            {envVar.key}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-black-500 dark:text-white-400">
+                            ••••••••••••
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-black-500 dark:text-white-400">
+                            {new Date(envVar.createdAt).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <Link
+                              to={`/app/environment/${id}/edit/${envVar._id}`}
+                              className="text-black-600 hover:text-black-900 dark:text-white-400 dark:hover:text-white-100 border-b-2 border-transparent hover:border-black-900 dark:hover:border-white-100 transition-all duration-200 mr-4"
+                            >
+                              Edit
+                            </Link>
+                            <button
+                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                              onClick={() => handleDeleteEnvVar(envVar._id)}
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Delete Project Confirmation Modal */}
-      {deleteModalOpen && !itemToDelete && (
-        <div className="fixed z-10 inset-0 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 dark:bg-gray-900 opacity-75"></div>
-            </div>
 
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        {/* Delete Project Confirmation Modal */}
+        {deleteModalOpen && !itemToDelete && (
+          <div className="fixed inset-0 z-20 flex items-center justify-center">
+            {/* Page blur overlay */}
+            <div className="absolute inset-0 backdrop-blur-sm bg-black/30"></div>
 
-            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 sm:mx-0 sm:h-10 sm:w-10">
-                    <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
-                  </div>
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">
-                      Delete project
-                    </h3>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Are you sure you want to delete this project? All of the project data including deployments, environment variables, and logs will be permanently removed. This action cannot be undone.
-                      </p>
-                    </div>
-                  </div>
+            {/* Modal */}
+            <div className="bg-white-200 dark:bg-gray-900 rounded-xl 
+                    border-2 border-black dark:border-white 
+                    shadow-xl max-w-lg w-full p-6 z-10">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900">
+                  <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    Delete Project
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Are you sure you want to delete this project? All project data including deployments, environment variables, and logs will be permanently removed. This action cannot be undone.
+                  </p>
                 </div>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-750 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              <div className="mt-6 flex justify-end gap-3">
                 <button
-                  type="button"
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-red-400 sm:ml-3 sm:w-auto sm:text-sm"
                   onClick={handleDeleteProject}
                   disabled={deleteLoading}
+                  className="inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white font-bold rounded-lg border border-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {deleteLoading ? 'Deleting...' : 'Delete'}
                 </button>
                 <button
-                  type="button"
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                   onClick={() => setDeleteModalOpen(false)}
-                  disabled={deleteLoading}
+                  className="inline-flex items-center justify-center px-4 py-2 
+                     bg-white dark:bg-gray-900 
+                     text-gray-700 dark:text-gray-100 
+                     font-medium rounded-lg 
+                     border-2 border-black-200 dark:border-white"
                 >
                   Cancel
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+
+
+      </main>
     </div>
   )
 }

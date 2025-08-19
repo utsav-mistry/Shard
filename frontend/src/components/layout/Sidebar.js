@@ -67,6 +67,11 @@ const Sidebar = ({ isOpen, onClose }) => {
       ]
     },
     {
+      name: 'Documentation',
+      href: '/app/docs',
+      icon: <BookOpen className="w-5 h-5" />
+    },
+    {
       name: 'Integrations',
       href: '/app/integrations',
       icon: <Package className="w-5 h-5" />,
@@ -110,12 +115,12 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const renderLink = (item) => {
     const isExternal = item.external;
-    const isActive = item.exact 
+    const isActive = item.exact
       ? location.pathname === item.href
-      : item.href === '/app' 
-        ? location.pathname === '/app' 
+      : item.href === '/app'
+        ? location.pathname === '/app'
         : item.href && location.pathname.startsWith(item.href);
-      
+
     const content = (
       <>
         {item.icon}
@@ -124,8 +129,8 @@ const Sidebar = ({ isOpen, onClose }) => {
           <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
         ) : (
           item.children && (
-            <ChevronDown 
-              className={`w-4 h-4 ml-auto transition-transform ${expandedSections[item.name] ? 'rotate-180' : ''}`} 
+            <ChevronDown
+              className={`w-4 h-4 ml-auto transition-transform ${expandedSections[item.name] ? 'rotate-180' : ''}`}
             />
           )
         )}
@@ -136,10 +141,10 @@ const Sidebar = ({ isOpen, onClose }) => {
 
     if (isExternal) {
       return (
-        <a 
-          href={item.href} 
-          target="_blank" 
-          rel="noopener noreferrer" 
+        <a
+          href={item.href}
+          target="_blank"
+          rel="noopener noreferrer"
           className={className}
           onClick={onClose}
         >
@@ -160,19 +165,18 @@ const Sidebar = ({ isOpen, onClose }) => {
           {expandedSections[item.name] && (
             <div className="ml-6 mt-1 space-y-1">
               {item.children.map((child) => {
-                const isChildActive = location.pathname === child.href || 
+                const isChildActive = location.pathname === child.href ||
                   (child.href !== '/app' && location.pathname.startsWith(child.href));
-                
+
                 return (
                   <Link
                     key={child.href}
                     to={child.href}
                     onClick={onClose}
-                    className={`block px-3 py-2 text-sm rounded-none transition-colors ${
-                      isChildActive 
-                        ? 'font-semibold text-black-900 dark:text-white-100 bg-black-100 dark:bg-black-800' 
+                    className={`block px-3 py-2 text-sm rounded-none transition-colors ${isChildActive
+                        ? 'font-semibold text-black-900 dark:text-white-100 bg-black-100 dark:bg-black-800'
                         : 'text-black-600 dark:text-white-500 hover:text-black-900 dark:hover:text-white-100 hover:bg-black-50 dark:hover:bg-black-800'
-                    }`}
+                      }`}
                   >
                     {child.name}
                   </Link>
@@ -199,7 +203,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           <div className="w-10 h-10 bg-black-900 dark:bg-white-100 border-2 border-black-900 dark:border-white-100 rounded-none flex items-center justify-center">
             <Zap className="w-5 h-5 text-white-100 dark:text-black-900" />
           </div>
-          <span className="text-2xl font-extrabold text-black-900 dark:text-white-100">Shard</span>
+          <span className=" text-xl font-extrabold text-black-900 dark:text-white-100">Shard</span>
         </div>
         <button onClick={onClose} className="lg:hidden p-2 hover:bg-white-50 dark:hover:bg-black-800 transition-colors rounded-none border-2 border-transparent hover:border-black-900 dark:hover:border-white-100">
           <X className="w-5 h-5 text-black-900 dark:text-white-100" />
@@ -217,7 +221,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               </div>
             ))}
           </nav>
-          
+
           <p className="text-xs font-semibold text-black-600 dark:text-white-400 uppercase tracking-wider mb-2 px-3 mt-6">Resources</p>
           <nav className="space-y-1">
             {bottomNavigation.map((item) => (
@@ -264,8 +268,8 @@ const Sidebar = ({ isOpen, onClose }) => {
               <Zap className="w-5 h-5 text-yellow-500" />
               <div>
                 <p className="text-xs font-semibold text-black-900 dark:text-white-100">Need help?</p>
-                <a 
-                  href="mailto:support@shard.dev" 
+                <a
+                  href="mailto:support@shard.dev"
                   className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                 >
                   Contact our support team
@@ -273,7 +277,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               </div>
             </div>
           </div>
-          
+
           <button
             onClick={handleLogout}
             className="w-full flex items-center space-x-3 px-3 py-2.5 text-sm font-medium text-black-900 dark:text-white-100 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 hover:bg-black-900 hover:text-white-100 dark:hover:bg-white-100 dark:hover:text-black-900 transition-all duration-200 rounded-none mt-4"

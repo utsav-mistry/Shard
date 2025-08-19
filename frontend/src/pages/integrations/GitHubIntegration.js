@@ -20,7 +20,7 @@ const GitHubIntegration = () => {
         // Handle OAuth callback
         const error = searchParams.get('error');
         const success = searchParams.get('success');
-        
+
         if (error) {
             setError(getErrorMessage(error));
         } else if (success) {
@@ -53,7 +53,7 @@ const GitHubIntegration = () => {
     const connectGitHub = async () => {
         setLoading(true);
         setError('');
-        
+
         try {
             // Get the GitHub integration URL from the backend
             const response = await api.get('/api/integrations/github/connect');
@@ -111,28 +111,56 @@ const GitHubIntegration = () => {
     };
 
     return (
-        <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white">
-            <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="relative min-h-screen bg-white dark:bg-black text-black dark:text-white">
+            {/* Grid background */}
+            <div
+                aria-hidden
+                className="pointer-events-none fixed inset-0 z-0"
+                style={{
+                    backgroundImage: `
+                        repeating-linear-gradient(to right, rgba(0,0,0,0.16) 0 1px, transparent 1px 32px),
+                        repeating-linear-gradient(to bottom, rgba(0,0,0,0.16) 0 1px, transparent 1px 32px)
+                    `,
+                }}
+            />
+            <div
+                aria-hidden
+                className="pointer-events-none fixed inset-0 z-0 hidden dark:block"
+                style={{
+                    backgroundImage: `
+                        repeating-linear-gradient(to right, rgba(255,255,255,0.16) 0 1px, transparent 1px 32px),
+                        repeating-linear-gradient(to bottom, rgba(255,255,255,0.16) 0 1px, transparent 1px 32px)
+                    `,
+                }}
+            />
+
+            {/* Reveal animation styles */}
+            <style>{`
+                [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity 700ms ease, transform 700ms ease; }
+                [data-reveal="true"] { opacity: 1; transform: translateY(0); }
+            `}</style>
+
+            <main className="relative z-10 px-10 py-16">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-4xl font-extrabold text-black-900 dark:text-white-100 mb-2">GitHub Integration</h1>
-                    <p className="text-lg text-black-600 dark:text-white-400">
+                <div className="mb-12">
+                    <h1 className="text-5xl font-extrabold text-black dark:text-white mb-4">GitHub Integration</h1>
+                    <p className="text-lg text-gray-700 dark:text-gray-300 font-medium">
                         Connect your GitHub account to import and deploy repositories
                     </p>
                 </div>
 
                 {/* Status Messages */}
                 {error && (
-                    <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-600 dark:border-red-400 rounded-none flex items-center gap-3">
-                        <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
-                        <span className="text-red-800 dark:text-red-200 font-medium">{error}</span>
+                    <div className="mb-8 p-6 bg-red-50 dark:bg-red-900/20 border-2 border-red-600 dark:border-red-400 shadow-[-6px_6px_0_rgba(239,68,68,0.8)] dark:shadow-[-6px_6px_0_rgba(239,68,68,0.3)] flex items-center gap-4">
+                        <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                        <span className="text-red-800 dark:text-red-200 font-bold">{error}</span>
                     </div>
                 )}
 
                 {success && (
-                    <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border-2 border-green-600 dark:border-green-400 rounded-none flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                        <span className="text-green-800 dark:text-green-200 font-medium">{success}</span>
+                    <div className="mb-8 p-6 bg-green-50 dark:bg-green-900/20 border-2 border-green-600 dark:border-green-400 shadow-[-6px_6px_0_rgba(34,197,94,0.8)] dark:shadow-[-6px_6px_0_rgba(34,197,94,0.3)] flex items-center gap-4">
+                        <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+                        <span className="text-green-800 dark:text-green-200 font-bold">{success}</span>
                     </div>
                 )}
 
@@ -140,23 +168,23 @@ const GitHubIntegration = () => {
                 {isConnected ? (
                     <div className="space-y-6">
                         {/* Connected Account Card */}
-                        <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none p-6 shadow-md">
+                        <div className="bg-gray-50 dark:bg-gray-900 border-2 border-black dark:border-white shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)] p-8 hover:-translate-y-1 transition-transform">
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-black-900 dark:bg-white-100 rounded-none flex items-center justify-center border-2 border-black-900 dark:border-white-100">
-                                        <Github className="w-6 h-6 text-white-100 dark:text-black-900" />
+                                <div className="flex items-center gap-6">
+                                    <div className="w-16 h-16 bg-black dark:bg-white flex items-center justify-center border-2 border-black dark:border-white">
+                                        <Github className="w-8 h-8 text-white dark:text-black" />
                                     </div>
                                     <div>
-                                        <h3 className="text-xl font-bold text-black-900 dark:text-white-100">GitHub</h3>
-                                        <div className="flex items-center gap-2 mt-1">
+                                        <h3 className=" text-xl font-extrabold text-black dark:text-white mb-2">GitHub</h3>
+                                        <div className="flex items-center gap-3">
                                             {githubUser?.avatar && (
-                                                <img 
-                                                    src={githubUser.avatar} 
+                                                <img
+                                                    src={githubUser.avatar}
                                                     alt="GitHub Avatar"
-                                                    className="w-5 h-5 rounded-full"
+                                                    className="w-6 h-6 border-2 border-black dark:border-white"
                                                 />
                                             )}
-                                            <span className="text-green-600 dark:text-green-400 font-bold">
+                                            <span className="text-green-600 dark:text-green-400 font-bold text-lg">
                                                 Connected as @{githubUser?.username}
                                             </span>
                                         </div>
@@ -164,7 +192,7 @@ const GitHubIntegration = () => {
                                 </div>
                                 <button
                                     onClick={disconnectGitHub}
-                                    className="group relative px-4 py-2 border-2 border-red-600 text-red-600 bg-white-100 dark:bg-black-900 hover:text-white-100 dark:hover:text-black-900 rounded-none font-bold transition-all duration-200 overflow-hidden"
+                                    className="group relative px-6 py-3 border-2 border-red-600 text-red-600 bg-white dark:bg-black hover:text-white dark:hover:text-black font-bold transition-all duration-200 overflow-hidden"
                                 >
                                     <span className="absolute inset-0 w-full h-full bg-red-600 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
                                     <span className="relative z-10">
@@ -175,34 +203,34 @@ const GitHubIntegration = () => {
                         </div>
 
                         {/* Quick Actions */}
-                        <div className="grid md:grid-cols-2 gap-4">
+                        <div className="grid md:grid-cols-2 gap-6">
                             <button
                                 onClick={() => navigate('/app/projects/import')}
-                                className="group relative p-6 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-700 hover:bg-black-900 hover:text-white-100 dark:hover:bg-white-100 dark:hover:text-black-900 rounded-none transition-all duration-200 text-left overflow-hidden"
+                                className="group relative p-8 border-2 border-black dark:border-white bg-gray-50 dark:bg-gray-900 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all duration-200 text-left overflow-hidden shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)] hover:-translate-y-1"
                             >
-                                <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+                                <span className="absolute inset-0 w-full h-full bg-black dark:bg-white transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
                                 <div className="relative z-10">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <ExternalLink className="w-5 h-5" />
-                                        <h3 className="text-lg font-bold">Import Repository</h3>
+                                    <div className="flex items-center gap-4 mb-3">
+                                        <ExternalLink className="w-6 h-6" />
+                                        <h3 className="text-xl font-extrabold">Import Repository</h3>
                                     </div>
-                                    <p className="text-sm font-medium opacity-80">
+                                    <p className="text-base font-medium opacity-80">
                                         Browse and import your GitHub repositories
                                     </p>
                                 </div>
                             </button>
-                            
+
                             <button
                                 onClick={() => navigate('/app/projects/new')}
-                                className="group relative p-6 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-700 hover:bg-black-900 hover:text-white-100 dark:hover:bg-white-100 dark:hover:text-black-900 rounded-none transition-all duration-200 text-left overflow-hidden"
+                                className="group relative p-8 border-2 border-black dark:border-white bg-gray-50 dark:bg-gray-900 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all duration-200 text-left overflow-hidden shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)] hover:-translate-y-1"
                             >
-                                <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+                                <span className="absolute inset-0 w-full h-full bg-black dark:bg-white transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
                                 <div className="relative z-10">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <Github className="w-5 h-5" />
-                                        <h3 className="text-lg font-bold">New Project</h3>
+                                    <div className="flex items-center gap-4 mb-3">
+                                        <Github className="w-6 h-6" />
+                                        <h3 className="text-xl font-extrabold">New Project</h3>
                                     </div>
-                                    <p className="text-sm font-medium opacity-80">
+                                    <p className="text-base font-medium opacity-80">
                                         Create a new project from GitHub
                                     </p>
                                 </div>
@@ -210,15 +238,15 @@ const GitHubIntegration = () => {
                         </div>
                     </div>
                 ) : (
-                    <div className="bg-white-100 dark:bg-black-700 border-2 border-black-900 dark:border-white-100 rounded-none p-6 mb-8 shadow-md hover:shadow-lg transition-shadow">
+                    <div className="bg-gray-50 dark:bg-gray-900 border-2 border-black dark:border-white shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)] p-8 mb-8 hover:-translate-y-1 transition-transform">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-black-900 dark:bg-white-100 rounded-none flex items-center justify-center border-2 border-black-900 dark:border-white-100">
-                                    <Github className="w-6 h-6 text-white-100 dark:text-black-900" />
+                            <div className="flex items-center gap-6">
+                                <div className="w-16 h-16 bg-black dark:bg-white flex items-center justify-center border-2 border-black dark:border-white">
+                                    <Github className="w-8 h-8 text-white dark:text-black" />
                                 </div>
                                 <div>
-                                    <h3 className="text-xl font-bold text-black-900 dark:text-white-100">GitHub</h3>
-                                    <p className="text-black-600 dark:text-white-400 font-medium">
+                                    <h3 className=" text-xl font-extrabold text-black dark:text-white mb-1">GitHub</h3>
+                                    <p className="text-gray-600 dark:text-gray-400 font-medium text-lg">
                                         Not connected
                                     </p>
                                 </div>
@@ -226,12 +254,12 @@ const GitHubIntegration = () => {
                             <button
                                 onClick={connectGitHub}
                                 disabled={loading}
-                                className="group relative px-6 py-2 border-2 border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 rounded-none font-bold transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden"
+                                className="group relative px-8 py-3 border-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black font-bold transition-all duration-200 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden hover:scale-[1.02] active:scale-95"
                             >
                                 {loading ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <Loader2 className="w-5 h-5 animate-spin" />
                                 ) : (
-                                    <Github className="w-4 h-4" />
+                                    <Github className="w-5 h-5" />
                                 )}
                                 Connect GitHub
                             </button>
@@ -240,51 +268,50 @@ const GitHubIntegration = () => {
                 )}
 
                 {/* Features */}
-                <div className="grid md:grid-cols-2 gap-6">
-                    <div className="p-6 border-2 border-black-900 dark:border-white-100 rounded-none bg-white-100 dark:bg-black-700 shadow-md hover:shadow-lg transition-shadow">
-                        <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-3">Repository Import</h3>
-                        <p className="text-black-600 dark:text-white-400 mb-4 font-medium">
+                <div className="grid md:grid-cols-2 gap-8">
+                    <div className="p-8 border-2 border-black dark:border-white bg-gray-50 dark:bg-gray-900 shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)] hover:-translate-y-1 transition-transform">
+                        <h3 className=" text-xl font-extrabold text-black dark:text-white mb-4">Repository Import</h3>
+                        <p className="text-gray-700 dark:text-gray-300 mb-6 font-medium text-base">
                             Browse and import your GitHub repositories with one click
                         </p>
-                        <ul className="space-y-2 text-sm font-medium">
-                            <li className="flex items-center gap-2">
-                                <CheckCircle className="w-4 h-4 text-green-500" />
+                        <ul className="space-y-3 text-base font-medium">
+                            <li className="flex items-center gap-3">
+                                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
                                 Access public and private repositories
                             </li>
-                            <li className="flex items-center gap-2">
-                                <CheckCircle className="w-4 h-4 text-green-500" />
+                            <li className="flex items-center gap-3">
+                                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
                                 Automatic framework detection
                             </li>
-                            <li className="flex items-center gap-2">
-                                <CheckCircle className="w-4 h-4 text-green-500" />
+                            <li className="flex items-center gap-3">
+                                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
                                 Branch and commit selection
                             </li>
                         </ul>
                     </div>
 
-                    <div className="p-6 border-2 border-black-900 dark:border-white-100 rounded-none bg-white-100 dark:bg-black-700 shadow-md hover:shadow-lg transition-shadow">
-                        <h3 className="text-xl font-bold text-black-900 dark:text-white-100 mb-3">Manual Deployment</h3>
-                        <p className="text-black-600 dark:text-white-400 mb-4 font-medium">
+                    <div className="p-8 border-2 border-black dark:border-white bg-gray-50 dark:bg-gray-900 shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)] hover:-translate-y-1 transition-transform">
+                        <h3 className=" text-xl font-extrabold text-black dark:text-white mb-4">Manual Deployment</h3>
+                        <p className="text-gray-700 dark:text-gray-300 mb-6 font-medium text-base">
                             Deploy your projects manually with AI-powered code review
                         </p>
-                        <ul className="space-y-2 text-sm font-medium">
-                            <li className="flex items-center gap-2">
-                                <CheckCircle className="w-4 h-4 text-green-500" />
+                        <ul className="space-y-3 text-base font-medium">
+                            <li className="flex items-center gap-3">
+                                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
                                 AI code quality analysis
                             </li>
-                            <li className="flex items-center gap-2">
-                                <CheckCircle className="w-4 h-4 text-green-500" />
+                            <li className="flex items-center gap-3">
+                                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
                                 Custom domain assignment
                             </li>
-                            <li className="flex items-center gap-2">
-                                <CheckCircle className="w-4 h-4 text-green-500" />
+                            <li className="flex items-center gap-3">
+                                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
                                 Real-time deployment logs
                             </li>
                         </ul>
                     </div>
                 </div>
-
-            </div>
+            </main>
         </div>
     );
 };

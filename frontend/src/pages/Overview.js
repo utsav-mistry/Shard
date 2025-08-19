@@ -164,7 +164,7 @@ export default function Overview() {
               className="p-6 bg-gray-50 dark:bg-gray-900 border-2 border-black dark:border-white shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)]"
             >
               <div className="text-sm opacity-75">{stat.label}</div>
-              <div className="text-2xl font-bold">{stat.value}</div>
+              <div className=" text-xl font-bold">{stat.value}</div>
             </div>
           ))}
         </section>
@@ -172,7 +172,7 @@ export default function Overview() {
         {/* Features (text-based, fewer cards) */}
         <section className="px-10 py-16">
           <div ref={(el) => setRef(el, 10)} data-reveal>
-            <h3 className="text-2xl font-bold mb-4">Core capabilities</h3>
+            <h3 className=" text-xl font-bold mb-4">Core capabilities</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-gray-700 dark:text-gray-300">
               <ul className="space-y-2 list-disc pl-5">
                 <li>Deploy from GitHub with framework detection, build caching, and reliable rollbacks.</li>
@@ -191,7 +191,7 @@ export default function Overview() {
         {/* How it works (timeline) */}
         <section className="px-10 py-8">
           <div ref={(el) => setRef(el, 30)} data-reveal className="max-w-4xl">
-            <h3 className="text-2xl font-bold mb-4">How it works</h3>
+            <h3 className=" text-xl font-bold mb-4">How it works</h3>
             <div className="relative pl-8 border-l-2 border-black dark:border-white space-y-8">
               {[
                 { t: "Connect GitHub", d: "Authorize access and select a repository." },
@@ -201,7 +201,6 @@ export default function Overview() {
                 { t: "Live logs & health", d: "Follow logs in real time; access the running app with health checks." },
               ].map((s, idx) => (
                 <div key={idx} className="relative">
-                  <span className="absolute -left-[11px] top-1 w-2.5 h-2.5 bg-black dark:bg-white border-2 border-black dark:border-white"></span>
                   <h4 className="font-semibold">{idx + 1}. {s.t}</h4>
                   <p className="text-gray-700 dark:text-gray-300">{s.d}</p>
                 </div>
@@ -213,7 +212,7 @@ export default function Overview() {
         {/* Architecture summary (no card) */}
         <section className="px-10 py-12">
           <div ref={(el) => setRef(el, 50)} data-reveal>
-            <h3 className="text-2xl font-bold mb-2">Architecture at a glance</h3>
+            <h3 className=" text-xl font-bold mb-2">Architecture at a glance</h3>
             <p className="text-gray-700 dark:text-gray-300 mb-3">Microservices built for reliability and speed:</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-gray-700 dark:text-gray-300">
               <div><span className="font-semibold">Frontend:</span> React dashboard with real‑time monitoring.</div>
@@ -226,7 +225,7 @@ export default function Overview() {
 
         {/* Recent projects */}
         <section className="px-10 py-16 border-t border-gray-200 dark:border-gray-800">
-          <h3 className="text-2xl font-bold mb-6">Recent Projects</h3>
+          <h3 className=" text-xl font-bold mb-6">Recent Projects</h3>
           {recentProjects.length === 0 ? (
             <div className="p-8 bg-gray-50 dark:bg-gray-900 border-2 border-black dark:border-white shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)]">
               <p className="mb-4">No projects yet.</p>

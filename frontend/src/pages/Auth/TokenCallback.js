@@ -39,7 +39,7 @@ const TokenCallback = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white-100 dark:bg-black-900 p-4">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">Authentication Error</h2>
+          <h2 className=" text-xl font-bold text-red-600 dark:text-red-400 mb-4">Authentication Error</h2>
           <p className="text-black-700 dark:text-white-300 mb-6">{error}</p>
         </div>
       </div>

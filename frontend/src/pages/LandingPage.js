@@ -79,7 +79,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-black-900 dark:text-white-100">Shard</h1>
+              <h1 className=" text-xl font-bold text-black-900 dark:text-white-100">Shard</h1>
             </div>
             <div className="flex items-center space-x-4">
               {currentUser ? (
@@ -130,7 +130,7 @@ const LandingPage = () => {
                 </span>
               </span>
             </h1>
-            <p className="text-xl lg:text-2xl text-black-600 dark:text-white-400 mb-8 max-w-2xl mx-auto lg:mx-0">
+            <p className="text-xl lg: text-xl text-black-600 dark:text-white-400 mb-8 max-w-2xl mx-auto lg:mx-0">
               The modern deployment platform that scales with your needs. Deploy any stack, any language, anywhere.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">

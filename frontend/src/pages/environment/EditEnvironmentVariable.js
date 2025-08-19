@@ -7,7 +7,7 @@ const EditEnvironmentVariable = () => {
   const { projectId, id } = useParams();
   const variableId = id;
   const navigate = useNavigate();
-  
+
   const [key, setKey] = useState('');
   const [value, setValue] = useState('');
   const [isSecret, setIsSecret] = useState(false);
@@ -26,10 +26,10 @@ const EditEnvironmentVariable = () => {
     const fetchEnvironmentVariable = async () => {
       try {
         setLoading(true);
-        
+
         // Fetch environment variable details with standardized API path
         const response = await api.get(`/api/projects/${projectId}/env/${variableId}`);
-        
+
         // Handle standardized response
         if (response.data && response.data.success) {
           const envVar = response.data.data;
@@ -52,11 +52,11 @@ const EditEnvironmentVariable = () => {
 
   const validateForm = () => {
     let isValid = true;
-    
+
     // Reset errors
     setKeyError('');
     setValueError('');
-    
+
     // Validate key
     if (!key.trim()) {
       setKeyError('Key is required');
@@ -65,33 +65,33 @@ const EditEnvironmentVariable = () => {
       setKeyError('Key can only contain letters, numbers, and underscores');
       isValid = false;
     }
-    
+
     // Validate value
     if (!value.trim()) {
       setValueError('Value is required');
       isValid = false;
     }
-    
+
     return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     try {
       setSaving(true);
       setError(null);
-      
+
       const response = await api.put(`/api/projects/${projectId}/env/${variableId}`, {
         key: key.trim(),
         value: value.trim(),
         secret: isSecret
       });
-      
+
       // Handle standardized response
       if (response.data && response.data.success) {
         // Navigate back to environment variables list with success message
@@ -106,7 +106,7 @@ const EditEnvironmentVariable = () => {
       }
     } catch (err) {
       console.error('Error updating environment variable:', err);
-      
+
       if (err.response) {
         if (err.response.status === 409) {
           setKeyError('An environment variable with this key already exists');
@@ -118,7 +118,7 @@ const EditEnvironmentVariable = () => {
       } else {
         setError('Failed to connect to the server. Please check your connection.');
       }
-      
+
       setSaving(false);
     }
   };
@@ -155,7 +155,7 @@ const EditEnvironmentVariable = () => {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-black-900 dark:text-white-100">
+        <h1 className=" text-xl font-bold text-black-900 dark:text-white-100">
           Edit Environment Variable
         </h1>
         <p className="mt-1 text-sm text-black-500 dark:text-white-400">
@@ -186,7 +186,7 @@ const EditEnvironmentVariable = () => {
                 name="key"
                 value={key}
                 onChange={(e) => setKey(e.target.value)}
-                className={`shadow-sm focus:ring-black-500 focus:border-black-500 dark:focus:ring-white-500 dark:focus:border-white-500 block w-full sm:text-sm border-2 border-black-300 dark:border-white-700 rounded-none bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 ${keyError ? 'border-red-300 dark:border-red-700 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : ''}`} 
+                className={`shadow-sm focus:ring-black-500 focus:border-black-500 dark:focus:ring-white-500 dark:focus:border-white-500 block w-full sm:text-sm border-2 border-black-300 dark:border-white-700 rounded-none bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 ${keyError ? 'border-red-300 dark:border-red-700 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : ''}`}
 
                 placeholder="DATABASE_URL"
               />
@@ -211,7 +211,7 @@ const EditEnvironmentVariable = () => {
                 name="value"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                className={`block w-full pr-10 sm:text-sm border-2 border-black-300 dark:border-white-700 rounded-none bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 focus:ring-black-500 focus:border-black-500 dark:focus:ring-white-500 dark:focus:border-white-500 ${valueError ? 'border-red-300 dark:border-red-700 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : ''}`} 
+                className={`block w-full pr-10 sm:text-sm border-2 border-black-300 dark:border-white-700 rounded-none bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 focus:ring-black-500 focus:border-black-500 dark:focus:ring-white-500 dark:focus:border-white-500 ${valueError ? 'border-red-300 dark:border-red-700 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : ''}`}
 
                 placeholder="value"
               />

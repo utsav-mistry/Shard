@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import PageTemplate from '../components/layout/PageTemplate';
-import { 
-  Mail, MessageSquare, Github, Clock, FileText, 
+import {
+  Mail, MessageSquare, Github, Clock, FileText,
   HelpCircle, ChevronDown, ChevronUp, ExternalLink, AlertCircle
 } from 'lucide-react';
 
@@ -51,7 +51,7 @@ const FAQItem = ({ question, answer, isOpen, onClick }) => (
 export default function Support() {
   const [openFaqIndex, setOpenFaqIndex] = useState(null);
   const supportHours = '9:00 AM - 6:00 PM IST (Monday - Friday)';
-  
+
   const faqs = [
     {
       question: "How do I get started with Shard?",
@@ -82,14 +82,36 @@ export default function Support() {
   const toggleFaq = (index) => {
     setOpenFaqIndex(openFaqIndex === index ? null : index);
   };
-  
+
   return (
     <PageTemplate title="Support" icon={<HelpCircle className="h-6 w-6" />}>
+      {/* Grid background */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-[-1]"
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(to right, rgba(0,0,0,0.08) 0 1px, transparent 1px 32px),
+            repeating-linear-gradient(to bottom, rgba(0,0,0,0.08) 0 1px, transparent 1px 32px)
+          `,
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-[-1] dark:block"
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(to right, rgba(255,255,255,0.08) 0 1px, transparent 1px 32px),
+            repeating-linear-gradient(to bottom, rgba(255,255,255,0.08) 0 1px, transparent 1px 32px)
+          `,
+        }}
+      />
+
       <div className="space-y-8">
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold mb-2">Support Center</h1>
+            <h1 className=" text-xl font-bold mb-2">Support Center</h1>
             <p className="text-black-600 dark:text-white-300">
               We're here to help you with any questions or issues you may have.
             </p>
@@ -110,7 +132,7 @@ export default function Support() {
             actionText="Email Us"
             actionIcon={ExternalLink}
           />
-          
+
           <SupportCard
             icon={<Github className="h-5 w-5 text-black dark:text-white" />}
             title="GitHub Issues"
@@ -119,7 +141,7 @@ export default function Support() {
             actionText="Open Issues"
             actionIcon={ExternalLink}
           />
-          
+
           <SupportCard
             icon={<FileText className="h-5 w-5 text-black dark:text-white" />}
             title="Documentation"
@@ -127,7 +149,7 @@ export default function Support() {
             action="/app/docs"
             actionText="View Docs"
           />
-          
+
           <SupportCard
             icon={<MessageSquare className="h-5 w-5 text-black dark:text-white" />}
             title="Community"
@@ -157,20 +179,20 @@ export default function Support() {
             </div>
           </div>
         </div>
-        
+
         {/* FAQ Section */}
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-black-900 dark:text-white-100">Frequently Asked Questions</h2>
-            <a 
-              href="#" 
+            <a
+              href="#"
               className="text-sm font-medium text-black-900 dark:text-white-100 hover:underline flex items-center transition-all duration-200"
             >
               View all FAQs
               <ExternalLink className="ml-1 h-3 w-3" />
             </a>
           </div>
-          
+
           <div className="space-y-2">
             {faqs.map((faq, index) => (
               <FAQItem
@@ -183,7 +205,7 @@ export default function Support() {
             ))}
           </div>
         </div>
-        
+
       </div>
     </PageTemplate>
   );

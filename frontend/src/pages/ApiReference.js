@@ -76,62 +76,62 @@ const Endpoint = ({ method, path, description, request, response, params = [] })
 
             <div className={`overflow-hidden transition-all duration-300 ${expanded ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}>
                 <div className="pl-4 ml-6 border-l-2 border-black-900 dark:border-white-100 py-4 space-y-6">
-                            {params.length > 0 && (
-                                <div>
-                                    <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Parameters</h4>
-                                    <div className="overflow-x-auto">
-                                        <table className="min-w-full divide-y divide-black-900 dark:divide-white-100 border-2 border-black-900 dark:border-white-100">
-                                            <thead className="bg-black-900 dark:bg-white-100">
-                                                <tr>
-                                                    <th className="px-3 py-2 text-left text-xs font-bold text-white-100 dark:text-black-900 uppercase tracking-wider">Name</th>
-                                                    <th className="px-3 py-2 text-left text-xs font-bold text-white-100 dark:text-black-900 uppercase tracking-wider">Type</th>
-                                                    <th className="px-3 py-2 text-left text-xs font-bold text-white-100 dark:text-black-900 uppercase tracking-wider">Required</th>
-                                                    <th className="px-3 py-2 text-left text-xs font-bold text-white-100 dark:text-black-900 uppercase tracking-wider">Description</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-black-900 dark:divide-white-100 bg-white-100 dark:bg-black-900">
-                                                {params.map((param, index) => (
-                                                    <tr key={index}>
-                                                        <td className="px-3 py-2 whitespace-nowrap text-sm font-mono font-bold text-black-900 dark:text-white-100">{param.name}</td>
-                                                        <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-black-900 dark:text-white-100">{param.type}</td>
-                                                        <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-black-900 dark:text-white-100">
-                                                            {param.required ? 'Yes' : 'No'}
-                                                        </td>
-                                                        <td className="px-3 py-2 text-sm font-medium text-black-900 dark:text-white-100">{param.description}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-
-                            {request && (
-                                <div>
-                                    <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Request</h4>
-                                    <CodeBlock code={request} language="json" />
-                                </div>
-                            )}
-
-                            <div>
-                                <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Response</h4>
-                                <CodeBlock code={response} language="json" />
+                    {params.length > 0 && (
+                        <div>
+                            <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Parameters</h4>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-black-900 dark:divide-white-100 border-2 border-black-900 dark:border-white-100">
+                                    <thead className="bg-black-900 dark:bg-white-100">
+                                        <tr>
+                                            <th className="px-3 py-2 text-left text-xs font-bold text-white-100 dark:text-black-900 uppercase tracking-wider">Name</th>
+                                            <th className="px-3 py-2 text-left text-xs font-bold text-white-100 dark:text-black-900 uppercase tracking-wider">Type</th>
+                                            <th className="px-3 py-2 text-left text-xs font-bold text-white-100 dark:text-black-900 uppercase tracking-wider">Required</th>
+                                            <th className="px-3 py-2 text-left text-xs font-bold text-white-100 dark:text-black-900 uppercase tracking-wider">Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-black-900 dark:divide-white-100 bg-white-100 dark:bg-black-900">
+                                        {params.map((param, index) => (
+                                            <tr key={index}>
+                                                <td className="px-3 py-2 whitespace-nowrap text-sm font-mono font-bold text-black-900 dark:text-white-100">{param.name}</td>
+                                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-black-900 dark:text-white-100">{param.type}</td>
+                                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-black-900 dark:text-white-100">
+                                                    {param.required ? 'Yes' : 'No'}
+                                                </td>
+                                                <td className="px-3 py-2 text-sm font-medium text-black-900 dark:text-white-100">{param.description}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
+                        </div>
+                    )}
 
-                            <div className="flex space-x-2">
-                                <button className="group relative text-xs px-3 py-1.5 border-2 border-blue-600 bg-blue-600 text-white-100 hover:text-blue-600 transition-all duration-200 overflow-hidden rounded-none font-bold flex items-center">
-                                    <span className="absolute inset-0 w-full h-full bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-                                    <span className="relative z-10 flex items-center">
-                                        <Terminal size={12} className="mr-1.5" /> Try in Terminal
-                                    </span>
-                                </button>
-                                <button className="group relative text-xs px-3 py-1.5 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden rounded-none font-bold flex items-center">
-                                    <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
-                                    <span className="relative z-10 flex items-center">
-                                        <ExternalLink size={12} className="mr-1.5" /> Open in API Client
-                                    </span>
-                                </button>
-                            </div>
+                    {request && (
+                        <div>
+                            <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Request</h4>
+                            <CodeBlock code={request} language="json" />
+                        </div>
+                    )}
+
+                    <div>
+                        <h4 className="text-sm font-bold text-black-900 dark:text-white-100 mb-2">Response</h4>
+                        <CodeBlock code={response} language="json" />
+                    </div>
+
+                    <div className="flex space-x-2">
+                        <button className="group relative text-xs px-3 py-1.5 border-2 border-blue-600 bg-blue-600 text-white-100 hover:text-blue-600 transition-all duration-200 overflow-hidden rounded-none font-bold flex items-center">
+                            <span className="absolute inset-0 w-full h-full bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+                            <span className="relative z-10 flex items-center">
+                                <Terminal size={12} className="mr-1.5" /> Try in Terminal
+                            </span>
+                        </button>
+                        <button className="group relative text-xs px-3 py-1.5 border-2 border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900 transition-all duration-200 overflow-hidden rounded-none font-bold flex items-center">
+                            <span className="absolute inset-0 w-full h-full bg-black-900 dark:bg-white-100 transition-transform duration-300 ease-in-out transform -translate-x-full group-hover:translate-x-0" />
+                            <span className="relative z-10 flex items-center">
+                                <ExternalLink size={12} className="mr-1.5" /> Open in API Client
+                            </span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -260,6 +260,28 @@ export default function ApiReference() {
 
     return (
         <PageTemplate title="API Reference" icon={<Code className="h-6 w-6" />}>
+            {/* Grid background */}
+            <div
+                aria-hidden
+                className="pointer-events-none fixed inset-0 z-[-1]" // <- key fix: put behind everything
+                style={{
+                    backgroundImage: `
+      repeating-linear-gradient(to right, rgba(0,0,0,0.08) 0 1px, transparent 1px 32px),
+      repeating-linear-gradient(to bottom, rgba(0,0,0,0.08) 0 1px, transparent 1px 32px)
+    `,
+                }}
+            />
+            <div
+                aria-hidden
+                className="pointer-events-none fixed inset-0 z-[-1] dark:block" // <- z-index behind everything
+                style={{
+                    backgroundImage: `
+      repeating-linear-gradient(to right, rgba(255,255,255,0.08) 0 1px, transparent 1px 32px),
+      repeating-linear-gradient(to bottom, rgba(255,255,255,0.08) 0 1px, transparent 1px 32px)
+    `,
+                }}
+            />
+
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {/* Sidebar Navigation */}
                 <div className="lg:col-span-1">
@@ -277,8 +299,8 @@ export default function ApiReference() {
                                         key={section.id}
                                         onClick={() => setActiveSection(section.id)}
                                         className={`group relative w-full text-left px-3 py-2 rounded-none border-2 transition-all duration-200 overflow-hidden flex items-center space-x-2 ${activeSection === section.id
-                                                ? 'border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900'
-                                                : 'border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900'
+                                            ? 'border-black-900 dark:border-white-100 bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900'
+                                            : 'border-black-900 dark:border-white-100 bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 hover:text-white-100 dark:hover:text-black-900'
                                             }`}
                                     >
                                         {activeSection !== section.id && (
@@ -336,7 +358,7 @@ export default function ApiReference() {
                                     </div>
                                 </div>
 
-                                <h2 className="text-2xl font-bold text-black-900 dark:text-white-100 mb-4 mt-8">Authentication Flow</h2>
+                                <h2 className=" text-xl font-bold text-black-900 dark:text-white-100 mb-4 mt-8">Authentication Flow</h2>
                                 <ol className="list-decimal pl-5 space-y-4 mb-8 text-lg text-black-600 dark:text-white-400">
                                     <li>Send a POST request to <code className="bg-black-900 dark:bg-white-100 text-white-100 dark:text-black-900 px-2 py-1 rounded-none font-bold">/auth/login</code> with your email and password</li>
                                     <li>Receive a JWT token in the response</li>

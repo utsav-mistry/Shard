@@ -94,6 +94,28 @@ export default function Documentation() {
 
     return (
         <PageTemplate title="Documentation" icon={<HelpCircle className="h-6 w-6" />}>
+            {/* Grid background */}
+            <div
+                aria-hidden
+                className="pointer-events-none fixed inset-0 z-[-1]"
+                style={{
+                    backgroundImage: `
+                        repeating-linear-gradient(to right, rgba(0,0,0,0.08) 0 1px, transparent 1px 32px),
+                        repeating-linear-gradient(to bottom, rgba(0,0,0,0.08) 0 1px, transparent 1px 32px)
+                    `,
+                }}
+            />
+            <div
+                aria-hidden
+                className="pointer-events-none fixed inset-0 z-[-1] dark:block"
+                style={{
+                    backgroundImage: `
+                        repeating-linear-gradient(to right, rgba(255,255,255,0.08) 0 1px, transparent 1px 32px),
+                        repeating-linear-gradient(to bottom, rgba(255,255,255,0.08) 0 1px, transparent 1px 32px)
+                    `,
+                }}
+            />
+
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {/* Sidebar Navigation */}
                 <div className="lg:col-span-1">
@@ -134,7 +156,7 @@ export default function Documentation() {
                     <div className={cardClass}>
                         {activeTab === 'getting-started' && (
                             <div>
-                                <h1 className="text-2xl font-bold mb-6">Getting Started with Shard</h1>
+                                <h1 className=" text-xl font-bold mb-6">Getting Started with Shard</h1>
                                 <p className="text-gray-600 dark:text-gray-300 mb-6">
                                     Welcome to Shard! This guide will help you set up your development environment and deploy your first application.
                                 </p>
@@ -270,7 +292,7 @@ export default function Documentation() {
 
                         {activeTab === 'cli' && (
                             <div>
-                                <h1 className="text-2xl font-bold mb-6">CLI Reference</h1>
+                                <h1 className=" text-xl font-bold mb-6">CLI Reference</h1>
                                 <p className="text-gray-600 dark:text-gray-300 mb-6">
                                     Comprehensive reference for all Shard CLI commands and their options.
                                 </p>
@@ -415,7 +437,7 @@ export default function Documentation() {
 
                         {activeTab === 'deployment' && (
                             <div>
-                                <h1 className="text-2xl font-bold mb-6">Deployment Guide</h1>
+                                <h1 className=" text-xl font-bold mb-6">Deployment Guide</h1>
                                 <p className="text-gray-600 dark:text-gray-300 mb-6">
                                     Deploy your Shard application to production with confidence using our comprehensive deployment guide.
                                 </p>
@@ -594,7 +616,7 @@ export default function Documentation() {
 
                         {activeTab === 'configuration' && (
                             <div>
-                                <h1 className="text-2xl font-bold mb-6">Configuration Guide</h1>
+                                <h1 className=" text-xl font-bold mb-6">Configuration Guide</h1>
                                 <p className="text-gray-600 dark:text-gray-300 mb-6">
                                     Customize and optimize your Shard application with these configuration options.
                                 </p>

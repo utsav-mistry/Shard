@@ -85,12 +85,12 @@ const Header = ({ onMenuClick }) => {
                 </div>
                 <div className="py-2 space-y-1">
                   <Link
-                    to="/app/settings"
+                    to="/app/profile"
                     onClick={() => setUserMenuOpen(false)}
                     className="w-full flex items-center space-x-3 px-4 py-2.5 text-left hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-200 text-black-900 dark:text-white-100 border-2 border-transparent hover:border-black-900 dark:hover:border-white-100 rounded-none"
                   >
-                    <Settings className="w-5 h-5" />
-                    <span className="font-medium">Settings</span>
+                    <User className="w-5 h-5" />
+                    <span className="font-medium">Profile</span>
                   </Link>
                   <button
                     onClick={handleLogout}

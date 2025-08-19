@@ -205,8 +205,30 @@ const Settings = () => {
     );
 
     return (
-        <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white">
-            <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="relative min-h-screen bg-white dark:bg-black text-black dark:text-white">
+            {/* Grid background */}
+            <div
+                aria-hidden
+                className="pointer-events-none fixed inset-0 z-[-1]"
+                style={{
+                    backgroundImage: `
+                        repeating-linear-gradient(to right, rgba(0,0,0,0.08) 0 1px, transparent 1px 32px),
+                        repeating-linear-gradient(to bottom, rgba(0,0,0,0.08) 0 1px, transparent 1px 32px)
+                    `,
+                }}
+            />
+            <div
+                aria-hidden
+                className="pointer-events-none fixed inset-0 z-[-1] dark:block"
+                style={{
+                    backgroundImage: `
+                        repeating-linear-gradient(to right, rgba(255,255,255,0.08) 0 1px, transparent 1px 32px),
+                        repeating-linear-gradient(to bottom, rgba(255,255,255,0.08) 0 1px, transparent 1px 32px)
+                    `,
+                }}
+            />
+
+            <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold mb-2">Settings</h1>

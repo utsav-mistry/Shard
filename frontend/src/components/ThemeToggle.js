@@ -36,7 +36,7 @@ const ThemeToggle = ({ className }) => {
       style={{
         transform: `translateY(${transformY}px)`,
         position: 'fixed',
-        zIndex: 10000,  
+        zIndex: 10000,
         bottom: '1rem',
         right: '1rem'
       }}

@@ -46,15 +46,12 @@ const Profile = () => {
     const [connectedAccounts, setConnectedAccounts] = useState([
         { provider: 'github', connected: false, email: '' }]);
 
-    const getProviderIcon = (provider) => {
-        switch (provider) {
-            case 'github': return <Github className="h-5 w-5" />;
-            default: return <LinkIcon className="h-5 w-5" />;
-        }
+    const getProviderIcon = () => {
+        return <Github className="h-5 w-5" />;
     };
 
-    const getProviderName = (provider) => {
-        return provider.charAt(0).toUpperCase() + provider.slice(1);
+    const getProviderName = () => {
+        return 'GitHub';
     };
 
     const formatDate = (dateString) => {
@@ -187,8 +184,30 @@ const Profile = () => {
     }
 
     return (
-        <div className="min-h-screen bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100">
-            <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="relative min-h-screen bg-white dark:bg-black text-black dark:text-white">
+            {/* Grid background */}
+            <div
+                aria-hidden
+                className="pointer-events-none fixed inset-0 z-[-1]"
+                style={{
+                    backgroundImage: `
+                        repeating-linear-gradient(to right, rgba(0,0,0,0.08) 0 1px, transparent 1px 32px),
+                        repeating-linear-gradient(to bottom, rgba(0,0,0,0.08) 0 1px, transparent 1px 32px)
+                    `,
+                }}
+            />
+            <div
+                aria-hidden
+                className="pointer-events-none fixed inset-0 z-[-1] dark:block"
+                style={{
+                    backgroundImage: `
+                        repeating-linear-gradient(to right, rgba(255,255,255,0.08) 0 1px, transparent 1px 32px),
+                        repeating-linear-gradient(to bottom, rgba(255,255,255,0.08) 0 1px, transparent 1px 32px)
+                    `,
+                }}
+            />
+
+            <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-4xl font-extrabold text-black-900 dark:text-white-100 mb-2">Profile Settings</h1>
@@ -263,7 +282,7 @@ const Profile = () => {
 
                                     <div className="flex-1 w-full">
                                         <div className="flex justify-between items-center mb-4">
-                                            <h2 className="text-2xl font-bold text-black-900 dark:text-white-100">Profile Information</h2>
+                                            <h2 className=" text-xl font-bold text-black-900 dark:text-white-100">Profile Information</h2>
                                             {!isEditing && (
                                                 <button
                                                     type="button"
@@ -359,7 +378,7 @@ const Profile = () => {
                                         {connectedAccounts.map((account, index) => (
                                             <div key={index} className="flex items-center justify-between p-4 bg-white-100 dark:bg-black-900 border-2 border-black-900 dark:border-white-100 rounded-none">
                                                 <div className="flex items-center">
-                                                    <div className="flex-shrink-0 h-10 w-10 bg-black-900 dark:bg-white-100 border-2 border-black-900 dark:border-white-100 rounded-none flex items-center justify-center">
+                                                    <div className="flex-shrink-0 h-10 w-10 border-2 border-black-900 dark:border-white-100 rounded-none flex items-center justify-center">
                                                         {getProviderIcon(account.provider)}
                                                     </div>
                                                     <div className="ml-3">

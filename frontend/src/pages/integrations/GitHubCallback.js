@@ -38,40 +38,62 @@ const GitHubCallback = () => {
     };
 
     return (
-        <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex items-center justify-center">
-            <div className="text-center max-w-md mx-auto px-4">
+        <div className="relative min-h-screen bg-white dark:bg-black text-black dark:text-white flex items-center justify-center">
+            {/* Grid background */}
+            <div
+                aria-hidden
+                className="pointer-events-none fixed inset-0 z-0"
+                style={{
+                    backgroundImage: `
+                        repeating-linear-gradient(to right, rgba(0,0,0,0.16) 0 1px, transparent 1px 32px),
+                        repeating-linear-gradient(to bottom, rgba(0,0,0,0.16) 0 1px, transparent 1px 32px)
+                    `,
+                }}
+            />
+            <div
+                aria-hidden
+                className="pointer-events-none fixed inset-0 z-0 hidden dark:block"
+                style={{
+                    backgroundImage: `
+                        repeating-linear-gradient(to right, rgba(255,255,255,0.16) 0 1px, transparent 1px 32px),
+                        repeating-linear-gradient(to bottom, rgba(255,255,255,0.16) 0 1px, transparent 1px 32px)
+                    `,
+                }}
+            />
+
+            <div className="relative z-10 text-center max-w-lg mx-auto px-8">
                 {status === 'processing' && (
-                    <>
-                        <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-blue-500" />
-                        <h2 className="text-xl font-bold mb-2">Connecting GitHub</h2>
-                        <p className="text-gray-600 dark:text-gray-400">{message}</p>
-                    </>
+                    <div className="bg-gray-50 dark:bg-gray-900 border-2 border-black dark:border-white shadow-[-6px_6px_0_rgba(0,0,0,0.8)] dark:shadow-[-6px_6px_0_rgba(255,255,255,0.3)] p-12">
+                        <Loader2 className="w-16 h-16 animate-spin mx-auto mb-6 text-blue-500" />
+                        <h2 className="text-3xl font-extrabold mb-4 text-black dark:text-white">Connecting GitHub</h2>
+                        <p className="text-lg text-gray-700 dark:text-gray-300 font-medium">{message}</p>
+                    </div>
                 )}
 
                 {status === 'success' && (
-                    <>
-                        <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-500" />
-                        <h2 className="text-xl font-bold mb-2 text-green-600 dark:text-green-400">
+                    <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-600 dark:border-green-400 shadow-[-6px_6px_0_rgba(34,197,94,0.8)] dark:shadow-[-6px_6px_0_rgba(34,197,94,0.3)] p-12">
+                        <CheckCircle className="w-16 h-16 mx-auto mb-6 text-green-500" />
+                        <h2 className="text-3xl font-extrabold mb-4 text-green-600 dark:text-green-400">
                             Success!
                         </h2>
-                        <p className="text-gray-600 dark:text-gray-400">{message}</p>
-                    </>
+                        <p className="text-lg text-gray-700 dark:text-gray-300 font-medium">{message}</p>
+                    </div>
                 )}
 
                 {status === 'error' && (
-                    <>
-                        <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-500" />
-                        <h2 className="text-xl font-bold mb-2 text-red-600 dark:text-red-400">
+                    <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-600 dark:border-red-400 shadow-[-6px_6px_0_rgba(239,68,68,0.8)] dark:shadow-[-6px_6px_0_rgba(239,68,68,0.3)] p-12">
+                        <AlertCircle className="w-16 h-16 mx-auto mb-6 text-red-500" />
+                        <h2 className="text-3xl font-extrabold mb-4 text-red-600 dark:text-red-400">
                             Authentication Failed
                         </h2>
-                        <p className="text-gray-600 dark:text-gray-400 mb-4">{message}</p>
+                        <p className="text-lg text-gray-700 dark:text-gray-300 font-medium mb-8">{message}</p>
                         <button
                             onClick={() => navigate('/app/integrations/github')}
-                            className="px-6 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg font-medium hover:scale-[1.02] active:scale-95 transition-all duration-200"
+                            className="px-8 py-3 bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white font-bold hover:scale-[1.02] active:scale-95 transition-all duration-200 shadow-[-3px_3px_0_rgba(0,0,0,0.3)] dark:shadow-[-3px_3px_0_rgba(255,255,255,0.3)]"
                         >
                             Try Again
                         </button>
-                    </>
+                    </div>
                 )}
             </div>
         </div>

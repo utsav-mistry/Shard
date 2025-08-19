@@ -28,11 +28,11 @@ const GitHubIntegrationCallback = () => {
         }
 
         // Send code to backend for GitHub integration
-        const response = await api.post('/integrations/github/callback', { 
-          code, 
-          state 
+        const response = await api.post('/integrations/github/callback', {
+          code,
+          state
         });
-        
+
         if (response.data?.data?.connected) {
           setStatus('success');
           setMessage('GitHub integration successful! Redirecting...');
@@ -40,7 +40,7 @@ const GitHubIntegrationCallback = () => {
         } else {
           throw new Error('Integration failed');
         }
-        
+
       } catch (err) {
         console.error('GitHub integration error:', err);
         setStatus('error');
@@ -67,15 +67,15 @@ const GitHubIntegrationCallback = () => {
               <XCircle className="w-12 h-12 mx-auto text-red-600" />
             )}
           </div>
-          
-          <h1 className="text-2xl font-bold text-black dark:text-white mb-4">
+
+          <h1 className=" text-xl font-bold text-black dark:text-white mb-4">
             GitHub Integration
           </h1>
-          
+
           <p className="text-black dark:text-white mb-6">
             {message}
           </p>
-          
+
           {status === 'error' && (
             <button
               onClick={() => navigate('/app/integrations')}

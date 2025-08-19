@@ -22,14 +22,14 @@ const DeploymentResults = ({ deployment, project, aiResults }) => {
             django: { backend: 13000 },
             flask: { backend: 14000 },
         };
-        
+
         const ports = PORT_CONFIG[stack?.toLowerCase()];
         if (!ports) return 'http://localhost:3000';
-        
+
         if (stack?.toLowerCase() === 'mern' && ports.frontend) {
             return `http://localhost:${ports.frontend}`;
         }
-        
+
         return `http://localhost:${ports.backend}`;
     };
 
@@ -43,7 +43,7 @@ const DeploymentResults = ({ deployment, project, aiResults }) => {
                     {getStatusIcon(deployment?.status)}
                     <h2 className="text-xl font-bold">Deployment Status</h2>
                 </div>
-                
+
                 <div className="gap-4">
                     <div>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Project Name</p>
@@ -100,7 +100,7 @@ const DeploymentResults = ({ deployment, project, aiResults }) => {
             {aiResults && (
                 <div className="bg-white dark:bg-gray-900 border-2 border-black dark:border-white rounded-lg p-6">
                     <h2 className="text-xl font-bold mb-4">AI Code Review</h2>
-                    
+
                     <div className="flex items-center gap-3 mb-4">
                         {aiResults.verdict === 'approve' && (
                             <>
@@ -130,15 +130,15 @@ const DeploymentResults = ({ deployment, project, aiResults }) => {
 
                     <div className="grid md:grid-cols-3 gap-4 mb-4">
                         <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded">
-                            <p className="text-2xl font-bold">{aiResults.issueCount || 0}</p>
+                            <p className=" text-xl font-bold">{aiResults.issueCount || 0}</p>
                             <p className="text-sm text-gray-600 dark:text-gray-400">Issues Found</p>
                         </div>
                         <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded">
-                            <p className="text-2xl font-bold">{aiResults.criticalCount || 0}</p>
+                            <p className=" text-xl font-bold">{aiResults.criticalCount || 0}</p>
                             <p className="text-sm text-gray-600 dark:text-gray-400">Critical</p>
                         </div>
                         <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded">
-                            <p className="text-2xl font-bold">{aiResults.warningCount || 0}</p>
+                            <p className=" text-xl font-bold">{aiResults.warningCount || 0}</p>
                             <p className="text-sm text-gray-600 dark:text-gray-400">Warnings</p>
                         </div>
                     </div>
@@ -149,18 +149,17 @@ const DeploymentResults = ({ deployment, project, aiResults }) => {
                             <h3 className="font-bold mb-3">Issues Detected:</h3>
                             <div className="space-y-2 max-h-60 overflow-y-auto">
                                 {aiResults.issues.slice(0, 10).map((issue, index) => (
-                                    <div 
+                                    <div
                                         key={index}
                                         className="p-3 border border-gray-200 dark:border-gray-700 rounded"
                                     >
                                         <div className="flex items-start gap-2">
-                                            <span className={`px-2 py-1 text-xs rounded font-medium ${
-                                                issue.severity === 'critical' 
+                                            <span className={`px-2 py-1 text-xs rounded font-medium ${issue.severity === 'critical'
                                                     ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200'
                                                     : issue.severity === 'warning'
-                                                    ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200'
-                                                    : 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200'
-                                            }`}>
+                                                        ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200'
+                                                        : 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200'
+                                                }`}>
                                                 {issue.severity?.toUpperCase() || 'INFO'}
                                             </span>
                                             <div className="flex-1">
@@ -188,7 +187,7 @@ const DeploymentResults = ({ deployment, project, aiResults }) => {
             {/* Deployment Information */}
             <div className="bg-white dark:bg-gray-900 border-2 border-black dark:border-white rounded-lg p-6">
                 <h2 className="text-xl font-bold mb-4">Deployment Information</h2>
-                
+
                 <div className="grid md:grid-cols-2 gap-4">
                     <div>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Branch</p>
@@ -209,7 +208,7 @@ const DeploymentResults = ({ deployment, project, aiResults }) => {
                     <div>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Duration</p>
                         <p className="font-medium">
-                            {deployment?.finishedAt && deployment?.createdAt 
+                            {deployment?.finishedAt && deployment?.createdAt
                                 ? `${Math.round((new Date(deployment.finishedAt) - new Date(deployment.createdAt)) / 1000)}s`
                                 : 'In progress...'
                             }

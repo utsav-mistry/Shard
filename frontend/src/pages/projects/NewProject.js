@@ -166,13 +166,13 @@ const NewProject = () => {
   const validateEnvironmentVariables = () => {
     const errors = [];
     const validEnvVars = formData.envVars.filter(env => env.key.trim() !== '' || env.value.trim() !== '');
-    
+
     // Check for duplicate keys
     const keys = new Set();
-    
+
     validEnvVars.forEach((env, index) => {
       const envError = { index, errors: [] };
-      
+
       // Validate key
       if (env.key.trim() === '') {
         envError.errors.push('Environment variable key is required');
@@ -181,7 +181,7 @@ const NewProject = () => {
         if (!/^[A-Z_][A-Z0-9_]*$/.test(env.key.trim())) {
           envError.errors.push('Key must be in UPPER_SNAKE_CASE (e.g., API_KEY, DATABASE_URL)');
         }
-        
+
         // Check for duplicates
         const normalizedKey = env.key.trim().toUpperCase();
         if (keys.has(normalizedKey)) {
@@ -190,17 +190,17 @@ const NewProject = () => {
           keys.add(normalizedKey);
         }
       }
-      
+
       // Validate value
       if (env.value.trim() === '') {
         envError.errors.push('Environment variable value is required');
       }
-      
+
       if (envError.errors.length > 0) {
         errors.push(envError);
       }
     });
-    
+
     return errors;
   };
 
@@ -260,9 +260,9 @@ const NewProject = () => {
           projectId: createdProjectId,
           branch: projectData.branch || 'main'
         });
-        
+
         const deploymentId = deployResponse.data.data._id;
-        
+
         // Navigate to deployment progress page
         navigate(`/app/deployments/${deploymentId}/progress`);
       } catch (deployError) {
@@ -453,7 +453,7 @@ const NewProject = () => {
               ))}
             </div>
           )}
-          
+
           {formData.envVars.length === 0 ? (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               <p>No environment variables added yet.</p>
@@ -517,11 +517,10 @@ const NewProject = () => {
                         <button
                           type="button"
                           onClick={() => updateEnvVar(index, 'secret', !env.secret)}
-                          className={`inline-flex items-center px-3 py-1 text-xs font-bold border-2 transition-colors ${
-                            env.secret
+                          className={`inline-flex items-center px-3 py-1 text-xs font-bold border-2 transition-colors ${env.secret
                               ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-800 dark:border-red-200 hover:bg-red-200 dark:hover:bg-red-800'
                               : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-800 dark:border-green-200 hover:bg-green-200 dark:hover:bg-green-800'
-                          }`}
+                            }`}
                         >
                           {env.secret ? 'Secret' : 'Regular'}
                         </button>
@@ -567,28 +566,54 @@ const NewProject = () => {
   );
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div className="flex items-center">
-        <button
-          onClick={() => step === 'configure_project' ? setStep('select_repo') : navigate('/app/projects')}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full mr-2"
-        >
-          <ArrowLeft className="w-6 h-6" />
-        </button>
-        <div>
-          <h1 className="text-3xl font-bold">Create New Project</h1>
-          <p className="text-gray-500">{step === 'select_repo' ? 'Step 1: Import Repository' : 'Step 2: Configure & Deploy'}</p>
-        </div>
-      </div>
+    <div className="relative min-h-screen bg-white dark:bg-black text-black dark:text-white">
+      {/* Grid background */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(to right, rgba(0,0,0,0.16) 0 1px, transparent 1px 32px),
+            repeating-linear-gradient(to bottom, rgba(0,0,0,0.16) 0 1px, transparent 1px 32px)
+          `,
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0 hidden dark:block"
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(to right, rgba(255,255,255,0.16) 0 1px, transparent 1px 32px),
+            repeating-linear-gradient(to bottom, rgba(255,255,255,0.16) 0 1px, transparent 1px 32px)
+          `,
+        }}
+      />
 
-      {error && (
-        <div className="p-4 border-2 border-red-500 bg-red-50 dark:bg-red-900/20 flex items-center space-x-3">
-          <AlertTriangle className="w-5 h-5 text-red-500" />
-          <span className="text-red-700 dark:text-red-300">{error}</span>
-        </div>
-      )}
+      <main className="relative z-10 px-10 py-16">
+        <div className="max-w-4xl mx-auto space-y-8">
+          <div className="flex items-center">
+            <button
+              onClick={() => step === 'configure_project' ? setStep('select_repo') : navigate('/app/projects')}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full mr-2"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <div>
+              <h1 className="text-3xl font-bold">Create New Project</h1>
+              <p className="text-gray-500">{step === 'select_repo' ? 'Step 1: Import Repository' : 'Step 2: Configure & Deploy'}</p>
+            </div>
+          </div>
 
-      {step === 'select_repo' ? renderRepoSelection() : renderConfiguration()}
+          {error && (
+            <div className="p-4 border-2 border-red-500 bg-red-50 dark:bg-red-900/20 flex items-center space-x-3">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              <span className="text-red-700 dark:text-red-300">{error}</span>
+            </div>
+          )}
+
+          {step === 'select_repo' ? renderRepoSelection() : renderConfiguration()}
+        </div>
+      </main>
     </div>
   );
 };

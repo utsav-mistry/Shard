@@ -201,7 +201,7 @@ const DeploymentProgress = () => {
     socketRef.current.on('connect_error', (error) => {
       console.error('Socket.IO connection error:', error.message);
       console.error('Error details:', error);
-      
+
       // Attempt to reconnect after a delay
       setTimeout(() => {
         if (socketRef.current && socketRef.current.disconnected) {
@@ -284,12 +284,12 @@ const DeploymentProgress = () => {
     // Cleanup function
     return () => {
       clearInterval(interval);
-      
+
       // Unsubscribe from deployment logs before cleanup
       if (socketRef.current && socketRef.current.connected) {
         socketRef.current.emit('unsubscribe-deployment-logs', id);
       }
-      
+
       cleanupSocket();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -373,7 +373,32 @@ const DeploymentProgress = () => {
   const aiReviewStatus = getAIReviewStatus();
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 px-4">
+
+    <div className="max-w-5xl mx-auto space-y-6 px-4 ">
+
+      {/* Grid background */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-[-1]" // <- key fix: put behind everything
+        style={{
+          backgroundImage: `
+      repeating-linear-gradient(to right, rgba(0,0,0,0.08) 0 1px, transparent 1px 32px),
+      repeating-linear-gradient(to bottom, rgba(0,0,0,0.08) 0 1px, transparent 1px 32px)
+    `,
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-[-1] dark:block" // <- z-index behind everything
+        style={{
+          backgroundImage: `
+      repeating-linear-gradient(to right, rgba(255,255,255,0.08) 0 1px, transparent 1px 32px),
+      repeating-linear-gradient(to bottom, rgba(255,255,255,0.08) 0 1px, transparent 1px 32px)
+    `,
+        }}
+      />
+
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -390,10 +415,10 @@ const DeploymentProgress = () => {
       </div>
 
       {/* Project Info */}
-      <div className="bg-gray-50 dark:bg-[#0b0b0b] border border-gray-200 dark:border-[#1f1f1f] shadow-sm rounded-lg p-6">
+      <div className="border-2 border-black-900 dark:border-white-100 rounded-none p-6 shadow-md hover:shadow-lg transition-all duration-200 z-5">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">
+            <h1 className=" text-xl sm:text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">
               {project.name}
             </h1>
             <p className="mt-1 text-sm text-gray-700 dark:text-gray-300 font-medium">
@@ -439,12 +464,12 @@ const DeploymentProgress = () => {
                 <div className="flex-shrink-0">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center ${status === 'completed'
-                        ? 'bg-gray-100 text-green-600 dark:bg-[#111111] dark:text-green-300'
-                        : status === 'active'
-                          ? 'bg-gray-100 text-gray-800 dark:bg-[#111111] dark:text-gray-200'
-                          : status === 'error'
-                            ? 'bg-gray-100 text-red-600 dark:bg-[#111111] dark:text-red-300'
-                            : 'bg-gray-100 text-gray-500 dark:bg-[#111111] dark:text-gray-400'
+                      ? 'bg-gray-100 text-green-600 dark:bg-[#111111] dark:text-green-300'
+                      : status === 'active'
+                        ? 'bg-gray-100 text-gray-800 dark:bg-[#111111] dark:text-gray-200'
+                        : status === 'error'
+                          ? 'bg-gray-100 text-red-600 dark:bg-[#111111] dark:text-red-300'
+                          : 'bg-gray-100 text-gray-500 dark:bg-[#111111] dark:text-gray-400'
                       }`}
                   >
                     {status === 'completed' ? (
@@ -463,12 +488,12 @@ const DeploymentProgress = () => {
                   <div className="flex items-center justify-between">
                     <h3
                       className={`text-sm font-medium ${status === 'completed'
+                        ? 'text-gray-800 dark:text-gray-200'
+                        : status === 'active'
                           ? 'text-gray-800 dark:text-gray-200'
-                          : status === 'active'
+                          : status === 'error'
                             ? 'text-gray-800 dark:text-gray-200'
-                            : status === 'error'
-                              ? 'text-gray-800 dark:text-gray-200'
-                              : 'text-gray-700 dark:text-gray-300'
+                            : 'text-gray-700 dark:text-gray-300'
                         }`}
                     >
                       {step.label}

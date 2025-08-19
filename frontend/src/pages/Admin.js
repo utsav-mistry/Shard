@@ -50,10 +50,10 @@ const DatabaseRecordModal = ({ isOpen, onClose, onSubmit, record = null, tableNa
   const getEmptyFormForTable = (table) => {
     switch (table) {
       case 'users':
-        return { 
-          name: '', 
-          email: '', 
-          passwordHash: '', 
+        return {
+          name: '',
+          email: '',
+          passwordHash: '',
           role: 'user',
           avatar: '',
           googleId: '',
@@ -62,11 +62,11 @@ const DatabaseRecordModal = ({ isOpen, onClose, onSubmit, record = null, tableNa
           githubUsername: ''
         };
       case 'projects':
-        return { 
-          name: '', 
-          repoUrl: '', 
-          framework: 'mern', 
-          subdomain: '', 
+        return {
+          name: '',
+          repoUrl: '',
+          framework: 'mern',
+          subdomain: '',
           status: 'active',
           ownerId: '',
           description: '',
@@ -77,12 +77,12 @@ const DatabaseRecordModal = ({ isOpen, onClose, onSubmit, record = null, tableNa
           envVars: []
         };
       case 'deployments':
-        return { 
-          projectId: '', 
+        return {
+          projectId: '',
           userId: '',
           userEmail: '',
-          status: 'pending', 
-          branch: 'main', 
+          status: 'pending',
+          branch: 'main',
           commitHash: '',
           commitMessage: '',
           buildLogs: '',
@@ -90,10 +90,10 @@ const DatabaseRecordModal = ({ isOpen, onClose, onSubmit, record = null, tableNa
           environment: 'production'
         };
       case 'logs':
-        return { 
-          projectId: '', 
-          deploymentId: '', 
-          type: 'setup', 
+        return {
+          projectId: '',
+          deploymentId: '',
+          type: 'setup',
           content: '',
           timestamp: new Date().toISOString()
         };
@@ -344,48 +344,48 @@ const DatabaseRecordModal = ({ isOpen, onClose, onSubmit, record = null, tableNa
       return (
         <div key={key}>
           <label className="block text-sm font-medium mb-1 capitalize">
-            {key === 'passwordHash' ? 'Password' : 
-             key === 'repoUrl' ? 'Repository URL' : 
-             key === 'ownerId' ? 'Owner ID (User ID)' : 
-             key === 'projectId' ? 'Project ID' : 
-             key === 'userId' ? 'User ID' : 
-             key === 'deploymentId' ? 'Deployment ID' :
-             key === 'userEmail' ? 'User Email' :
-             key === 'commitHash' ? 'Commit Hash' :
-             key === 'commitMessage' ? 'Commit Message' :
-             key === 'deploymentUrl' ? 'Deployment URL' :
-             key === 'buildCommand' ? 'Build Command' :
-             key === 'startCommand' ? 'Start Command' :
-             key === 'installCommand' ? 'Install Command' :
-             key === 'githubAccessToken' ? 'GitHub Access Token' :
-             key === 'githubUsername' ? 'GitHub Username' :
-             key === 'githubId' ? 'GitHub ID' :
-             key === 'googleId' ? 'Google ID' :
-             key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+            {key === 'passwordHash' ? 'Password' :
+              key === 'repoUrl' ? 'Repository URL' :
+                key === 'ownerId' ? 'Owner ID (User ID)' :
+                  key === 'projectId' ? 'Project ID' :
+                    key === 'userId' ? 'User ID' :
+                      key === 'deploymentId' ? 'Deployment ID' :
+                        key === 'userEmail' ? 'User Email' :
+                          key === 'commitHash' ? 'Commit Hash' :
+                            key === 'commitMessage' ? 'Commit Message' :
+                              key === 'deploymentUrl' ? 'Deployment URL' :
+                                key === 'buildCommand' ? 'Build Command' :
+                                  key === 'startCommand' ? 'Start Command' :
+                                    key === 'installCommand' ? 'Install Command' :
+                                      key === 'githubAccessToken' ? 'GitHub Access Token' :
+                                        key === 'githubUsername' ? 'GitHub Username' :
+                                          key === 'githubId' ? 'GitHub ID' :
+                                            key === 'googleId' ? 'Google ID' :
+                                              key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
             {['name', 'email', 'repoUrl', 'framework', 'subdomain', 'ownerId', 'projectId'].includes(key) && ' *'}
           </label>
           <input
-            type={key === 'email' || key === 'userEmail' ? 'email' : 
-                 (key === 'passwordHash' || key === 'password' || key === 'githubAccessToken') ? 'password' : 
-                 key === 'repoUrl' || key === 'deploymentUrl' ? 'url' : 
-                 key === 'port' ? 'number' :
-                 'text'}
+            type={key === 'email' || key === 'userEmail' ? 'email' :
+              (key === 'passwordHash' || key === 'password' || key === 'githubAccessToken') ? 'password' :
+                key === 'repoUrl' || key === 'deploymentUrl' ? 'url' :
+                  key === 'port' ? 'number' :
+                    'text'}
             name={key}
             value={value || ''}
             onChange={handleChange}
             className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
             required={['name', 'email', 'repoUrl', 'framework', 'subdomain', 'ownerId', 'projectId'].includes(key) && !isEditing}
             placeholder={
-              key === 'subdomain' ? 'my-app (will be localhost:port)' : 
-              key === 'commitHash' ? 'Git commit hash or "latest"' :
-              key === 'ownerId' || key === 'projectId' || key === 'userId' || key === 'deploymentId' ? 'MongoDB ObjectId (24 hex characters)' :
-              key === 'port' ? '3000' :
-              key === 'buildCommand' ? 'npm run build' :
-              key === 'startCommand' ? 'npm start' :
-              key === 'installCommand' ? 'npm install' :
-              key === 'branch' ? 'main' :
-              key === 'userEmail' ? 'user@example.com' :
-              ''
+              key === 'subdomain' ? 'my-app (will be localhost:port)' :
+                key === 'commitHash' ? 'Git commit hash or "latest"' :
+                  key === 'ownerId' || key === 'projectId' || key === 'userId' || key === 'deploymentId' ? 'MongoDB ObjectId (24 hex characters)' :
+                    key === 'port' ? '3000' :
+                      key === 'buildCommand' ? 'npm run build' :
+                        key === 'startCommand' ? 'npm start' :
+                          key === 'installCommand' ? 'npm install' :
+                            key === 'branch' ? 'main' :
+                              key === 'userEmail' ? 'user@example.com' :
+                                ''
             }
             min={key === 'port' ? '1000' : undefined}
             max={key === 'port' ? '65535' : undefined}
@@ -444,7 +444,7 @@ const UserManagementTab = ({ users, onCreateUser, onEditUser, onDeleteUser, load
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-black-900 dark:text-white-100">User Management</h2>
+        <h2 className=" text-xl font-bold text-black-900 dark:text-white-100">User Management</h2>
         <button
           onClick={onCreateUser}
           className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -491,11 +491,10 @@ const UserManagementTab = ({ users, onCreateUser, onEditUser, onDeleteUser, load
                     {user.email}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      user.role === 'admin' 
-                        ? 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100' 
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'admin'
+                        ? 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
                         : 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
-                    }`}>
+                      }`}>
                       {user.role}
                     </span>
                   </td>
@@ -725,7 +724,7 @@ const AdminNavBar = ({ user, onLogout }) => {
                   className="w-full flex items-center space-x-2 px-3 py-2 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-none transition-colors duration-200"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span className="font-medium">Logout</span>
+                  <span className="font-medium">Sign Out</span>
                 </button>
               </div>
             </div>
@@ -802,18 +801,18 @@ const Admin = () => {
         mode: 'cors',
         cache: 'no-cache'
       });
-      
+
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
-      
+
       const raw = await res.json();
       console.log(`Health data for ${service}:`, raw);
 
       // Normalize status across services
       const rawStatus = (raw.status || raw.state || (raw.ok ? 'ok' : 'offline') || '').toString().toLowerCase();
-      const normalizedStatus = ['ok', 'healthy', 'online', 'up'].includes(rawStatus) ? 'ok' : 
-                              rawStatus === 'degraded' ? 'degraded' : 'offline';
+      const normalizedStatus = ['ok', 'healthy', 'online', 'up'].includes(rawStatus) ? 'ok' :
+        rawStatus === 'degraded' ? 'degraded' : 'offline';
       const data = { ...raw, status: normalizedStatus };
       setter(data);
     } catch (error) {
@@ -891,7 +890,7 @@ const Admin = () => {
     const days = Math.floor(seconds / (24 * 60 * 60));
     const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
     const minutes = Math.floor((seconds % (60 * 60)) / 60);
-    
+
     if (days > 0) return `${days}d ${hours}h ${minutes}m`;
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
@@ -916,7 +915,7 @@ const Admin = () => {
     <div className="min-h-screen bg-white-100 dark:bg-black-900">
       {/* Admin Navigation Bar */}
       <AdminNavBar user={currentUser} onLogout={logout} />
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8 border-b-2 border-black-900 dark:border-white-100 pb-6">
@@ -967,8 +966,7 @@ const Admin = () => {
                 setActiveTab('admin-config');
                 handleTableSelect('users');
               }}
-              className={`${
-                activeTab === 'admin-config'
+              className={`${activeTab === 'admin-config'
                   ? 'border-black-900 dark:border-white-100 text-black-900 dark:text-white-100'
                   : 'border-transparent text-black-500 dark:text-white-500 hover:text-black-700 dark:hover:text-white-300 hover:border-black-300 dark:hover:border-white-700'
                 } pb-2 px-1 border-b-2 font-medium text-sm flex items-center`}
@@ -1004,22 +1002,20 @@ const Admin = () => {
                       <p className="text-sm text-gray-500 dark:text-gray-400">Port 5000</p>
                     </div>
                   </div>
-                  <div className={`h-3 w-3 rounded-full ${
-                    backendHealth?.status === 'ok' ? 'bg-green-500' : 
-                    backendHealth?.status === 'degraded' ? 'bg-yellow-500' : 
-                    'bg-red-500'
-                  }`}></div>
+                  <div className={`h-3 w-3 rounded-full ${backendHealth?.status === 'ok' ? 'bg-green-500' :
+                      backendHealth?.status === 'degraded' ? 'bg-yellow-500' :
+                        'bg-red-500'
+                    }`}></div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600 dark:text-gray-400">Status:</span>
-                    <span className={`text-sm font-medium ${
-                      backendHealth?.status === 'ok' ? 'text-green-600 dark:text-green-400' : 
-                      backendHealth?.status === 'degraded' ? 'text-yellow-600 dark:text-yellow-400' : 
-                      'text-red-600 dark:text-red-400'
-                    }`}>
-                      {backendHealth?.status === 'ok' ? 'Online' : 
-                       backendHealth?.status === 'degraded' ? 'Degraded' : 'Offline'}
+                    <span className={`text-sm font-medium ${backendHealth?.status === 'ok' ? 'text-green-600 dark:text-green-400' :
+                        backendHealth?.status === 'degraded' ? 'text-yellow-600 dark:text-yellow-400' :
+                          'text-red-600 dark:text-red-400'
+                      }`}>
+                      {backendHealth?.status === 'ok' ? 'Online' :
+                        backendHealth?.status === 'degraded' ? 'Degraded' : 'Offline'}
                     </span>
                   </div>
                   {backendHealth?.uptime && (
@@ -1227,11 +1223,10 @@ const Admin = () => {
                   <button
                     key={table}
                     onClick={() => fetchTableData(table)}
-                    className={`w-full text-left px-3 py-2 rounded border-2 transition-colors ${
-                      selectedTable === table
+                    className={`w-full text-left px-3 py-2 rounded border-2 transition-colors ${selectedTable === table
                         ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                         : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-700 dark:text-gray-300'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-medium capitalize">{table}</span>
@@ -1346,14 +1341,14 @@ const Admin = () => {
           </div>
         )}
 
-        <UserModal 
-          isOpen={isUserModalOpen} 
-          onClose={() => setIsUserModalOpen(false)} 
-          onSubmit={handleUserSubmit} 
-          user={currentUserData} 
-          isEditing={isEditing} 
+        <UserModal
+          isOpen={isUserModalOpen}
+          onClose={() => setIsUserModalOpen(false)}
+          onSubmit={handleUserSubmit}
+          user={currentUserData}
+          isEditing={isEditing}
         />
-        
+
         <DatabaseRecordModal
           isOpen={isEditModalOpen}
           onClose={() => {

@@ -6,7 +6,7 @@ import { AlertTriangle, ArrowLeft, Save, Eye, EyeOff } from 'lucide-react';
 const NewEnvironmentVariable = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  
+
   const [key, setKey] = useState('');
   const [value, setValue] = useState('');
   const [isSecret, setIsSecret] = useState(false);
@@ -22,11 +22,11 @@ const NewEnvironmentVariable = () => {
 
   const validateForm = () => {
     let isValid = true;
-    
+
     // Reset errors
     setKeyError('');
     setValueError('');
-    
+
     // Validate key
     if (!key.trim()) {
       setKeyError('Key is required');
@@ -35,33 +35,33 @@ const NewEnvironmentVariable = () => {
       setKeyError('Key must be in UPPER_SNAKE_CASE (e.g., API_KEY, DATABASE_URL) and start with a letter or underscore', 'error');
       isValid = false;
     }
-    
+
     // Validate value
     if (!value.trim()) {
       setValueError('Value is required');
       isValid = false;
     }
-    
+
     return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await api.post(`/api/projects/${projectId}/env`, {
         key: key.trim().toUpperCase(), // Ensure key is uppercase
         value: value.trim(),
         secret: isSecret
       });
-      
+
       // Handle standardized response
       if (response.data && response.data.success) {
         // Navigate back to project detail page with success message
@@ -76,7 +76,7 @@ const NewEnvironmentVariable = () => {
       }
     } catch (err) {
       console.error('Error creating environment variable:', err);
-      
+
       if (err.response) {
         if (err.response.status === 409) {
           setKeyError('An environment variable with this key already exists');
@@ -88,7 +88,7 @@ const NewEnvironmentVariable = () => {
       } else {
         setError('Failed to connect to the server. Please check your connection.');
       }
-      
+
       setLoading(false);
     }
   };
@@ -108,7 +108,7 @@ const NewEnvironmentVariable = () => {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-black-900 dark:text-white-100">
+        <h1 className=" text-xl font-bold text-black-900 dark:text-white-100">
           Add Environment Variable
         </h1>
         <p className="mt-1 text-sm text-black-500 dark:text-white-400">
@@ -139,7 +139,7 @@ const NewEnvironmentVariable = () => {
                 name="key"
                 value={key}
                 onChange={(e) => setKey(e.target.value)}
-                className={`shadow-sm focus:ring-black-500 focus:border-black-500 dark:focus:ring-white-500 dark:focus:border-white-500 block w-full sm:text-sm border-2 border-black-300 dark:border-white-700 rounded-none bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 ${keyError ? 'border-red-300 dark:border-red-700 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : ''}`} 
+                className={`shadow-sm focus:ring-black-500 focus:border-black-500 dark:focus:ring-white-500 dark:focus:border-white-500 block w-full sm:text-sm border-2 border-black-300 dark:border-white-700 rounded-none bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 ${keyError ? 'border-red-300 dark:border-red-700 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : ''}`}
 
                 placeholder="DATABASE_URL"
               />
@@ -164,7 +164,7 @@ const NewEnvironmentVariable = () => {
                 name="value"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                className={`block w-full pr-10 sm:text-sm border-2 border-black-300 dark:border-white-700 rounded-none bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 focus:ring-black-500 focus:border-black-500 dark:focus:ring-white-500 dark:focus:border-white-500 ${valueError ? 'border-red-300 dark:border-red-700 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : ''}`} 
+                className={`block w-full pr-10 sm:text-sm border-2 border-black-300 dark:border-white-700 rounded-none bg-white-100 dark:bg-black-900 text-black-900 dark:text-white-100 focus:ring-black-500 focus:border-black-500 dark:focus:ring-white-500 dark:focus:border-white-500 ${valueError ? 'border-red-300 dark:border-red-700 focus:ring-red-500 focus:border-red-500 dark:focus:ring-red-500 dark:focus:border-red-500' : ''}`}
 
                 placeholder="value"
               />
