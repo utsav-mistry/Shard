@@ -59,17 +59,16 @@ const NewEnvironmentVariable = () => {
       const response = await api.post(`/api/projects/${projectId}/env`, {
         key: key.trim().toUpperCase(), // Ensure key is uppercase
         value: value.trim(),
-        projectId: projectId // Include projectId in the request body
+        secret: isSecret
       });
       
       // Handle standardized response
       if (response.data && response.data.success) {
         // Navigate back to project detail page with success message
-        navigate(`/app/projects/${projectId}`, {
+        navigate(`/app/environment/${projectId}`, {
           state: {
             message: 'Environment variable created successfully',
-            type: 'success',
-            activeTab: 'settings'
+            type: 'success'
           }
         });
       } else {

@@ -4,7 +4,8 @@ import api from '../../utils/axiosConfig';
 import { AlertTriangle, ArrowLeft, Save, Eye, EyeOff } from 'lucide-react';
 
 const EditEnvironmentVariable = () => {
-  const { projectId, variableId } = useParams();
+  const { projectId, id } = useParams();
+  const variableId = id;
   const navigate = useNavigate();
   
   const [key, setKey] = useState('');
@@ -94,7 +95,7 @@ const EditEnvironmentVariable = () => {
       // Handle standardized response
       if (response.data && response.data.success) {
         // Navigate back to environment variables list with success message
-        navigate(`/projects/${projectId}/env`, {
+        navigate(`/app/environment/${projectId}`, {
           state: {
             message: 'Environment variable updated successfully',
             type: 'success'

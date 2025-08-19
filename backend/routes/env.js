@@ -20,14 +20,19 @@ router.use((req, res, next) => {
     next();
 });
 
-// Create environment variable for a project
+// Create environment variable for a project (single)
 router.post(
     '/',
     sanitizeBody,
     (req, res, next) => {
-        // Ensure key is uppercase
-        if (req.body.key) {
-            req.body.key = req.body.key.toUpperCase();
+        // Check if this is a bulk request
+        if (req.body.envVars && Array.isArray(req.body.envVars)) {
+            return envController.addBulkEnvVars(req, res);
+        }
+        
+        // Validate that the request has the required fields for single env var
+        if (!req.body.key || !req.body.value) {
+            return res.status(400).json({ success: false, message: 'Key and value are required' });
         }
         next();
     },

@@ -238,7 +238,7 @@ const EnvironmentVariables = () => {
                           </span>
                           {env.secret && (
                             <button
-                              onClick={() => navigate(`/app/projects/${projectId}`)}
+                              onClick={() => toggleShowSecret(env._id)}
                               className="ml-2 text-black-600 hover:text-black-900 dark:text-white-400 dark:hover:text-white-100 transition-colors duration-200"
                             >
                               {showSecrets[env._id] ? (

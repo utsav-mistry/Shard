@@ -3,7 +3,7 @@ const Project = require("../models/Project");
 const { encrypt, decrypt } = require("../utils/encryptor");
 
 // Create env variable
-const addEnvVar = async (projectId, key, value) => {
+const addEnvVar = async (projectId, key, value, secret = false) => {
     const session = await EnvVar.startSession();
     session.startTransaction();
     
@@ -21,6 +21,7 @@ const addEnvVar = async (projectId, key, value) => {
             projectId,
             key,
             value: encryptedValue,
+            secret
         }], { session });
 
         // Add environment variable ID to project's envVars array
@@ -54,6 +55,7 @@ const getEnvVars = async (projectId) => {
         _id: env._id,
         key: env.key,
         value: decrypt(env.value),
+        secret: env.secret || false,
         createdAt: env.createdAt
     }));
 };

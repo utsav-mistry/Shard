@@ -112,6 +112,58 @@ const createProject = async (req, res) => {
             );
         }
 
+        // Validate environment variables BEFORE creating project
+        const envVarErrors = [];
+        const envKeys = new Set();
+        const envObjectForJob = {};
+        
+        if (environmentVariables && Array.isArray(environmentVariables) && environmentVariables.length > 0) {
+            environmentVariables.forEach((env, index) => {
+                const errors = [];
+                
+                // Validate key
+                if (!env.key || !env.key.trim()) {
+                    errors.push('Environment variable key is required');
+                } else {
+                    const key = env.key.trim().toUpperCase();
+                    
+                    // Check key format (UPPER_SNAKE_CASE)
+                    if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
+                        errors.push('Key must be in UPPER_SNAKE_CASE format (e.g., API_KEY)');
+                    }
+                    
+                    // Check for duplicates
+                    if (envKeys.has(key)) {
+                        errors.push('Duplicate environment variable key');
+                    } else {
+                        envKeys.add(key);
+                    }
+                }
+                
+                // Validate value
+                if (!env.value || !env.value.trim()) {
+                    errors.push('Environment variable value is required');
+                }
+                
+                if (errors.length > 0) {
+                    envVarErrors.push({ index, errors });
+                }
+            });
+        }
+        
+        // Return validation errors if any
+        if (envVarErrors.length > 0) {
+            logger.error('Environment variable validation failed', {
+                ...logContext,
+                envVarErrors
+            });
+            
+            return res.apiValidationError(
+                { environmentVariables: envVarErrors },
+                'Environment variable validation failed'
+            );
+        }
+
         // Generate unique subdomain
         const subdomain = generateSubdomain(name);
         logContext.subdomain = subdomain;
@@ -128,21 +180,43 @@ const createProject = async (req, res) => {
             status: 'active',
         });
 
-        // Save environment variables
-        const envObjectForJob = {};
+        // Save environment variables (validation already passed)
         if (environmentVariables && Array.isArray(environmentVariables) && environmentVariables.length > 0) {
-            const envPromises = environmentVariables.map(async (env) => {
-                if (env.key && env.value) {
-                    const encryptedValue = encrypt(env.value);
-                    await EnvVar.create({
+            try {
+                const envPromises = environmentVariables.map(async (env) => {
+                    if (env.key && env.value) {
+                        const key = env.key.trim().toUpperCase();
+                        const encryptedValue = encrypt(env.value);
+                        await EnvVar.create({
+                            projectId: project._id,
+                            key,
+                            value: encryptedValue,
+                            secret: env.secret || false
+                        });
+                        envObjectForJob[key] = env.value; // Use unencrypted for job
+                    }
+                });
+                await Promise.all(envPromises);
+            } catch (envError) {
+                // Rollback: Delete the created project if env var creation fails
+                logger.error('Environment variable creation failed, rolling back project', {
+                    ...logContext,
+                    projectId: project._id,
+                    error: envError.message
+                });
+                
+                try {
+                    await Project.findByIdAndDelete(project._id);
+                    logger.info('Project rollback completed', { projectId: project._id });
+                } catch (rollbackError) {
+                    logger.error('Project rollback failed', {
                         projectId: project._id,
-                        key: env.key.toUpperCase(),
-                        value: encryptedValue,
+                        error: rollbackError.message
                     });
-                    envObjectForJob[env.key.toUpperCase()] = env.value; // Use unencrypted for job
                 }
-            });
-            await Promise.all(envPromises);
+                
+                return res.apiServerError('Failed to create environment variables', envError.message);
+            }
         }
 
         logger.info('Project created successfully', {

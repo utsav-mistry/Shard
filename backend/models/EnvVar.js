@@ -15,7 +15,15 @@ const EnvVarSchema = new mongoose.Schema(
             type: String,
             required: true, // Encrypted value will be stored here
         },
+        secret: {
+            type: Boolean,
+            default: false,
+        },
         createdAt: {
+            type: Date,
+            default: Date.now,
+        },
+        updatedAt: {
             type: Date,
             default: Date.now,
         },
