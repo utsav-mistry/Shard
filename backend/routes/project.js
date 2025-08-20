@@ -344,6 +344,12 @@ router.get("/",
   getProjects
 );
 
+router.get("/:id",
+  protect,
+  validateObjectId,
+  getProjectById
+);
+
 /**
  * @swagger
  * /projects/{id}:

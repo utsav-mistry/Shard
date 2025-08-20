@@ -926,7 +926,7 @@ const Admin = () => {
             </p>
           </div>
           <a
-            href="http://localhost:5000/app"
+            href="http://localhost:5000/dashboard"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
