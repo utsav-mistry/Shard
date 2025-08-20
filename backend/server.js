@@ -180,7 +180,6 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/deploy', deployRoutes);
 app.use('/api/deployments', deployRoutes); // Also mount at /api/deployments for frontend compatibility
 app.use('/api/admin', adminRoutes);
-// Mount environment routes
 app.use('/api/projects/:projectId/env', envRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/github', githubRoutes);

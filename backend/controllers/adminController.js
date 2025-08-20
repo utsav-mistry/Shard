@@ -10,6 +10,7 @@ const axios = require("axios");
 const Deployment = require("../models/Deployment");
 const Project = require("../models/Project");
 const User = require("../models/User");
+const Logs = require("../models/Logs");
 const os = require("os");
 const fs = require("fs").promises;
 const path = require("path");
@@ -627,17 +628,11 @@ const getTableData = async (req, res) => {
                 data = await Deployment.find({}).populate('projectId', 'name subdomain').populate('userId', 'name email').sort({ createdAt: -1 }).limit(100);
                 break;
             case 'logs':
-                // For logs, return a placeholder since there's no dedicated logs collection
-                data = [
-                    {
-                        _id: 'sample-log-1',
-                        projectId: 'N/A',
-                        deploymentId: 'N/A',
-                        type: 'info',
-                        content: 'Logs are managed automatically by the deployment system',
-                        timestamp: new Date().toISOString()
-                    }
-                ];
+                data = await Logs.find({})
+                    .populate('projectId', 'name subdomain')
+                    .populate('deploymentId', 'status commitHash')
+                    .sort({ createdAt: -1 })
+                    .limit(200);
                 break;
             default:
                 return res.apiBadRequest('Invalid table name');
@@ -748,13 +743,22 @@ const createRecord = async (req, res) => {
             case 'logs':
                 // Remove empty fields except content
                 Object.keys(recordData).forEach(key => {
-                    if (key !== 'content' && (recordData[key] === '' || recordData[key] === null)) {
+                    if (recordData[key] === '' || recordData[key] === null) {
                         delete recordData[key];
                     }
                 });
 
-                // For logs, we'll create a simple log entry (no specific model exists)
-                return res.apiSuccess({ message: 'Log entries are managed automatically by the system' }, 'Logs are read-only');
+                // Ensure required fields for logs
+                if (!recordData.projectId || !recordData.deploymentId || !recordData.type || !recordData.content) {
+                    return res.apiBadRequest('ProjectId, deploymentId, type, and content are required for logs');
+                }
+
+                newRecord = new Logs(recordData);
+                await newRecord.save();
+                newRecord = await Logs.findById(newRecord._id)
+                    .populate('projectId', 'name subdomain')
+                    .populate('deploymentId', 'status commitHash');
+                break;
 
             default:
                 return res.apiBadRequest('Invalid table name');
@@ -874,7 +878,20 @@ const updateRecord = async (req, res) => {
                 break;
 
             case 'logs':
-                return res.apiSuccess({ message: 'Log entries are managed automatically by the system' }, 'Logs are read-only');
+                // Remove empty fields except content
+                Object.keys(recordData).forEach(key => {
+                    if (recordData[key] === null) {
+                        delete recordData[key];
+                    }
+                });
+
+                updatedRecord = await Logs.findByIdAndUpdate(
+                    id,
+                    recordData,
+                    { new: true, runValidators: true }
+                ).populate('projectId', 'name subdomain')
+                .populate('deploymentId', 'status commitHash');
+                break;
 
             default:
                 return res.apiBadRequest('Invalid table name');
@@ -960,7 +977,8 @@ const deleteRecord = async (req, res) => {
                 break;
 
             case 'logs':
-                return res.apiSuccess(null, 'Logs are managed automatically by the system');
+                deletedRecord = await Logs.findByIdAndDelete(id);
+                break;
 
             default:
                 return res.apiBadRequest('Invalid table name');
@@ -1010,8 +1028,8 @@ const getTables = async (req, res) => {
             },
             {
                 name: 'logs',
-                count: 0,
-                description: 'System logs (managed automatically)'
+                count: await Logs.countDocuments(),
+                description: 'Deployment and system logs'
             }
         ];
 
