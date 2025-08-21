@@ -1,5 +1,12 @@
-[bandit]
-exclude_dirs = /tests,/venv,/env,/.venv,/node_modules,/migrations,/.git
-skips = B101,B601
-confidence = medium
-severity = medium
+# Bandit configuration (YAML format)
+
+skips: ['B101', 'B601', 'B105', 'B106', 'B107', 'B104', 'B108', 'B603', 'B607']
+exclude_dirs: ['tests', 'venv', 'env', '.venv', 'node_modules', 'migrations', '.git', 'static', 'dist', 'build', 'coverage', 'htmlcov', 'docs']
+
+# Scan settings
+recursive: True
+confidence_level: 2 # high
+severity_level: 2 # high
+
+# Output format
+output_format: json

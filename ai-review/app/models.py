@@ -1,3 +1,1 @@
-from django.db import models
-
-# Create your models here.
+# Django models placeholder - no database needed for AI review service

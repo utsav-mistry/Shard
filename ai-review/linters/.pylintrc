@@ -1,15 +1,68 @@
 [MASTER]
-ignore=migrations,venv,env,.venv,node_modules,.git
+# Ignore common directories
+ignore = migrations,venv,env,.venv,node_modules,.git,__pycache__
 
-[MESSAGES CONTROL]
-disable=C0114,C0115,C0116,R0903,W0613,C0103,R0801
+# Only enable critical checks
+enable = 
+    syntax-error,
+    undefined-variable,
+    unused-import,
+    unused-variable,
+    unused-argument,
+    no-member,
+    no-name-in-module,
+    import-error,
+    relative-beyond-top-level,
+    not-callable,
+    unexpected-keyword-arg,
+    no-value-for-parameter
+
+# Disable style and non-critical checks
+disable = 
+    missing-docstring,
+    invalid-name,
+    too-few-public-methods,
+    too-many-arguments,
+    too-many-locals,
+    too-many-branches,
+    too-many-statements,
+    too-many-instance-attributes,
+    line-too-long,
+    wrong-import-order,
+    wrong-import-position,
+    import-outside-toplevel,
+    redefined-outer-name,
+    redefined-builtin,
+    unused-wildcard-import,
+    too-many-function-args,
+    duplicate-code,
+    fixme,
+    protected-access,
+    attribute-defined-outside-init,
+    too-many-public-methods,
+    too-many-lines,
+    too-many-nested-blocks,
+    too-many-return-statements,
+    too-many-boolean-expressions
 
 [FORMAT]
-max-line-length=88
+max-line-length=120
 
 [DESIGN]
-max-args=7
-max-locals=15
-max-returns=6
-max-branches=12
-max-statements=50
+max-args=10
+max-locals=20
+max-returns=8
+max-branches=20
+max-statements=100
+max-attributes=15
+
+[BASIC]
+# Allow short variable names like x, y, z
+good-names=i,j,k,ex,Run,_,e,fp,fd,df
+
+[IMPORTS]
+# Don't complain about import order
+known-standard-library=os,sys,json,datetime,time,re,pathlib,typing,logging
+
+[LOGGING]
+logging-modules=logging

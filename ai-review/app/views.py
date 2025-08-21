@@ -1,32 +1,38 @@
+import logging
+import os
+import json
+import datetime
+import platform
+import psutil
+import tempfile
+import shutil
+
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
-import logging
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils.decorators import method_decorator
 from django.views import View
+
 from .analyzer import analyze_code
 from .utils import collect_code_files, collect_code_files_from_path
-from .deepseek_runner import DeepSeekRunner
+from .model_runner import ModelRunner
+from .model_config import model_manager, ModelType
+from .context_analyzer import context_analyzer
 from .linter_service import LinterService
 from .result_processor import ResultProcessor
-import platform
-import psutil
-import os
-import datetime
-import json
-import tempfile
-import shutil
+
+# Get the base directory of the project
+BASE_DIR = getattr(settings, 'BASE_DIR', os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Initialize AI runner
-ai_runner = DeepSeekRunner()
+# AI runner will be initialized per request with user context
 
 def root(request):
     return render(request, 'root.html')
@@ -55,7 +61,9 @@ class HealthView(View):
         return JsonResponse({
             'status': 'healthy',
             'service': 'ai-review',
-            'model_loaded': ai_runner.model is not None
+            'gpu_available': model_manager.check_gpu_availability(),
+            'models_available': len(model_manager.model_configs),
+            'loaded_models': len(model_manager._loaded_models)
         })
 
 class ShutdownView(View):
@@ -100,33 +108,7 @@ def health_check(request):
             status=status.HTTP_503_SERVICE_UNAVAILABLE
         )
 
-@api_view(['POST'])
-def shutdown(request):
-    """
-    Shutdown the server gracefully.
-    This endpoint is used for graceful shutdown from the backend service.
-    """
-    # Only allow shutdown in development or if explicitly enabled in production
-    if not settings.DEBUG and not getattr(settings, 'ALLOW_SHUTDOWN_ENDPOINT', False):
-        return Response(
-            {'status': 'error', 'message': 'Shutdown endpoint is disabled in production'},
-            status=status.HTTP_403_FORBIDDEN
-        )
-    
-    # Log the shutdown request
-    logger = logging.getLogger(__name__)
-    logger.warning('Received shutdown request')
-    
-    # Schedule the server shutdown after a short delay
-    def delayed_shutdown():
-        import time
-        time.sleep(1)  # Give time for the response to be sent
-        os._exit(0)
-    
-    import threading
-    threading.Thread(target=delayed_shutdown).start()
-    
-    return Response({'status': 'shutting_down'}, status=status.HTTP_200_OK)
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CodeReviewView(View):
@@ -135,33 +117,46 @@ class CodeReviewView(View):
             data = json.loads(request.body)
             project_id = data.get('projectId')
             repo_path = data.get('repoPath')
+            model_type = data.get('model_type', 'deepseek_lite')  # Default model
             
             if not project_id:
                 return JsonResponse({
                     'error': 'Project ID is required'
                 }, status=400)
             
-            # If repo_path is provided, use it directly
-            if repo_path and os.path.exists(repo_path):
-                target_path = repo_path
-                logger.info(f"Using provided repo path: {repo_path}")
-            else:
-                # Default to cloned repo path
-                target_path = f"/tmp/repos/{project_id}"
-                logger.info(f"Using default repo path: {target_path}")
-            
-            if not os.path.exists(target_path):
+            # Determine the repository path
+            try:
+                # Look for repo in deployment-worker/repos with project ID prefix
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                repos_dir = os.path.join(base_dir, "deployment-worker", "repos")
+                
+                if not os.path.exists(repos_dir):
+                    raise FileNotFoundError(f"Repository directory not found: {repos_dir}")
+                
+                # Find all directories that start with the project ID
+                matching_dirs = [
+                    os.path.join(repos_dir, d) for d in os.listdir(repos_dir)
+                    if os.path.isdir(os.path.join(repos_dir, d)) and d.startswith(project_id)
+                ]
+                
+                if not matching_dirs:
+                    raise FileNotFoundError(
+                        f"No repository found for project ID: {project_id} in {repos_dir}"
+                    )
+                
+                # Use the first matching directory (should only be one per project ID)
+                target_path = matching_dirs[0]
+                logger.info(f"Found repository at: {target_path}")
+                
+                # Collect code files for analysis
+                file_data = collect_code_files_from_path(target_path)
+                
+            except Exception as e:
+                logger.error(f"Error finding repository: {str(e)}")
                 return JsonResponse({
-                    'error': f'Repository path does not exist: {target_path}'
+                    'error': f'Repository not found: {str(e)}',
+                    'details': f'Searched in: {repos_dir if "repos_dir" in locals() else "[path not determined]"}'
                 }, status=404)
-            
-            # Collect code files for analysis
-            if repo_path and os.path.exists(repo_path):
-                # Use provided repo path directly
-                file_data = collect_code_files_from_path(repo_path)
-            else:
-                # Use project ID to find repo in standard location
-                file_data = collect_code_files(project_id)
             
             if not file_data:
                 return JsonResponse({
@@ -184,12 +179,27 @@ class CodeReviewView(View):
             logger.info("Running static analysis linters...")
             linter_issues = linter_service.run_all_linters([os.path.relpath(f, target_path) for f in files])
             
-            # Run DeepSeek AI analysis on selected files (limit to avoid token limits)
-            logger.info("Running AI code analysis...")
+            # Validate model type
+            try:
+                model_enum = ModelType(model_type)
+                logger.info(f"Using AI model: {model_type}")
+            except ValueError:
+                available_models = [m.value for m in ModelType]
+                return JsonResponse({
+                    'error': f'Invalid model type: {model_type}',
+                    'available_models': available_models
+                }, status=400)
+            
+            # Initialize the AI model runner once with the selected model
+            logger.info(f"Initializing AI model runner with {model_type}...")
+            ai_runner = ModelRunner(model_type=model_enum)
+
+            # Run AI analysis
+            logger.info(f"Running AI code analysis with model: {model_type}...")
             deepseek_issues = []
             
-            # Analyze up to 10 most important files with AI
-            important_files = files[:10]
+            # Analyze up to 5 most important files with AI
+            important_files = files[:5]
             
             for file_path in important_files:
                 try:
@@ -198,9 +208,10 @@ class CodeReviewView(View):
                     
                     # Get relative path for display
                     rel_path = os.path.relpath(file_path, target_path)
+                    logger.info(f"AI analyzing file: {rel_path}")
                     
-                    # Run AI analysis
-                    ai_issues = ai_runner.analyze_code(file_content, rel_path)
+                    # Use the single AI runner instance for analysis
+                    ai_issues = ai_runner.analyze(file_content, file_path)
                     
                     # Add file context to AI issues
                     if isinstance(ai_issues, list):
@@ -214,21 +225,26 @@ class CodeReviewView(View):
             
             # Merge and process all results
             logger.info("Processing and merging analysis results...")
-            final_result = result_processor.merge_results(linter_issues, deepseek_issues)
+            processor = ResultProcessor()
+            merged_issues = processor.merge_results(linter_issues, deepseek_issues)
+            verdict_result = processor.generate_verdict(merged_issues, 'ai-review')
             
-            # Generate verdict
-            verdict_data = result_processor.generate_verdict(final_result)
-            
-            logger.info(f"Analysis complete for project {project_id}: {verdict_data['verdict']} ({verdict_data['issue_count']} issues)")
+            logger.info(f"Analysis complete for project {project_id}: {verdict_result['verdict']} ({verdict_result['issue_count']} issues)")
             
             return JsonResponse({
-                'verdict': verdict_data['verdict'],
+                'verdict': verdict_result['verdict'],
+                'reason': verdict_result['reason'],
+                'issue_count': verdict_result['issue_count'],
+                'severity_breakdown': verdict_result['severity_breakdown'],
+                'issues': verdict_result['issues'][:50],  # Limit to first 50 issues
                 'reason': verdict_data['reason'],
                 'issue_count': verdict_data['issue_count'],
                 'severity_breakdown': verdict_data['severity_breakdown'],
                 'issues': verdict_data['issues'][:50],  # Limit to first 50 issues
                 'linter_count': len(linter_issues),
-                'ai_count': len(deepseek_issues)
+                'ai_count': len(deepseek_issues),
+                'model_used': model_type,
+                'model_loaded': model_enum in model_manager._loaded_models
             })
             
         except json.JSONDecodeError:
@@ -240,3 +256,65 @@ class CodeReviewView(View):
             return JsonResponse({
                 'error': f'Code review failed: {str(e)}'
             }, status=500)
+        finally:
+            logger.info("Clearing AI model cache after request.")
+            model_manager.unload_all_models()
+
+
+
+def process_analysis_results(issues):
+    """Process analysis results into structured format."""
+    if not issues:
+        return {
+            'verdict': 'approve',
+            'reason': 'No critical issues found',
+            'issue_count': 0,
+            'severity_breakdown': {
+                'security': 0,
+                'error': 0,
+                'warning': 0
+            },
+            'issues': [],
+            'linter_count': 0,
+            'ai_count': 0
+        }
+    
+    # Count issues by severity and tool
+    severity_breakdown = {'security': 0, 'error': 0, 'warning': 0}
+    tool_breakdown = {'linter': 0, 'ai': 0}
+    
+    for issue in issues:
+        severity = issue.get('severity', 'warning')
+        tool = issue.get('tool', 'unknown')
+        
+        if severity in severity_breakdown:
+            severity_breakdown[severity] += 1
+        
+        if 'shard-ai' in tool.lower():
+            tool_breakdown['ai'] += 1
+        else:
+            tool_breakdown['linter'] += 1
+    
+    # Determine verdict
+    error_count = severity_breakdown['error']
+    security_count = severity_breakdown['security']
+    
+    if error_count > 0:
+        verdict = 'deny'
+        reason = f'Critical issues found: {security_count} security, {error_count} errors'
+    elif security_count > 3:
+        verdict = 'manual_review'
+        reason = f'Multiple security issues found: {security_count} security issues require review'
+    else:
+        verdict = 'approve'
+        reason = 'No critical blocking issues found'
+    
+    return {
+        'verdict': verdict,
+        'reason': reason,
+        'issue_count': len(issues),
+        'severity_breakdown': severity_breakdown,
+        'issues': issues,
+        'linter_count': tool_breakdown['linter'],
+        'ai_count': tool_breakdown['ai']
+    }

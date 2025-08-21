@@ -1,35 +1,121 @@
 {
+  "root": true,
   "env": {
     "browser": true,
     "es2021": true,
-    "node": true
+    "node": true,
+    "jest": true
   },
   "extends": [
-    "eslint:recommended"
+    "eslint:recommended",
+    "plugin:react/recommended",
+    "plugin:react-hooks/recommended",
+    "plugin:jsx-a11y/recommended",
+    "plugin:import/recommended"
   ],
+  "parser": "@typescript-eslint/parser",
   "parserOptions": {
-    "ecmaVersion": 12,
-    "sourceType": "module"
+    "ecmaVersion": "latest",
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    },
+    "project": "./tsconfig.json"
   },
+  "settings": {
+    "react": {
+      "version": "detect"
+    },
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+      }
+    }
+  },
+  "plugins": [
+    "react",
+    "react-hooks",
+    "jsx-a11y",
+    "import",
+    "@typescript-eslint"
+  ],
   "rules": {
-    "no-unused-vars": "error",
+    /* Critical Errors */
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
     "no-undef": "error",
-    "no-console": "warn",
-    "semi": ["error", "always"],
-    "quotes": ["error", "single"],
-    "indent": ["error", 2],
-    "no-trailing-spaces": "error",
-    "eol-last": "error",
-    "no-multiple-empty-lines": ["error", { "max": 2 }],
-    "comma-dangle": ["error", "never"],
+    "no-dupe-keys": "error",
+    "no-dupe-args": "error",
+    "no-duplicate-case": "error",
+    "no-const-assign": "error",
+    "no-func-assign": "error",
+    "no-import-assign": "error",
+    "no-this-before-super": "error",
+    "valid-typeof": "error",
+    "no-unreachable": "error",
+    "no-unsafe-finally": "error",
+    "no-unsafe-negation": "error",
+    "use-isnan": "error",
+    "no-case-declarations": "error",
+    "no-constant-condition": ["error", { "checkLoops": false }],
+    
+    /* React Specific */
+    "react/react-in-jsx-scope": "off",
+    "react/prop-types": "off",
+    "react/display-name": "off",
+    "react/no-unescaped-entities": "warn",
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn",
+    
+    /* Warnings - Style and Best Practices */
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "semi": ["warn", "always"],
+    "quotes": ["warn", "single", { "avoidEscape": true, "allowTemplateLiterals": true }],
+    "indent": ["warn", 2, { "SwitchCase": 1, "ignoredNodes": ["TemplateLiteral"] }],
+    "no-trailing-spaces": "warn",
+    "eol-last": "warn",
+    "no-multiple-empty-lines": ["warn", { "max": 2 }],
+    "comma-dangle": ["warn", "only-multiline"],
     "no-var": "error",
-    "prefer-const": "error"
+    "prefer-const": "warn",
+    "import/order": ["warn", {
+      "groups": ["builtin", "external", "internal", "parent", "sibling", "index"],
+      "newlines-between": "always"
+    }],
+    "jsx-a11y/anchor-is-valid": ["warn", {
+      "components": ["Link"],
+      "specialLink": ["hrefLeft", "hrefRight"],
+      "aspects": ["invalidHref", "preferButton"]
+    }]
   },
+  "overrides": [
+    {
+      "files": ["**/*.ts", "**/*.tsx"],
+      "parser": "@typescript-eslint/parser",
+      "extends": [
+        "plugin:@typescript-eslint/recommended"
+      ],
+      "rules": {
+        "@typescript-eslint/explicit-function-return-type": "off",
+        "@typescript-eslint/explicit-module-boundary-types": "off",
+        "@typescript-eslint/no-explicit-any": "warn"
+      }
+    },
+    {
+      "files": ["**/*.test.js", "**/*.test.jsx", "**/*.test.ts", "**/*.test.tsx"],
+      "env": {
+        "jest": true
+      },
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ],
   "ignorePatterns": [
     "node_modules/",
     "dist/",
     "build/",
-    ".git/",
-    "*.min.js"
+    "coverage/",
+    "*.d.ts"
   ]
 }

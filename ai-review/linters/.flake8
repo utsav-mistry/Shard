@@ -1,6 +1,39 @@
 [flake8]
-max-line-length = 88
-extend-ignore = E203, W503, E501
+# Basic settings
+max-line-length = 120
+max-complexity = 15
+
+# Only show critical errors
+select = 
+    E9,  # Syntax errors
+    F4,  # Invalid syntax in format string
+    F6,  # Annotated function uses non-annotated parameter
+    F7,  # SyntaxError in except handler
+    F82, # Undefined name
+    F84, # Local variable is assigned but never used
+    F85, # Duplicate argument in function definition
+    F90, # Invalid escape sequence
+    F92, # SyntaxError in except handler
+    F94, # Invalid syntax in string
+    F99, # Internal error
+
+# Ignore style and formatting issues
+ignore = 
+    E1,  # Indentation
+    E2,  # Whitespace
+    E3,  # Blank line
+    E4,  # Import
+    E5,  # Line length
+    E7,  # Statement
+    E8,  # Runtime
+    W,   # Warnings
+    F401,  # Unused imports
+    F403,  # Wildcard imports
+    F405,  # Undefined names from wildcard imports
+    F841,  # Unused variables
+    F999,  # Internal error
+
+# Exclude directories and files
 exclude = 
     .git,
     __pycache__,
@@ -11,8 +44,20 @@ exclude =
     migrations,
     .pytest_cache,
     build,
-    dist
+    dist,
+    *.egg-info,
+    *.pyc,
+    *.so,
+    *.pyd,
+    _build,
+    buck-out,
+    htmlcov,
+    coverage,
+    docs,
+    */tests/*.py,
+    */migrations/*.py
+
+# Per-file specific rules
 per-file-ignores =
-    __init__.py:F401
-    */migrations/*:E501,F401
-max-complexity = 10
+    # __init__.py can have unused imports
+    __init__.py: F401, F403, F405

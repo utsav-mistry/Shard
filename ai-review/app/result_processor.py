@@ -64,7 +64,7 @@ class ResultProcessor:
         
         for issue in issues:
             normalized_issue = {
-                'tool': 'deepseek',
+                'tool': 'shard-ai',
                 'severity': self._map_severity(issue.get('severity', 'info')),
                 'file': '',  # DeepSeek doesn't specify file in current implementation
                 'line': issue.get('line', 0),
@@ -109,7 +109,7 @@ class ResultProcessor:
                 # If multiple issues on same line, prioritize by severity and tool
                 group_sorted = sorted(group, key=lambda x: (
                     -self.SEVERITY_PRIORITY.get(x['severity'], 0),
-                    x['tool'] == 'deepseek'  # Prefer DeepSeek for AI insights
+                    x['tool'] == 'shard-ai'  # Prefer DeepSeek for AI insights
                 ))
                 
                 # Check for similar messages to avoid true duplicates
@@ -130,29 +130,56 @@ class ResultProcessor:
             x['line']
         ))
     
-    def generate_verdict(self, issues: List[Dict]) -> Dict[str, Any]:
+    def generate_verdict(self, issues: List[Dict], service: str) -> Dict[str, Any]:
         """Generate deployment verdict based on processed issues"""
-        
+
         severity_counts = defaultdict(int)
+        linter_error_count = 0
+        ai_security_issue_count = 0
+        has_syntax_error = False
+
         for issue in issues:
             severity_counts[issue['severity']] += 1
-        
+            if issue.get('tool') != 'shard-ai' and issue.get('severity') == 'error':
+                linter_error_count += 1
+            if issue.get('tool') == 'shard-ai' and issue.get('severity') == 'security':
+                ai_security_issue_count += 1
+            if issue.get('code') == 'syntax-error' and issue.get('severity') == 'error':
+                has_syntax_error = True
+
         total_issues = len(issues)
+
+        # Immediately deny if there is a syntax error
+        if has_syntax_error:
+            return {
+                'verdict': 'deny',
+                'reason': 'Syntax error(s) found. Code cannot be deployed.',
+                'issue_count': total_issues,
+                'severity_breakdown': dict(severity_counts),
+                'issues': issues
+            }
+
         security_issues = severity_counts['security']
-        error_issues = severity_counts['error'] 
+        error_issues = severity_counts['error']
         warning_issues = severity_counts['warning']
-        
+
         # Decision logic
-        if security_issues > 0 or error_issues >= 3:
+        if has_syntax_error or error_issues >= 1:
             verdict = 'deny'
-            reason = f"Critical issues found: {security_issues} security, {error_issues} errors"
-        elif error_issues > 0 or warning_issues >= 5:
+            reason = f"Deployment denied due to {error_issues} critical error(s)."
+        elif security_issues > 10:
+            verdict = 'deny'
+            reason = f"Deployment denied due to excessive security vulnerabilities ({security_issues} found)."
+        elif warning_issues > 20:
+            verdict = 'deny'
+            reason = f"Deployment denied due to an excessive number of warnings ({warning_issues} found)."
+        elif service == 'ai-review' and ai_security_issue_count > 0 and linter_error_count < 20:
             verdict = 'manual_review'
-            reason = f"Issues require review: {error_issues} errors, {warning_issues} warnings"
+            reason = f"{ai_security_issue_count} security issue(s) require manual review before deployment."
         else:
             verdict = 'allow'
-            reason = f"No critical issues: {total_issues} minor issues found"
-        
+            reason = f"Code approved. {total_issues} minor issues found."
+
         return {
             'verdict': verdict,
             'reason': reason,
