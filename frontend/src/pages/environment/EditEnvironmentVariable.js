@@ -4,8 +4,7 @@ import api from '../../utils/axiosConfig';
 import { AlertTriangle, ArrowLeft, Save, Eye, EyeOff } from 'lucide-react';
 
 const EditEnvironmentVariable = () => {
-  const { projectId, id } = useParams();
-  const variableId = id;
+  const { projectId, variableId } = useParams();
   const navigate = useNavigate();
 
   const [key, setKey] = useState('');
@@ -48,7 +47,7 @@ const EditEnvironmentVariable = () => {
     };
 
     fetchEnvironmentVariable();
-  }, [variableId]);
+  }, [projectId, variableId]);
 
   const validateForm = () => {
     let isValid = true;
@@ -61,8 +60,8 @@ const EditEnvironmentVariable = () => {
     if (!key.trim()) {
       setKeyError('Key is required');
       isValid = false;
-    } else if (!/^[A-Za-z0-9_]+$/.test(key)) {
-      setKeyError('Key can only contain letters, numbers, and underscores');
+    } else if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
+      setKeyError('Key must be UPPER_SNAKE_CASE (e.g., DATABASE_URL)');
       isValid = false;
     }
 
