@@ -46,30 +46,32 @@ router.get('/', (req, res) => {
  * @note Job is processed asynchronously to avoid request timeout
  */
 router.post('/job', async (req, res) => {
-        const { deploymentId, projectId, repoUrl, branch, stack, subdomain, envVars, userEmail, token } = req.body;
-
-    // Validate required fields
-    if (!deploymentId || !projectId || !repoUrl || !stack || !subdomain) {
-        return res.status(400).json({
-            success: false,
-            message: 'Missing required fields: deploymentId, projectId, repoUrl, stack, subdomain'
-        });
-    }
-
     try {
-        logger.info(`Received deployment job for project ${projectId}`);
+        const job = req.body;
+        console.log(`[DEBUG] Deployment worker received job:`, JSON.stringify(job, null, 2));
+        logger.info(`Received deployment job for project ${job.projectId}`);
         
+        // Validate required fields
+        if (!job.deploymentId || !job.projectId || !job.repoUrl || !job.stack || !job.subdomain) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields: deploymentId, projectId, repoUrl, stack, subdomain'
+            });
+        }
+
         // Process the job asynchronously
         jobProcessor.processJob({
-            token,
-            deploymentId,
-            projectId,
-            repoUrl,
-            branch: branch || 'main',
-            stack,
-            subdomain,
-            envVars: envVars || [],
-            userEmail
+            token: job.token,
+            deploymentId: job.deploymentId,
+            projectId: job.projectId,
+            repoUrl: job.repoUrl,
+            branch: job.branch || 'main',
+            stack: job.stack,
+            subdomain: job.subdomain,
+            envVars: job.envVars || [],
+            userEmail: job.userEmail,
+            enableAiReview: job.enableAiReview,
+            aiModel: job.aiModel
         });
 
         res.json({
@@ -161,6 +163,62 @@ router.put('/status/:deploymentId', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to update deployment status',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * Continue deployment after manual AI review override
+ * @route POST /continue/:deploymentId
+ * @param {string} req.params.deploymentId - Deployment ID to continue
+ * @param {Object} req.body - Job continuation parameters
+ * @param {string} req.body.token - Authentication token
+ * @returns {Object} Continuation confirmation or error
+ * @throws {ValidationError} When required fields are missing
+ * @throws {ServerError} When job continuation fails
+ * @description Resumes deployment from AI review step after manual override
+ * @note Called by backend when user clicks "Override & Deploy"
+ */
+router.post('/continue/:deploymentId', async (req, res) => {
+    const { deploymentId } = req.params;
+    const { token, projectId, repoUrl, branch, stack, subdomain, envVars, userEmail } = req.body;
+
+    try {
+        logger.info(`Received continuation request for deployment ${deploymentId}`);
+        
+        // Validate required fields
+        if (!deploymentId || !token || !projectId || !repoUrl || !stack || !subdomain) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields for deployment continuation'
+            });
+        }
+
+        // Continue the job from AI review step (skip AI review)
+        jobProcessor.continueJob({
+            token,
+            deploymentId,
+            projectId,
+            repoUrl,
+            branch: branch || 'main',
+            stack,
+            subdomain,
+            envVars: envVars || [],
+            userEmail,
+            skipAiReview: true
+        });
+
+        res.json({
+            success: true,
+            message: 'Deployment continuation queued successfully',
+            deploymentId
+        });
+    } catch (error) {
+        logger.error('Failed to continue deployment job:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to continue deployment job',
             error: error.message
         });
     }

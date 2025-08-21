@@ -28,6 +28,19 @@ const NewProject = () => {
     envVars: []
   });
   const [showSecrets, setShowSecrets] = useState({});
+  const [enableAiReview, setEnableAiReview] = useState(false);
+  const [aiModel, setAiModel] = useState('DeepSeek Lite'); // Default model
+
+  const aiModels = [
+    { name: 'DeepSeek Lite', tokens: 10, useCase: 'Quick Reviews' },
+    { name: 'DeepSeek Full', tokens: 20, useCase: 'Complex Analysis' },
+    { name: 'CodeLlama Lite', tokens: 25, useCase: 'Web Apps' },
+    { name: 'CodeLlama Full', tokens: 30, useCase: 'Deep Analysis' },
+    { name: 'Mistral 7B', tokens: 50, useCase: 'General Code' },
+    { name: 'Falcon 7B', tokens: 100, useCase: 'Large Files' },
+  ];
+
+  const selectedAiModel = aiModels.find(model => model.name === aiModel);
 
   useEffect(() => {
     if (githubRepos.length > 0) {
@@ -231,6 +244,12 @@ const NewProject = () => {
         projectData.description = selectedRepo.description;
       }
 
+      // Add AI review data if enabled
+      projectData.aiReview = {
+        enabled: enableAiReview,
+        model: enableAiReview ? aiModel : null
+      };
+
       // Prepare environment variables (already validated)
       const validEnvVars = formData.envVars.filter(env => env.key.trim() !== '' && env.value.trim() !== '');
 
@@ -258,7 +277,9 @@ const NewProject = () => {
       try {
         const deployResponse = await api.post('/api/deployments', {
           projectId: createdProjectId,
-          branch: projectData.branch || 'main'
+          branch: projectData.branch || 'main',
+          enableAiReview: true, // Enable AI review for new projects by default
+          aiModel: 'deepseek_lite'
         });
 
         const deploymentId = deployResponse.data.data._id;
@@ -550,6 +571,56 @@ const NewProject = () => {
               <span>Add Environment Variable</span>
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* AI Code Review Section */}
+      <div className="border-2 border-black dark:border-white">
+        <div className="p-6 border-b-2 border-black dark:border-white">
+          <h3 className="text-lg font-bold">AI Code Review</h3>
+          <p className="text-sm text-gray-500">Automatically review code for issues on each deployment.</p>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <label htmlFor="ai-review-toggle" className="font-bold text-black dark:text-white">Enable AI Review</label>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={enableAiReview}
+              onClick={() => setEnableAiReview(!enableAiReview)}
+              className={`relative inline-flex items-center h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${enableAiReview ? 'bg-black dark:bg-white' : 'bg-gray-200 dark:bg-gray-700'}`}>
+              <span className={`inline-block h-5 w-5 transform rounded-full bg-white dark:bg-black shadow ring-0 transition duration-200 ease-in-out ${enableAiReview ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+
+          {enableAiReview && (
+            <div>
+              <label htmlFor="aiModel" className="block text-sm font-bold text-black dark:text-white mb-2">Select Model</label>
+              <div className="relative">
+                <select
+                  id="aiModel"
+                  name="aiModel"
+                  value={aiModel}
+                  onChange={(e) => setAiModel(e.target.value)}
+                  className="w-full p-3 border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white focus:outline-none appearance-none"
+                >
+                  {aiModels.map(model => (
+                    <option key={model.name} value={model.name}>
+                      {model.name} - {model.useCase}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                </div>
+              </div>
+              {selectedAiModel && (
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  This will use <span className="font-bold text-black dark:text-white">{selectedAiModel.tokens} tokens</span> per deployment.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

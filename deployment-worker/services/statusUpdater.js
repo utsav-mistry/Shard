@@ -25,7 +25,7 @@ const axios = require('axios');
  */
 const updateDeploymentStatus = async (deploymentId, status, token, additionalData = {}) => {
     try {
-        await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deploy/update-status`, {
+        await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deployments/update-status`, {
             deploymentId,
             status,
             ...additionalData

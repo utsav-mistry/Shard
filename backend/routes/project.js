@@ -12,6 +12,9 @@
 
 /**
  * @swagger
+ * tags:
+ *   - name: Projects
+ *     description: Project management operations
  * components:
  *   schemas:
  *     Project:
@@ -24,31 +27,39 @@
  *         id:
  *           type: string
  *           description: Project ID
+ *           example: 60d0fe4f5311236168a109ca
  *         name:
  *           type: string
  *           description: Project name
+ *           example: My Awesome Project
  *         repoUrl:
  *           type: string
  *           format: uri
  *           description: GitHub repository URL
+ *           example: https://github.com/user/repo.git
  *         framework:
  *           type: string
  *           enum: [mern, django, flask]
  *           description: Project framework
+ *           example: mern
  *         subdomain:
  *           type: string
  *           description: Generated subdomain for deployment
+ *           example: my-awesome-project-abcde
  *         deploymentUrl:
  *           type: string
  *           format: uri
  *           description: Live deployment URL
+ *           example: https://my-awesome-project-abcde.shard.host
  *         status:
  *           type: string
  *           enum: [pending, deploying, deployed, failed]
  *           description: Project deployment status
+ *           example: deployed
  *         userId:
  *           type: string
  *           description: Owner user ID
+ *           example: 60d0fe4f5311236168a109cb
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -70,14 +81,17 @@
  *           description: Project name
  *           minLength: 1
  *           maxLength: 100
+ *           example: My New Project
  *         repoUrl:
  *           type: string
  *           format: uri
  *           description: GitHub repository URL
+ *           example: https://github.com/user/new-repo.git
  *         framework:
  *           type: string
  *           enum: [mern, django, flask]
  *           description: Project framework
+ *           example: flask
  *         envVars:
  *           type: array
  *           description: Environment variables
@@ -87,12 +101,15 @@
  *               key:
  *                 type: string
  *                 description: Environment variable key
+ *                 example: DATABASE_URL
  *               value:
  *                 type: string
  *                 description: Environment variable value
+ *                 example: mongodb://localhost:27017/mydb
  *               secret:
  *                 type: boolean
  *                 description: Whether variable is secret
+ *                 example: true
  *     
  *     UpdateProjectRequest:
  *       type: object
@@ -100,18 +117,17 @@
  *         name:
  *           type: string
  *           description: Updated project name
+ *           example: My Updated Project Name
  *         repoUrl:
  *           type: string
  *           format: uri
  *           description: Updated repository URL
+ *           example: https://github.com/user/updated-repo.git
  *         framework:
  *           type: string
  *           enum: [mern, django, flask]
  *           description: Updated framework
- * 
- * tags:
- *   - name: Projects
- *     description: Project management operations
+ *           example: django
  */
 
 const express = require('express');
@@ -182,7 +198,7 @@ const validateObjectId = (req, res, next) => {
 
 /**
  * @swagger
- * /api/projects:
+ * /:
  *   post:
  *     summary: Create a new project
  *     tags: [Projects]
@@ -217,57 +233,6 @@ const validateObjectId = (req, res, next) => {
  *         $ref: '#/components/responses/BadRequest'
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
- *   get:
- *     summary: Get all user projects
- *     tags: [Projects]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Projects retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
- *                   properties:
- *                     projects:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Project'
- *                 message:
- *                   type: string
- *                   example: Projects retrieved successfully
- *       401:
- *         $ref: '#/components/responses/UnauthorizedError'
- *                 type: string
- *                 format: uri
- *                 example: "https://github.com/username/repo"
- *                 description: The URL of the Git repository
- *               branch:
- *                 type: string
- *                 default: "main"
- *                 example: "main"
- *               framework:
- *                 type: string
- *                 enum: [mern, flask, django]
- *                 example: "mern"
- *     responses:
- *       201:
- *         description: Project created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Project'
- *       400:
- *         description: Bad request - validation error
- *       401:
- *         $ref: '#/components/responses/UnauthorizedError'
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
@@ -291,7 +256,7 @@ router.post("/",
       buildCommand: Joi.string().optional(),
       outputDirectory: Joi.string().optional(),
       installCommand: Joi.string().optional()
-    }).unknown(false);
+    }).unknown(true);
 
     const { error } = schema.validate(req.body, { abortEarly: false });
 
@@ -316,7 +281,7 @@ router.post("/",
 
 /**
  * @swagger
- * /projects:
+ * /:
  *   get:
  *     summary: Get all projects for the authenticated user
  *     tags: [Projects]
@@ -328,13 +293,25 @@ router.post("/",
  *       - $ref: '#/components/parameters/sortParam'
  *     responses:
  *       200:
- *         description: List of projects
+ *         description: A list of projects retrieved successfully.
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Project'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     projects:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Project'
+ *                 message:
+ *                   type: string
+ *                   example: Projects retrieved successfully
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  */
@@ -352,7 +329,7 @@ router.get("/:id",
 
 /**
  * @swagger
- * /projects/{id}:
+ * /{id}:
  *   get:
  *     summary: Get a project by ID
  *     tags: [Projects]
@@ -365,10 +342,10 @@ router.get("/:id",
  *         schema:
  *           type: string
  *           pattern: '^[0-9a-fA-F]{24}$'
- *         description: Project ID
+ *         description: The project ID
  *     responses:
  *       200:
- *         description: Project details
+ *         description: Project details retrieved successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -378,7 +355,7 @@ router.get("/:id",
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *   put:
- *     summary: Update project
+ *     summary: Update an existing project
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -389,26 +366,26 @@ router.get("/:id",
  *         schema:
  *           type: string
  *           pattern: '^[0-9a-fA-F]{24}$'
- *         description: Project ID
+ *         description: The project ID
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CreateProject'
+ *             $ref: '#/components/schemas/UpdateProjectRequest'
  *     responses:
  *       200:
- *         description: Project updated successfully
+ *         description: Project updated successfully.
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Project'
  *       400:
- *         description: Invalid input or project ID format
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
- *         description: Project not found
+ *         $ref: '#/components/responses/NotFound'
  */
 router.put("/:id",
   protect,
@@ -448,7 +425,7 @@ router.put("/:id",
 
 /**
  * @swagger
- * /projects/{id}:
+ * /{id}:
  *   delete:
  *     summary: Delete a project
  *     tags: [Projects]
@@ -461,16 +438,27 @@ router.put("/:id",
  *         schema:
  *           type: string
  *           pattern: '^[0-9a-fA-F]{24}$'
- *         description: Project ID
+ *         description: The project ID
  *     responses:
  *       200:
- *         description: Project deleted successfully
+ *         description: Project deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Project deleted successfully
  *       400:
- *         description: Invalid project ID format
+ *         $ref: '#/components/responses/BadRequest'
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
- *         description: Project not found
+ *         $ref: '#/components/responses/NotFound'
  */
 router.delete("/:id",
   protect,

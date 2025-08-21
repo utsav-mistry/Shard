@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './components/Toast';
+import { TokenProvider } from './context/TokenContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Layout components
@@ -21,6 +22,8 @@ import GitHubCallbackPage from './pages/integrations/GitHubCallback';
 import GitHubIntegrationCallback from './pages/GitHubIntegrationCallback';
 import ImportRepository from './pages/projects/ImportRepository';
 import Integrations from './pages/Integrations';
+import Billing from './pages/billing/Billing';
+
 
 // Landing page
 import LandingPage from './pages/LandingPage';
@@ -91,7 +94,7 @@ function App() {
                 {/* Protected Routes under /app */}
                 <Route path="/app" element={
                   <ProtectedRoute>
-                    <MainLayout />
+                    <TokenProvider><MainLayout /></TokenProvider>
                   </ProtectedRoute>
                 }>
                   {/* Overview - Default route (Vercel-style) */}
@@ -139,6 +142,9 @@ function App() {
 
                   {/* Changelog route */}
                   <Route path="changelog" element={<Changelog />} />
+
+                  {/* Billing route */}
+                  <Route path="billing" element={<Billing />} />
                 </Route>
 
                 {/* Admin Routes - Separate Layout */}

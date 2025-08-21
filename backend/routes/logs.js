@@ -1,5 +1,8 @@
 /**
  * @swagger
+ * tags:
+ *   - name: Logs
+ *     description: Deployment log operations
  * components:
  *   schemas:
  *     LogEntry:
@@ -8,26 +11,33 @@
  *         id:
  *           type: string
  *           description: Log entry ID
+ *           example: 60d0fe4f5311236168a109cc
  *         projectId:
  *           type: string
  *           description: Associated project ID
+ *           example: 60d0fe4f5311236168a109ca
  *         deploymentId:
  *           type: string
  *           description: Associated deployment ID
+ *           example: 60d0fe4f5311236168a109cb
  *         type:
  *           type: string
  *           enum: [info, error, warning, debug]
  *           description: Log entry type
+ *           example: info
  *         content:
  *           type: string
  *           description: Log message content
+ *           example: Cloning repository...
  *         step:
  *           type: string
  *           description: Deployment step
+ *           example: clone
  *         level:
  *           type: string
  *           enum: [info, error, warning, debug]
  *           description: Log level
+ *           example: info
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -42,29 +52,31 @@
  *         projectId:
  *           type: string
  *           description: Associated project ID
+ *           example: 60d0fe4f5311236168a109ca
  *         deploymentId:
  *           type: string
  *           description: Associated deployment ID
+ *           example: 60d0fe4f5311236168a109cb
  *         type:
  *           type: string
  *           enum: [info, error, warning, debug]
  *           default: info
  *           description: Log entry type
+ *           example: info
  *         content:
  *           type: string
  *           description: Log message content
+ *           example: Starting build process...
  *         step:
  *           type: string
  *           description: Deployment step
+ *           example: build
  *         level:
  *           type: string
  *           enum: [info, error, warning, debug]
  *           default: info
  *           description: Log level
- * 
- * tags:
- *   - name: Logs
- *     description: Deployment log operations
+ *           example: info
  */
 
 const express = require('express');
@@ -74,10 +86,10 @@ const Logs = require('../models/Logs');
 
 /**
  * @swagger
- * /api/logs/{deploymentId}:
+ * /{deploymentId}:
  *   get:
  *     summary: Get deployment logs
- *     description: Retrieve all logs for a specific deployment
+ *     description: Retrieve all logs for a specific deployment.
  *     tags: [Logs]
  *     security:
  *       - bearerAuth: []
@@ -87,10 +99,11 @@ const Logs = require('../models/Logs');
  *         required: true
  *         schema:
  *           type: string
- *         description: Deployment ID
+ *           pattern: '^[0-9a-fA-F]{24}$'
+ *         description: The ID of the deployment to fetch logs for.
  *     responses:
  *       200:
- *         description: Logs retrieved successfully
+ *         description: A list of log entries for the deployment.
  *         content:
  *           application/json:
  *             schema:
@@ -106,22 +119,9 @@ const Logs = require('../models/Logs');
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
- *         description: Deployment not found
+ *         $ref: '#/components/responses/NotFound'
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: Failed to fetch logs
- *                 error:
- *                   type: string
+ *         $ref: '#/components/responses/ServerError'
  */
 // Get logs for a specific deployment
 router.get('/:deploymentId', authenticate, async (req, res) => {
@@ -145,10 +145,11 @@ router.get('/:deploymentId', authenticate, async (req, res) => {
 
 /**
  * @swagger
- * /api/logs:
+ * /:
  *   post:
- *     summary: Create deployment log entry
- *     description: Create a new log entry for a deployment (internal service endpoint)
+ *     summary: Create a deployment log entry
+ *     description: >
+ *       Creates a new log entry for a deployment. This is an internal endpoint intended to be called by the deployment worker service.
  *     tags: [Logs]
  *     requestBody:
  *       required: true
@@ -156,16 +157,9 @@ router.get('/:deploymentId', authenticate, async (req, res) => {
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/CreateLogRequest'
- *           example:
- *             projectId: 507f1f77bcf86cd799439011
- *             deploymentId: 507f1f77bcf86cd799439012
- *             type: info
- *             content: Starting deployment process...
- *             step: clone
- *             level: info
  *     responses:
  *       200:
- *         description: Log entry created successfully
+ *         description: Log entry created and broadcasted successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -180,33 +174,9 @@ router.get('/:deploymentId', authenticate, async (req, res) => {
  *                 data:
  *                   $ref: '#/components/schemas/LogEntry'
  *       400:
- *         description: Bad request - missing required fields
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: Missing required fields: deploymentId, content
+ *         $ref: '#/components/responses/BadRequest'
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: Failed to create log entry
- *                 error:
- *                   type: string
+ *         $ref: '#/components/responses/ServerError'
  */
 // Receive deployment logs from deployment worker and broadcast via Socket.IO
 // No auth required - internal service call

@@ -30,16 +30,22 @@ const axios = require('axios');
  *   // Proceed with deployment
  * }
  */
-async function analyzeRepo(repoPath, projectId) {
+async function analyzeRepo(repoPath, projectId, aiModel, logCallback) {
     try {
         // Convert Windows path to Unix-style path for AI service
         const normalizedPath = repoPath.replace(/\\/g, '/');
-        
+
+        // Log progress updates during analysis
+        if (logCallback) {
+            await logCallback("Initializing AI analysis...");
+        }
+
         const response = await axios.post('http://localhost:8000/review/', {
             repoPath: normalizedPath,
             projectId,
+            model: aiModel || 'deepseek_lite'
         }, {
-            timeout: 30000, // 30 second timeout for AI analysis
+            timeout: 0, // No timeout - wait indefinitely for AI analysis
             headers: {
                 'Content-Type': 'application/json'
             }
@@ -57,7 +63,7 @@ async function analyzeRepo(repoPath, projectId) {
         };
     } catch (err) {
         console.error("[AI Review Error]", err.message);
-        
+
         // If AI service is unavailable, allow deployment to proceed with warning
         console.log(`[AI Review] Service unavailable, allowing deployment to proceed: ${err.message}`);
         return {

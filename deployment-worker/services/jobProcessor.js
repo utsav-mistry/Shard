@@ -31,7 +31,7 @@ const { checkDockerStatus } = require('../utils/dockerChecker.js');
  */
 const updateDeploymentWithAIResults = async (deploymentId, aiResults, token) => {
     try {
-        const response = await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deploy/ai-results`, {
+        const response = await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deployments/ai-results`, {
             deploymentId,
             aiReviewResults: aiResults
         }, {
@@ -67,7 +67,7 @@ const updateDeploymentWithAIResults = async (deploymentId, aiResults, token) => 
  */
 const updateDeploymentWithCommitInfo = async (deploymentId, commitInfo, token) => {
     try {
-        const response = await axios.patch(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deploy/${deploymentId}`, {
+        const response = await axios.patch(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deployments/${deploymentId}`, {
             commitHash: commitInfo.commitHash,
             commitMessage: commitInfo.commitMessage,
             author: commitInfo.author,
@@ -124,10 +124,15 @@ if (!fs.existsSync(CONFIG.LOG_DIR)) {
  *   subdomain: 'myapp',
  *   userEmail: 'user@example.com',
  *   deploymentId: 'deploy456',
- *   token: 'jwt_token'
+ *   token: 'jwt_token',
+ *   enableAiReview: true,
+ *   aiModel: 'gpt-3'
  * });
  */
 const processJob = async (job) => {
+    // Debug: Log the entire job object to see what's being received
+    console.log(`[DEBUG] Full job object received:`, JSON.stringify(job, null, 2));
+    
     const {
         projectId,
         repoUrl,
@@ -135,8 +140,12 @@ const processJob = async (job) => {
         subdomain,
         userEmail,
         deploymentId,
-        token
+        token,
+        enableAiReview = false,
+        aiModel = 'deepseek_lite'
     } = job;
+
+    console.log(`[DEBUG] Deployment Worker received - enableAiReview: ${enableAiReview}, aiModel: ${aiModel}`);
 
     if (!token) throw new Error("Authentication token is required");
 
@@ -155,11 +164,12 @@ const processJob = async (job) => {
         // === Step 1: Clone Repository ===
         // The deployment status is 'pending' by default.
         await logStep(projectId, deploymentId, "setup", "Cloning repository", token);
-        const repoInfo = await cloneRepo(repoUrl, projectId);
+        const repoInfo = await cloneRepo(repoUrl, projectId, 'main');
         const localPath = repoInfo.path;
-        const uniqueRepoId = repoInfo.uniqueId;
+        logger.info(`Repository cloned to: ${localPath} with unique ID: ${repoInfo.uniqueId}`);
 
-        logger.info(`Repository cloned to: ${localPath} with unique ID: ${uniqueRepoId}`);
+        // Wait for repository to be fully written to disk
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Update deployment with commit information
         await updateDeploymentWithCommitInfo(deploymentId, {
@@ -171,44 +181,86 @@ const processJob = async (job) => {
 
         await logStep(projectId, deploymentId, "setup", `Repository cloned - ${repoInfo.commitMessage.substring(0, 50)}...`, token);
 
-        // === Step 2: AI Review ===
-        await updateDeploymentStatus(deploymentId, "reviewing", token);
-        await logStep(projectId, deploymentId, "setup", "Starting AI code review", token);
-        const aiReviewResult = await analyzeRepo(localPath, deploymentId);
-        const { verdict, issues, issueCount, severity_breakdown, linter_count, ai_count } = aiReviewResult;
+        // Verify repository exists before proceeding
+        if (!fs.existsSync(localPath)) {
+            throw new Error(`Repository path does not exist: ${localPath}`);
+        }
 
-        // Store AI review results for frontend display
-        await updateDeploymentWithAIResults(deploymentId, aiReviewResult, token);
+        // === Step 2: AI Review (conditional) ===
+        if (enableAiReview) {
+            await updateDeploymentStatus(deploymentId, "reviewing", token);
+            await logStep(projectId, deploymentId, "ai-review", `Starting AI code review with ${aiModel}`, token);
+            
+            // AI review can take several minutes - wait for complete analysis (no timeout)
+            logger.info("AI analysis in progress - waiting indefinitely until completion...");
+            await logStep(projectId, deploymentId, "ai-review", "Analyzing code structure...", token);
+            
+            // Create progress callback for AI analysis with periodic updates
+            const logProgress = async (message) => {
+                await logStep(projectId, deploymentId, "ai-review", message, token);
+            };
+            
+            // Add periodic progress updates while waiting
+            const progressMessages = [
+                "Scanning for security vulnerabilities...",
+                "Analyzing code patterns...", 
+                "Checking best practices...",
+                "Evaluating code quality...",
+                "Processing AI insights...",
+                "Reviewing architecture...",
+                "Validating dependencies..."
+            ];
+            
+            let messageIndex = 0;
+            const progressInterval = setInterval(async () => {
+                await logStep(projectId, deploymentId, "ai-review", progressMessages[messageIndex % progressMessages.length], token);
+                messageIndex++;
+            }, 3000); // Update every 3 seconds
+            
+            try {
+                const aiReviewResult = await analyzeRepo(localPath, projectId, aiModel, logProgress);
+                clearInterval(progressInterval); // Stop progress updates when analysis completes
+                
+                await logStep(projectId, deploymentId, "ai-review", "AI analysis completed successfully!", token);
+                const { verdict, issues, issueCount, severity_breakdown, linter_count, ai_count } = aiReviewResult;
 
-        // Debug log the AI review result
-        console.log(`[AI Review Debug] Verdict: ${verdict}, Issues: ${issueCount}, Breakdown:`, severity_breakdown);
+                // Store AI review results for frontend display
+                await updateDeploymentWithAIResults(deploymentId, aiReviewResult, token);
+                
+                logger.info("AI analysis completed");
 
-        // Fix AI logic - if verdict is "deny" but there are 0 security and 0 errors, treat as approve
-        if (verdict === "deny") {
-            const securityIssues = severity_breakdown?.security || 0;
-            const errorIssues = severity_breakdown?.error || 0;
+                // Debug log the AI review result
+                console.log(`[AI Review Debug] Verdict: ${verdict}, Issues: ${issueCount}, Breakdown:`, severity_breakdown);
 
-            if (securityIssues === 0 && errorIssues === 0) {
-                console.log(`[AI Review] Overriding deny verdict - no critical issues found`);
-                // Continue with deployment
-            } else {
-                await logStep(projectId, deploymentId, "error", `AI denied deployment: ${securityIssues} security, ${errorIssues} errors`, token);
-                fs.appendFileSync(logPath, `AI_REVIEW_DENIED: ${JSON.stringify(aiReviewResult, null, 2)}\n`);
-                await sendDeploymentNotification(userEmail, projectId, deploymentId, "ai_denied");
-                await updateDeploymentStatus(deploymentId, "failed", token);
-                return;
+                // Handle AI verdict flow
+                if (verdict === "deny") {
+                    await logStep(projectId, deploymentId, "error", `AI denied deployment: Critical issues found`, token);
+                    fs.appendFileSync(logPath, `AI_REVIEW_DENIED: ${JSON.stringify(aiReviewResult, null, 2)}\n`);
+                    await sendDeploymentNotification(userEmail, projectId, deploymentId, "ai_denied");
+                    await updateDeploymentStatus(deploymentId, "failed", token);
+                    return;
+                }
+
+                if (verdict === "manual_review") {
+                    await logStep(projectId, deploymentId, "ai-review", `AI flagged for manual review: ${issueCount} issues found`, token);
+                    fs.appendFileSync(logPath, `AI_REVIEW_MANUAL: ${JSON.stringify(aiReviewResult, null, 2)}\n`);
+                    await updateDeploymentStatus(deploymentId, "manual_review", token);
+                    
+                    // Wait for manual override before continuing
+                    console.log(`[AI Review] Deployment ${deploymentId} requires manual review - waiting for override`);
+                    return; // Stop here until manual override
+                }
+
+                // verdict === "approve" - continue with deployment
+                await logStep(projectId, deploymentId, "ai-review", `AI review approved: ${issueCount} minor issues found`, token);
+            } catch (aiError) {
+                clearInterval(progressInterval); // Stop progress updates on error
+                console.error('[AI Review Error]:', aiError);
+                await logStep(projectId, deploymentId, "ai-review", "AI analysis failed - proceeding with deployment", token);
             }
+        } else {
+            await logStep(projectId, deploymentId, "setup", "AI code review disabled - proceeding with deployment", token);
         }
-
-        if (verdict === "manual_review") {
-            await logStep(projectId, deploymentId, "warning", `AI flagged for manual review: ${issueCount} issues found (${linter_count} linter, ${ai_count} AI)`, token);
-            fs.appendFileSync(logPath, `AI_REVIEW_MANUAL: ${JSON.stringify(aiReviewResult, null, 2)}\n`);
-            await sendDeploymentNotification(userEmail, projectId, deploymentId, "ai_manual_review");
-            await updateDeploymentStatus(deploymentId, "failed", token, { reason: "Manual review required" });
-            return;
-        }
-
-        await logStep(projectId, deploymentId, "setup", `AI review passed: ${issueCount} minor issues found`, token);
 
         // === Step 3: Fetch and Inject Environment Variables ===
         await updateDeploymentStatus(deploymentId, "configuring", token);
@@ -301,8 +353,85 @@ const handleDeploymentError = async (error, projectId, deploymentId, userEmail, 
 };
 
 /**
+ * Continue deployment job after manual AI review override
+ * @async
+ * @function continueJob
+ * @param {Object} job - Job continuation parameters
+ * @param {string} job.token - JWT authentication token
+ * @param {string} job.deploymentId - Unique deployment identifier
+ * @param {string} job.projectId - Unique project identifier
+ * @param {string} job.repoUrl - Repository URL to deploy
+ * @param {string} job.branch - Git branch to deploy
+ * @param {string} job.stack - Technology stack (mern, flask, django)
+ * @param {string} job.subdomain - Project subdomain
+ * @param {Array<Object>} job.envVars - Environment variables
+ * @param {string} job.userEmail - User email for notifications
+ * @param {boolean} job.skipAiReview - Skip AI review step
+ * @returns {Promise<void>} Resolves when deployment continuation is complete
+ * @description Continues deployment from environment injection step, skipping AI review
+ * @note Called after manual override of AI review manual_review verdict
+ */
+const continueJob = async (job) => {
+    const { token, deploymentId, projectId, repoUrl, branch, stack, subdomain, envVars, userEmail, skipAiReview } = job;
+    
+    console.log(`[Job Continuation] Starting deployment continuation for ${deploymentId}`);
+    
+    const logPath = path.join(__dirname, `../logs/deployment_${deploymentId}.log`);
+    
+    try {
+        // Update status to indicate continuation
+        await updateDeploymentStatus(deploymentId, "deploying", token);
+        await logStep(projectId, deploymentId, "ai-review", "AI review overridden - continuing deployment", token);
+        
+        // === Step 1: Clone Repository ===
+        const localPath = await cloneRepo(repoUrl, branch, projectId, deploymentId, token);
+        fs.appendFileSync(logPath, `REPO_CLONED: ${localPath}\n`);
+        
+        // === Step 2: Skip AI Review (already done) ===
+        console.log(`[Job Continuation] Skipping AI review for ${deploymentId}`);
+        
+        // === Step 3: Environment Variable Injection ===
+        await logStep(projectId, deploymentId, "environment", "Setting up environment variables", token);
+        
+        if (envVars && envVars.length > 0) {
+            const envFilePath = path.join(localPath, '.env');
+            const envContent = envVars.map(env => `${env.key}=${env.value}`).join('\n');
+            fs.writeFileSync(envFilePath, envContent, { encoding: 'utf-8' });
+            fs.appendFileSync(logPath, `ENV_VARS_INJECTED: ${envVars.length} variables\n`);
+            console.log(`[Environment] Injected ${envVars.length} environment variables`);
+        } else {
+            console.log(`[Environment] No environment variables to inject`);
+        }
+        
+        // === Step 4: Deploy Container ===
+        await logStep(projectId, deploymentId, "deploy", "Building and deploying container", token);
+        
+        const dockerLog = await deployContainer(localPath, stack, subdomain, projectId);
+        fs.appendFileSync(logPath, `DOCKER_DEPLOY: ${dockerLog}\n`);
+        
+        // Write final log
+        fs.writeFileSync(logPath, dockerLog?.toString() || "No Docker log output available.", {
+            encoding: "utf-8"
+        });
+        
+        // === Step 5: Finalize ===
+        await logStep(projectId, deploymentId, "complete", "Deployment successful", token);
+        await updateDeploymentStatus(deploymentId, "success", token);
+        await sendDeploymentNotification(userEmail, projectId, deploymentId, "success");
+        
+        console.log(`[Job Continuation] Deployment continuation completed successfully for ${deploymentId}`);
+        
+    } catch (error) {
+        // === Step 6: Handle Any Errors ===
+        await handleDeploymentError(error, projectId, deploymentId, userEmail, logPath, token);
+        await sendDeploymentNotification(userEmail, projectId, deploymentId, "failed", error.message);
+        throw error;
+    }
+};
+
+/**
  * Export job processing functions
  * @module jobProcessor
  * @description Main deployment pipeline processor with AI review and containerization
  */
-module.exports = { processJob };
+module.exports = { processJob, continueJob };

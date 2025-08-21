@@ -124,7 +124,7 @@ const logStep = async (projectId, deploymentId, step, message, token = null) => 
   // If we have a deployment ID and token, update the deployment status in the database
   if (deploymentId && token) {
     try {
-      await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deploy/update-step`, {
+      await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deployments/update-step`, {
         deploymentId,
         step,
         message

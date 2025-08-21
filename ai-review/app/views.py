@@ -237,10 +237,6 @@ class CodeReviewView(View):
                 'issue_count': verdict_result['issue_count'],
                 'severity_breakdown': verdict_result['severity_breakdown'],
                 'issues': verdict_result['issues'][:50],  # Limit to first 50 issues
-                'reason': verdict_data['reason'],
-                'issue_count': verdict_data['issue_count'],
-                'severity_breakdown': verdict_data['severity_breakdown'],
-                'issues': verdict_data['issues'][:50],  # Limit to first 50 issues
                 'linter_count': len(linter_issues),
                 'ai_count': len(deepseek_issues),
                 'model_used': model_type,

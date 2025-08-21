@@ -14,7 +14,12 @@ import {
   Settings,
   Rocket,
   Play,
-  Terminal
+  Terminal,
+  ChevronDown,
+  ChevronUp,
+  Shield,
+  Bug,
+  AlertCircle
 } from 'lucide-react';
 import io from 'socket.io-client';
 
@@ -27,10 +32,70 @@ const DeploymentProgress = () => {
   const [realTimeLogs, setRealTimeLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [aiReviewExpanded, setAiReviewExpanded] = useState(false);
+  const [aiReviewPhrase, setAiReviewPhrase] = useState('');
 
   const socketRef = useRef(null);
   const logsEndRef = useRef(null);
   const [isLiveLogsEnabled, setIsLiveLogsEnabled] = useState(true);
+  const phraseIntervalRef = useRef(null);
+  const [isOverriding, setIsOverriding] = useState(false);
+
+  // Random AI review phrases
+  const aiReviewPhrases = [
+    "Analyzing code structure...",
+    "Scanning for security vulnerabilities...",
+    "Analyzing code patterns...",
+    "Checking best practices...",
+    "Evaluating code quality...",
+    "Processing AI insights...",
+    "Reviewing architecture...",
+    "Validating dependencies...",
+    "Initializing AI analysis...",
+    "Analyzing complexity metrics...",
+    "Reviewing architecture...",
+    "Assessing code quality...",
+    "Optimizing recommendations...",
+    "Asking your code why it exists...",
+    "Teaching functions some manners...",
+    "Sniffing out suspicious semicolons...",
+    "Negotiating peace between tabs and spaces...",
+    "Running from infinite loops...",
+    "Consulting the sacred Stack Overflow scrolls...",
+    "Untangling spaghetti code...",
+    "Searching for the missing semicolon...",
+    "Checking if your code dreams in recursion...",
+    "Convincing variables to change their names...",
+    "Evaluating if comments are jokes or actual help...",
+    "Hunting down bugs with a magnifying glass...",
+    "Asking ‘did you mean to do that?’...",
+    "Cross-examining suspicious if-statements...",
+    "Seeing if your code passes the vibe check...",
+    "Peeking behind mysterious TODOs...",
+    "Staring disapprovingly at global variables...",
+    "Looking for functions hiding in the shadows...",
+    "Checking if your code has commitment issues...",
+    "Making sure arrays aren’t out of bounds...",
+    "Calling out functions that do too much...",
+    "Sending your loops to the gym...",
+    "Investigating shady console.logs...",
+    "Double-checking who invited that infinite recursion...",
+    "Teaching your code about boundaries...",
+    "Testing whether try/catch is just ‘try and hope’...",
+    "Looking for logic that only works on Fridays...",
+    "Confirming your code doesn’t summon Skynet...",
+    "Sniffing out overly dramatic exception handling...",
+    "Reading your code like ancient hieroglyphics...",
+    "Checking if your code is haunted...",
+    "Wondering if comments were left by past civilizations...",
+    "Asking your code if it’s proud of itself...",
+    "Trying to unsee what was just written...",
+    "Encouraging variables to be more descriptive...",
+    "Detecting suspiciously copy-pasted patterns...",
+    "Checking if your functions moonlight as novels...",
+    "Making your code swear on the rubber duck..."
+  ];
+
 
   // -----------------------
   // Robust date parsing + formatting
@@ -238,7 +303,7 @@ const DeploymentProgress = () => {
   const fetchData = async () => {
     try {
       const [deploymentResponse, logsResponse] = await Promise.all([
-        api.get(`/api/deploy/${id}`),
+        api.get(`/api/deployments/${id}`),
         api.get(`/api/logs/${id}`)
       ]);
 
@@ -300,7 +365,7 @@ const DeploymentProgress = () => {
   // -----------------------
   const deploymentSteps = [
     { id: 'setup', label: 'Cloning Repository', icon: Code, description: 'Fetching your code from GitHub' },
-    { id: 'ai-review', label: 'AI Code Review', icon: Eye, description: 'Analyzing code quality and security' },
+    ...((project?.aiOptOut || project?.settings?.aiOptOut) ? [] : [{ id: 'ai-review', label: 'AI Code Review', icon: Eye, description: 'Analyzing code quality and security' }]),
     { id: 'config', label: 'Environment Setup', icon: Settings, description: 'Configuring environment variables' },
     { id: 'deploy', label: 'Building & Deploying', icon: Rocket, description: 'Creating your application container' },
     { id: 'complete', label: 'Deployment Ready', icon: Play, description: 'Your app is live and ready' }
@@ -308,22 +373,28 @@ const DeploymentProgress = () => {
 
   const getCurrentStep = () => {
     if (!deployment) return 0;
+    const aiOptOut = project?.aiOptOut || project?.settings?.aiOptOut;
+
     switch (deployment.status) {
       case 'queued':
       case 'pending':
       case 'running':
         return 0;
-      case 'reviewing': return 1;
-      case 'configuring': return 2;
+      case 'reviewing':
+        return aiOptOut ? 0 : 1; // Skip AI review step if opted out
+      case 'configuring':
+        return aiOptOut ? 1 : 2; // Adjust step index based on AI opt-out
       case 'building':
-      case 'deploying': return 3;
-      case 'success': return 4;
+      case 'deploying':
+        return aiOptOut ? 2 : 3; // Adjust step index based on AI opt-out
+      case 'success':
+        return aiOptOut ? 3 : 4; // Adjust final step index based on AI opt-out
       case 'failed': {
         const errorLog = logs.find(log => log.type === 'error');
         if (errorLog) {
-          if (errorLog.step === 'ai-review') return 1;
-          if (errorLog.step === 'config') return 2;
-          if (['deploy', 'build'].includes(errorLog.step)) return 3;
+          if (errorLog.step === 'ai-review' && !aiOptOut) return 1;
+          if (errorLog.step === 'config') return aiOptOut ? 1 : 2;
+          if (['deploy', 'build'].includes(errorLog.step)) return aiOptOut ? 2 : 3;
         }
         return 0;
       }
@@ -340,12 +411,133 @@ const DeploymentProgress = () => {
   };
 
   const getAIReviewStatus = () => {
-    if (!deployment?.aiReviewResults) return null;
-    const { verdict, issue_count } = deployment.aiReviewResults;
-    if (verdict === 'approve') return { type: 'success', message: 'Code quality approved', issues: issue_count || 0 };
-    if (verdict === 'deny') return { type: 'error', message: 'Critical issues found', issues: issue_count || 0 };
-    if (verdict === 'manual_review') return { type: 'warning', message: 'Manual review required', issues: issue_count || 0 };
+    if (!deployment?.aiReviewResults) {
+      // Check if AI review is currently running or has AI review logs
+      if (deployment?.status === 'reviewing') {
+        return { type: 'loading', message: 'AI analysis in progress', issues: 0 };
+      }
+
+      // Check if there are any ai-review logs indicating AI review is active
+      const hasAiReviewLogs = logs.some(log => log.step === 'ai-review');
+      if (hasAiReviewLogs && ['running', 'pending'].includes(deployment?.status)) {
+        return { type: 'loading', message: 'AI analysis in progress', issues: 0 };
+      }
+
+      return null;
+    }
+    const { verdict, issue_count, issues = [] } = deployment.aiReviewResults;
+    if (verdict === 'approve') return { type: 'success', message: 'Code quality approved', issues: issue_count || 0, details: issues };
+    if (verdict === 'deny') return { type: 'error', message: 'Critical issues found', issues: issue_count || 0, details: issues };
+    if (verdict === 'manual_review') return { type: 'warning', message: 'Manual review required', issues: issue_count || 0, details: issues };
     return null;
+  };
+
+  const handleManualOverride = async () => {
+    if (!deployment?._id) return;
+    
+    setIsOverriding(true);
+    try {
+      const response = await api.post(`/api/deploy/${deployment._id}/override-ai-review`);
+      
+      if (response.data.success) {
+        // Refresh deployment data to show updated status
+        await fetchDeployment();
+        setAiReviewExpanded(false); // Collapse the AI review section
+      }
+    } catch (error) {
+      console.error('Error overriding AI review:', error);
+      setError('Failed to override AI review. Please try again.');
+    } finally {
+      setIsOverriding(false);
+    }
+  };
+
+  // Start random phrase cycling when AI review begins
+  useEffect(() => {
+    const hasAiReviewLogs = logs.some(log => log.step === 'ai-review');
+    const isAiReviewActive = deployment?.status === 'reviewing' ||
+      (hasAiReviewLogs && ['running', 'pending'].includes(deployment?.status));
+
+    if (isAiReviewActive) {
+      setAiReviewPhrase(aiReviewPhrases[Math.floor(Math.random() * aiReviewPhrases.length)]);
+
+      phraseIntervalRef.current = setInterval(() => {
+        setAiReviewPhrase(aiReviewPhrases[Math.floor(Math.random() * aiReviewPhrases.length)]);
+      }, 2000);
+    } else {
+      if (phraseIntervalRef.current) {
+        clearInterval(phraseIntervalRef.current);
+        phraseIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (phraseIntervalRef.current) {
+        clearInterval(phraseIntervalRef.current);
+      }
+    };
+  }, [deployment?.status]);
+
+  const renderAIReviewDetails = (aiStatus) => {
+    if (!aiStatus?.details || aiStatus.details.length === 0) return null;
+
+    const groupedIssues = aiStatus.details.reduce((acc, issue) => {
+      const severity = issue.severity || 'info';
+      if (!acc[severity]) acc[severity] = [];
+      acc[severity].push(issue);
+      return acc;
+    }, {});
+
+    const getSeverityIcon = (severity) => {
+      switch (severity) {
+        case 'security': return <Shield className="w-4 h-4 text-red-500" />;
+        case 'error': return <XCircle className="w-4 h-4 text-red-500" />;
+        case 'warning': return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
+        default: return <Bug className="w-4 h-4 text-blue-500" />;
+      }
+    };
+
+    const getSeverityColor = (severity) => {
+      switch (severity) {
+        case 'security': return 'text-red-600 dark:text-red-400';
+        case 'error': return 'text-red-600 dark:text-red-400';
+        case 'warning': return 'text-yellow-600 dark:text-yellow-400';
+        default: return 'text-blue-600 dark:text-blue-400';
+      }
+    };
+
+    return (
+      <div className="mt-3 space-y-3">
+        {Object.entries(groupedIssues).map(([severity, issues]) => (
+          <div key={severity} className="space-y-2">
+            <h4 className={`text-sm font-medium flex items-center gap-2 ${getSeverityColor(severity)}`}>
+              {getSeverityIcon(severity)}
+              {severity.charAt(0).toUpperCase() + severity.slice(1)} Issues ({issues.length})
+            </h4>
+            <div className="space-y-2 pl-6">
+              {issues.slice(0, 5).map((issue, index) => (
+                <div key={index} className="text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 p-2 rounded">
+                  <div className="font-mono text-gray-600 dark:text-gray-400">
+                    {issue.file}:{issue.line}
+                  </div>
+                  <div className="mt-1">{issue.message}</div>
+                  {issue.suggestion && (
+                    <div className="mt-1 text-gray-600 dark:text-gray-400 italic">
+                      💡 {issue.suggestion}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {issues.length > 5 && (
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  ... and {issues.length - 5} more {severity} issues
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   if (loading) {
@@ -510,23 +702,126 @@ const DeploymentProgress = () => {
                   <p className="mt-1 text-sm text-gray-700 dark:text-gray-400">{step.description}</p>
 
                   {step.id === 'ai-review' && aiReviewStatus && (
-                    <div className="mt-2 p-3 rounded-md bg-gray-50 dark:bg-[#111111]/40">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {aiReviewStatus.message}
-                        </span>
-                        <span className="text-xs text-gray-600 dark:text-gray-300">
-                          {aiReviewStatus.issues} issues found
-                        </span>
-                      </div>
+                    <div className="mt-3">
+                      <button
+                        onClick={() => setAiReviewExpanded(!aiReviewExpanded)}
+                        className="w-full flex items-center justify-between p-3 rounded-md bg-gray-50 dark:bg-[#111111]/40 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-[#1a1a1a]/60 transition-colors"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <Shield className="w-5 h-5 text-blue-500" />
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            AI Code Review
+                          </span>
+                          {aiReviewStatus.type === 'loading' && (
+                            <div className="flex space-x-1">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {aiReviewStatus.type === 'success' && <CheckCircle className="w-4 h-4 text-green-500" />}
+                          {aiReviewStatus.type === 'error' && <XCircle className="w-4 h-4 text-red-500" />}
+                          {aiReviewStatus.type === 'warning' && <AlertCircle className="w-4 h-4 text-yellow-500" />}
+                          {aiReviewExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </div>
+                      </button>
 
-                      {aiReviewStatus.issues > 0 && (
-                        <button
-                          onClick={() => navigate(`/app/deployments/${id}`)}
-                          className="mt-2 text-xs text-gray-900 hover:text-gray-700 dark:text-gray-100 dark:hover:text-gray-200"
-                        >
-                          View details →
-                        </button>
+                      {aiReviewExpanded && (
+                        <div className="mt-2 p-4 bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 rounded-md">
+                          {aiReviewStatus.type === 'loading' ? (
+                            <div className="space-y-4">
+                              <div className="flex items-center space-x-3">
+                                <div className="flex space-x-1">
+                                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                                </div>
+                                <span className="text-base font-medium text-gray-900 dark:text-gray-100">
+                                  {aiReviewPhrase}
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                                <div className="bg-blue-500 h-3 rounded-full animate-pulse" style={{ width: '65%' }}></div>
+                              </div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                AI is analyzing your code for security vulnerabilities, best practices, and potential issues. This may take a few minutes...
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  {aiReviewStatus.type === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
+                                  {aiReviewStatus.type === 'error' && <XCircle className="w-5 h-5 text-red-500" />}
+                                  {aiReviewStatus.type === 'warning' && <AlertCircle className="w-5 h-5 text-yellow-500" />}
+                                  <span className="text-base font-medium text-gray-900 dark:text-gray-100">
+                                    {aiReviewStatus.message}
+                                  </span>
+                                </div>
+                                <span className="text-sm text-gray-600 dark:text-gray-300">
+                                  {aiReviewStatus.issues} issues found
+                                </span>
+                              </div>
+
+                              {aiReviewStatus.details && aiReviewStatus.details.length > 0 && (
+                                <div className="space-y-2">
+                                  <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Issues Found:</h4>
+                                  <div className="max-h-40 overflow-y-auto space-y-2">
+                                    {aiReviewStatus.details.slice(0, 10).map((issue, index) => (
+                                      <div key={index} className="p-3 bg-gray-50 dark:bg-[#111111] rounded border-l-4 border-yellow-400">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <span className={`text-xs px-2 py-1 rounded font-medium ${issue.severity === 'error' ? 'bg-red-100 text-red-800' :
+                                            issue.severity === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                                              'bg-gray-100 text-gray-800'
+                                            }`}>
+                                            {issue.severity || 'info'}
+                                          </span>
+                                        </div>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                                          {issue.message || issue.description || 'No description available'}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Manual Override Button for manual_review verdict */}
+                              {aiReviewStatus.type === 'warning' && deployment?.aiReviewResults?.verdict === 'manual_review' && (
+                                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                        The AI review requires manual attention. You can review the issues above and choose to proceed with deployment.
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={handleManualOverride}
+                                    disabled={isOverriding}
+                                    className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200 flex items-center justify-center space-x-2"
+                                  >
+                                    {isOverriding ? (
+                                      <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        <span>Overriding...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span>Override & Deploy</span>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                        </svg>
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}

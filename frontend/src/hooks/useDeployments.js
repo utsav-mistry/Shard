@@ -17,7 +17,7 @@ const useDeployments = (projectId = null) => {
       }
 
       // Use the correct backend endpoint
-      const url = '/api/deploy';
+      const url = '/api/deployments';
 
       const response = await api.get(url);
 
@@ -54,7 +54,7 @@ const useDeployments = (projectId = null) => {
 
   const createDeployment = async (deploymentData) => {
     try {
-      const response = await api.post('/api/deploy', deploymentData);
+      const response = await api.post('/api/deployments', deploymentData);
       await fetchDeployments(); // Refresh the deployments list
       return { success: true, data: response.data };
     } catch (err) {

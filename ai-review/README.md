@@ -4,14 +4,14 @@ Internal GPU-accelerated code review service using DeepSeek and other LLMs. Opti
 
 ## Supported Models
 
-| Model | Context | GPU Layers | Batch Size | Use Case |
-|-------|----------|------------|------------|----------|
-| DeepSeek Lite | 1024 | 24 | 256 | Quick Reviews |
-| DeepSeek Full | 2048 | 32 | 128 | Complex Analysis |
-| CodeLlama Lite | 1024 | 28 | 64 | Web Apps |
-| CodeLlama Full | 2048 | 36 | 64 | Deep Analysis |
-| Mistral 7B | 1024 | 28 | 128 | General Code |
-| Falcon 7B | 4096 | 32 | 128 | Large Files |
+| Model | Context | GPU Layers | Batch Size | Use Case | Token Usage |
+|-------|----------|------------|------------|----------|----------|
+| DeepSeek Lite | 1024 | 24 | 256 | Quick Reviews |10|
+| DeepSeek Full | 2048 | 32 | 128 | Complex Analysis |20|
+| CodeLlama Lite | 1024 | 28 | 64 | Web Apps |25|
+| CodeLlama Full | 2048 | 36 | 64 | Deep Analysis |30|
+| Mistral 7B | 1024 | 28 | 128 | General Code |50|
+| Falcon 7B | 4096 | 32 | 128 | Large Files |100|
 
 ## Implementation Details
 

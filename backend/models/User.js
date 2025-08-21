@@ -20,7 +20,7 @@ const UserSchema = new mongoose.Schema(
             enum: ['user', 'admin'],
             default: 'user',
         },
-        
+
         // OAuth Authentication fields (for login)
         githubAuthId: {
             type: String,
@@ -35,7 +35,7 @@ const UserSchema = new mongoose.Schema(
         avatar: {
             type: String,
         },
-        
+
         // GitHub Integration fields (for repository access)
         githubIntegrationToken: {
             type: String,
@@ -46,7 +46,7 @@ const UserSchema = new mongoose.Schema(
         githubIntegrationId: {
             type: String,
         },
-        
+
         // Profile fields
         username: {
             type: String,
@@ -63,7 +63,7 @@ const UserSchema = new mongoose.Schema(
         website: {
             type: String,
         },
-        
+
         // Account status
         isActive: {
             type: Boolean,
@@ -75,6 +75,12 @@ const UserSchema = new mongoose.Schema(
         },
         lastLogin: {
             type: Date,
+        },
+
+        // Billing
+        tokens: {
+            type: Number,
+            default: 100 // Free starting tokens
         },
     },
     {

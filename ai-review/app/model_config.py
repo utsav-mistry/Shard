@@ -151,7 +151,7 @@ class ModelManager:
                 n_gpu_layers=model_config.gpu_layers,
                 n_batch=model_config.n_batch,
                 gpu_id=1,              # Hardcoded GPU index
-                verbose=True,
+                verbose=False,
                 use_mlock=True,
                 use_mmap=True,
                 n_threads=1,

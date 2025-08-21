@@ -6,6 +6,7 @@
  * @version 1.0.0
  */
 
+const path = require('path');
 const Project = require('../models/Project');
 const Deployment = require('../models/Deployment');
 const EnvVar = require('../models/EnvVar');
@@ -270,6 +271,9 @@ const createProject = async (req, res) => {
             });
 
             // Prepare job for deployment worker
+            const enableAiReview = !(project.settings?.aiOptOut || project.aiOptOut);
+            console.log(`[DEBUG] AI Review Settings - project.aiOptOut: ${project.aiOptOut}, project.settings?.aiOptOut: ${project.settings?.aiOptOut}, enableAiReview: ${enableAiReview}`);
+            
             const job = {
                 projectId: project._id,
                 deploymentId: deployment._id,
@@ -281,50 +285,17 @@ const createProject = async (req, res) => {
                 envVars: envObjectForJob, // Pass saved env vars
                 userEmail: req.user.email,
                 token: req.headers.authorization?.replace('Bearer ', ''),
-                isInitialDeployment: true
+                isInitialDeployment: true,
+                enableAiReview: enableAiReview, // Pass AI review setting
+                aiModel: 'deepseek_lite' // Default AI model
             };
 
             // Log deployment start
             await logService.addLog(project._id, deployment._id, "build", "Initial deployment started");
 
-            // Start AI review process
-            await logService.addLog(project._id, deployment._id, "ai-review", "Starting AI code review");
-
-            let shouldDeploy = false;
-            let deploymentReason = "";
-
-            try {
-                const aiReviewResponse = await axios.post(
-                    `${process.env.AI_SERVICE_URL || 'http://localhost:8000'}/review/`,
-                    { projectId: project._id.toString() },
-                    { timeout: 60000 }
-                );
-
-                const { verdict, issueCount } = aiReviewResponse.data;
-                await logService.addLog(project._id, deployment._id, "ai-review",
-                    `AI review completed: ${verdict} (${issueCount} issues found)`);
-
-                if (verdict === "deny") {
-                    deployment.status = "failed";
-                    deployment.finishedAt = new Date();
-                    await deployment.save();
-                    await logService.addLog(project._id, deployment._id, "ai-review",
-                        "Initial deployment blocked by AI review");
-                } else if (verdict === "manual_review") {
-                    deployment.status = "pending_review";
-                    await deployment.save();
-                    await logService.addLog(project._id, deployment._id, "ai-review",
-                        "Initial deployment requires manual review");
-                } else {
-                    // AI review passed - proceed with deployment
-                    shouldDeploy = true;
-                    deploymentReason = "AI review passed, proceeding with initial deployment";
-                }
-            } catch (aiError) {
-                // AI review failed - proceed with deployment anyway
-                shouldDeploy = true;
-                deploymentReason = `AI review failed: ${aiError.message}, proceeding with deployment`;
-            }
+            // AI review will be handled by deployment worker
+            let shouldDeploy = true;
+            let deploymentReason = "Initial deployment queued for processing";
 
             // Queue deployment job only once if needed
             if (shouldDeploy) {

@@ -191,11 +191,17 @@ const ProjectDetail = () => {
     try {
       setLoading(true);
 
-      // Create new deployment
-      const response = await api.post('/api/deployments', {
+      // Create new deployment with AI review settings
+      const aiReviewEnabled = !(project?.settings?.aiOptOut || project?.aiOptOut);
+      const deploymentPayload = {
         projectId: id,
-        branch: 'main' // Default branch, could be configurable
-      });
+        branch: 'main', // Default branch, could be configurable
+        enableAiReview: aiReviewEnabled,
+        aiModel: aiReviewEnabled ? 'deepseek_lite' : undefined
+      };
+      
+      console.log('[DEBUG] Frontend deployment payload:', deploymentPayload);
+      const response = await api.post('/api/deployments', deploymentPayload);
 
       if (response.data.success) {
         // Redirect to deployment progress page to show Vercel-style progress
@@ -225,6 +231,25 @@ const ProjectDetail = () => {
     setDeleteModalOpen(true);
   };
 
+  const handleAiOptOutToggle = async (e) => {
+    const isChecked = e.target.checked;
+    // When checkbox is checked = AI review enabled = aiOptOut should be false
+    const aiOptOutValue = !isChecked;
+    try {
+      const updatedProject = { ...project, settings: { ...project.settings, aiOptOut: aiOptOutValue } };
+      setProject(updatedProject);
+
+      await api.put(`/api/projects/${id}`, { settings: { aiOptOut: aiOptOutValue } });
+
+    } catch (err) {
+      console.error('Failed to update AI opt-out setting:', err);
+      // Revert UI on failure
+      const revertedProject = { ...project, settings: { ...project.settings, aiOptOut: !aiOptOutValue } };
+      setProject(revertedProject);
+      setError('Failed to update AI setting. Please try again.');
+    }
+  };
+
   const confirmDelete = async () => {
     if (!itemToDelete) return;
 
@@ -232,7 +257,7 @@ const ProjectDetail = () => {
     try {
       let response;
       if (deleteType === 'deployment') {
-        response = await api.delete(`/api/deploy/${itemToDelete}`);
+        response = await api.delete(`/api/deployments/${itemToDelete}`);
         if (response.data.success) {
           setDeployments(deployments.filter(d => d._id !== itemToDelete));
         }
@@ -403,6 +428,16 @@ const ProjectDetail = () => {
             >
               <Key className="w-5 h-5 mr-2" />
               Environment
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`px-6 py-3 text-base font-bold border-2 transition-colors duration-300 flex items-center ${activeTab === 'settings'
+                ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black'
+                : 'border-black dark:border-white text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black'
+                }`}
+            >
+              <Settings className="w-5 h-5 mr-2" />
+              Settings
             </button>
           </nav>
         </div>
@@ -717,6 +752,56 @@ const ProjectDetail = () => {
           </div>
         )}
 
+        {activeTab === 'settings' && (
+          <div className="space-y-8">
+            {/* AI Review Settings */}
+            <div className="bg-white-100 dark:bg-black-900 shadow-md rounded-none overflow-hidden border-2 border-black-200 dark:border-white-700">
+              <div className="px-6 py-4 border-b-2 border-black-200 dark:border-white-700">
+                <h2 className="text-lg font-medium text-black-900 dark:text-white-100">AI Code Review</h2>
+                <p className="text-sm text-black-500 dark:text-white-400 mt-1">Configure AI-powered code analysis for your deployments</p>
+              </div>
+              <div className="px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-black-900 dark:text-white-100">Enable AI Review</h3>
+                    <p className="text-sm text-black-500 dark:text-white-400">Automatically analyze code quality, security issues, and best practices before deployment</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!project?.settings?.aiOptOut && !project?.aiOptOut}
+                      onChange={handleAiOptOutToggle}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Project Danger Zone */}
+            <div className="bg-white-100 dark:bg-black-900 shadow-md rounded-none overflow-hidden border-2 border-red-200 dark:border-red-700">
+              <div className="px-6 py-4 border-b-2 border-red-200 dark:border-red-700">
+                <h2 className="text-lg font-medium text-red-900 dark:text-red-100">Danger Zone</h2>
+                <p className="text-sm text-red-500 dark:text-red-400 mt-1">Irreversible and destructive actions</p>
+              </div>
+              <div className="px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-red-900 dark:text-red-100">Delete Project</h3>
+                    <p className="text-sm text-red-500 dark:text-red-400">Permanently delete this project and all associated data</p>
+                  </div>
+                  <button
+                    onClick={() => setDeleteModalOpen(true)}
+                    className="inline-flex items-center px-4 py-2 border-2 border-red-600 rounded-none shadow-md text-sm font-medium text-red-600 bg-white hover:bg-red-50 dark:bg-gray-900 dark:hover:bg-red-900/20 hover:shadow-lg hover:translate-y-[-2px] transition-all duration-200 focus:outline-none"
+                  >
+                    Delete Project
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Delete Project Confirmation Modal */}
         {deleteModalOpen && !itemToDelete && (

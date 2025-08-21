@@ -14,12 +14,15 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { useTokens } from '../../context/TokenContext';
 import { useClickAway } from 'react-use';
+import { Zap, DollarSign } from 'lucide-react';
 
 const Header = ({ onMenuClick }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { currentUser, logout } = useAuth();
+  const { tokens } = useTokens();
   const navigate = useNavigate();
   const userMenuRef = useRef(null);
 
@@ -50,7 +53,12 @@ const Header = ({ onMenuClick }) => {
         </div>
 
         {/* Right Section: User Menu */}
-        <div className="flex items-center">
+        <div className="flex items-center space-x-4"> 
+          {/* Token Balance */}
+          <Link to="/app/billing" className="hidden sm:flex items-center space-x-2 p-2 hover:bg-white-50 dark:hover:bg-black-800 transition-colors rounded-none border-2 border-transparent hover:border-black-900 dark:hover:border-white-100">
+            <Zap className="w-5 h-5 text-yellow-500" />
+            <span className="font-mono font-bold text-black-900 dark:text-white-100">{tokens}</span>
+          </Link>
           <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -91,6 +99,14 @@ const Header = ({ onMenuClick }) => {
                   >
                     <User className="w-5 h-5" />
                     <span className="font-medium">Profile</span>
+                  </Link>
+                  <Link
+                    to="/app/billing"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="w-full flex items-center space-x-3 px-4 py-2.5 text-left hover:bg-white-50 dark:hover:bg-black-800 transition-all duration-200 text-black-900 dark:text-white-100 border-2 border-transparent hover:border-black-900 dark:hover:border-white-100 rounded-none"
+                  >
+                    <DollarSign className="w-5 h-5" />
+                    <span className="font-medium">Billing</span>
                   </Link>
                   <button
                     onClick={handleLogout}

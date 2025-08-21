@@ -9,9 +9,19 @@
 const axios = require("axios");
 const Deployment = require("../models/Deployment");
 const Project = require("../models/Project");
+const User = require("../models/User");
 const logService = require("../services/logService");
 const envService = require("../services/envService");
 const logger = require("../utils/logger");
+
+const AI_MODEL_COSTS = {
+  'deepseek_lite': 10,
+  'deepseek_full': 20,
+  'codellama_lite': 25,
+  'codellama_full': 30,
+  'mistral_7b': 50,
+  'falcon_7b': 100,
+};
 
 /**
  * Create a new deployment with AI review and worker queue integration
@@ -35,7 +45,10 @@ const logger = require("../utils/logger");
  * @note Admin users can deploy any project, regular users only their own
  */
 const createDeployment = async (req, res) => {
-    const { projectId, branch = 'main', commitHash, message, environmentVariables = [] } = req.body;
+    const { projectId, branch = 'main', commitHash, message, environmentVariables = [], enableAiReview, aiModel } = req.body;
+
+    // Debug: Log incoming request parameters
+    logger.debug(`[DEBUG] Frontend Request - enableAiReview: ${enableAiReview}, aiModel: ${aiModel}, projectId: ${projectId}`);
 
     // Input validation
     if (!projectId) {
@@ -54,6 +67,41 @@ const createDeployment = async (req, res) => {
         const project = await Project.findOne(query);
         if (!project) {
             return res.apiNotFound('Project');
+        }
+
+        // Token balance check for AI Review - use frontend parameter if provided, otherwise calculate from project settings
+        const aiOptOut = project.aiOptOut || project.settings?.aiOptOut;
+        const willPerformAiReview = enableAiReview !== undefined ? enableAiReview : !aiOptOut;
+        
+        logger.debug(`[DEBUG] AI Review Settings - frontend enableAiReview: ${enableAiReview}, project.aiOptOut: ${project.aiOptOut}, project.settings?.aiOptOut: ${project.settings?.aiOptOut}, final willPerformAiReview: ${willPerformAiReview}`);
+        
+        if (willPerformAiReview) {
+            // Use default model if not provided
+            const selectedAiModel = aiModel || 'deepseek_lite';
+            
+            if (!AI_MODEL_COSTS[selectedAiModel]) {
+                return res.apiValidationError({ aiModel: 'A valid AI model is required for AI review.' });
+            }
+
+            const tokenCost = AI_MODEL_COSTS[selectedAiModel];
+            const user = await User.findById(req.user._id);
+
+            if (user.tokens < tokenCost) {
+                return res.apiError(
+                    'Insufficient tokens for AI review.',
+                    402, // Payment Required
+                    {
+                        requiredTokens: tokenCost,
+                        currentBalance: user.tokens,
+                    },
+                    'INSUFFICIENT_TOKENS'
+                );
+            }
+
+            // Deduct tokens before proceeding
+            user.tokens -= tokenCost;
+            await user.save();
+            logger.info(`Deducted ${tokenCost} tokens from user ${user.email} for AI review. New balance: ${user.tokens}`);
         }
 
         // Check for existing active deployments to prevent duplicates
@@ -127,75 +175,27 @@ const createDeployment = async (req, res) => {
         // Log deployment start
         await logService.addLog(projectId, deployment._id, "build", "Deployment started");
 
-        // Step 1: AI Review Process
-        await logService.addLog(projectId, deployment._id, "ai-review", "Starting AI code review");
-
+        // Add AI review settings to job for deployment worker to handle
+        // Force explicit assignment to ensure properties exist in job object
+        job.enableAiReview = Boolean(willPerformAiReview);
+        job.aiModel = willPerformAiReview ? (aiModel || 'deepseek_lite') : 'deepseek_lite';
+        
+        console.log(`[DEBUG] Before sending - job keys:`, Object.keys(job));
+        console.log(`[DEBUG] AI Review values - willPerformAiReview: ${willPerformAiReview}, job.enableAiReview: ${job.enableAiReview}, job.aiModel: ${job.aiModel}`);
+        
+        console.log(`[DEBUG] Backend sending to worker - willPerformAiReview: ${willPerformAiReview}, enableAiReview: ${job.enableAiReview}, aiModel: ${job.aiModel}`);
+        console.log(`[DEBUG] Complete job object being sent:`, JSON.stringify(job, null, 2));
+        
+        // Add job to worker queue - AI review will happen after repo cloning
         try {
-            const aiReviewResponse = await axios.post(
-                `${process.env.AI_SERVICE_URL || 'http://localhost:8000'}/review/`,
-                { projectId: project._id.toString() },
-                { timeout: 60000 } // 1 minute timeout for AI review
-            );
-
-            const { verdict, issueCount, issues } = aiReviewResponse.data;
-
-            // Log AI review results
-            await logService.addLog(projectId, deployment._id, "ai-review",
-                `AI review completed: ${verdict} (${issueCount} issues found)`);
-
-            // Handle AI review verdict
-            if (verdict === "deny") {
-                deployment.status = "failed";
-                deployment.finishedAt = new Date();
-                await deployment.save();
-
-                await logService.addLog(projectId, deployment._id, "ai-review",
-                    "Deployment blocked by AI review due to critical issues");
-
-                return res.apiError("Deployment blocked by AI review", 400, {
-                    verdict,
-                    issueCount,
-                    issues: issues.slice(0, 5)
-                }, 'AI_REVIEW_BLOCKED');
-            }
-
-            if (verdict === "manual_review") {
-                deployment.status = "pending_review";
-                await deployment.save();
-
-                await logService.addLog(projectId, deployment._id, "ai-review",
-                    "Deployment requires manual review");
-
-                return res.apiSuccess({
-                    verdict,
-                    issueCount,
-                    issues: issues.slice(0, 5),
-                    deploymentId: deployment._id
-                }, "Deployment requires manual review", 202);
-            }
-
-            // If verdict is "allow", proceed with deployment
-            await logService.addLog(projectId, deployment._id, "ai-review",
-                "AI review passed, proceeding with deployment");
-
-        } catch (aiError) {
-            console.error("AI review failed:", aiError);
-            await logService.addLog(projectId, deployment._id, "ai-review",
-                `AI review failed: ${aiError.message}`);
-
-            // Continue with deployment even if AI review fails (fallback)
-            await logService.addLog(projectId, deployment._id, "ai-review",
-                "Proceeding with deployment despite AI review failure");
-        }
-
-        // Step 2: Add job to worker queue (only if AI review passed or failed)
-        try {
-            await axios.post(`${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/deploy/job`, job, {
+            console.log(`[DEBUG] Sending job to deployment worker at: ${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/deploy/job`);
+            const workerResponse = await axios.post(`${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/deploy/job`, job, {
                 timeout: 10000,
                 headers: {
                     'Content-Type': 'application/json'
                 }
             });
+            console.log(`[DEBUG] Deployment worker response:`, workerResponse.status, workerResponse.data);
 
             await logService.addLog(projectId, deployment._id, "queue", "Job added to deployment queue");
         } catch (queueError) {
@@ -628,6 +628,95 @@ const redeployDeployment = async (req, res) => {
 };
 
 /**
+ * Override AI review manual_review status and continue deployment
+ * @async
+ * @function overrideAiReview
+ * @param {Object} req - Express request object
+ * @param {Object} req.params - Request parameters
+ * @param {string} req.params.deploymentId - Deployment ID to override
+ * @param {Object} req.user - Authenticated user object
+ * @param {Object} res - Express response object
+ * @returns {Promise<Object>} JSON response with override confirmation
+ * @throws {NotFoundError} When deployment is not found
+ * @throws {ValidationError} When deployment is not in manual_review status
+ * @throws {ServerError} When override operation fails
+ * @description Allows user to override AI review manual_review verdict and continue deployment
+ * @note Only works for deployments in manual_review status
+ */
+const overrideAiReview = async (req, res) => {
+    try {
+        const { deploymentId } = req.params;
+        
+        // Find the deployment
+        const deployment = await Deployment.findById(deploymentId).populate('projectId');
+        if (!deployment) {
+            return res.apiNotFound("Deployment not found");
+        }
+        
+        // Check if deployment belongs to user (unless admin)
+        if (req.user.role !== 'admin' && deployment.projectId.ownerId.toString() !== req.user._id.toString()) {
+            return res.apiForbidden("Access denied");
+        }
+        
+        // Check if deployment is in manual_review status
+        if (deployment.status !== 'manual_review') {
+            return res.apiBadRequest("Deployment is not in manual_review status");
+        }
+        
+        // Get project details for continuation
+        const project = deployment.projectId;
+        
+        // Get environment variables
+        const envVars = await EnvVar.find({ projectId: project._id });
+        
+        // Prepare continuation job object
+        const continuationJob = {
+            token: req.headers.authorization?.replace('Bearer ', ''),
+            deploymentId: deployment._id,
+            projectId: project._id,
+            repoUrl: project.repoUrl,
+            branch: deployment.branch || 'main',
+            stack: project.framework,
+            subdomain: project.subdomain,
+            envVars: envVars.map(env => ({ key: env.key, value: env.value })),
+            userEmail: req.user.email
+        };
+        
+        // Call deployment worker continuation endpoint
+        const workerResponse = await axios.post(
+            `${process.env.DEPLOYMENT_WORKER_URL || 'http://localhost:9000'}/api/deploy/continue/${deploymentId}`,
+            continuationJob,
+            {
+                timeout: 10000,
+                headers: { 'Content-Type': 'application/json' }
+            }
+        );
+        
+        // Update deployment status to indicate override
+        deployment.status = 'deploying';
+        deployment.aiReviewOverridden = true;
+        deployment.aiReviewOverriddenAt = new Date();
+        deployment.aiReviewOverriddenBy = req.user._id;
+        await deployment.save();
+        
+        // Log the override action
+        await logService.addLog(project._id, deployment._id, "ai-review", "AI review overridden by user - continuing deployment");
+        
+        logger.info(`AI review overridden for deployment ${deploymentId} by user ${req.user.email}`);
+        
+        return res.apiSuccess({
+            deploymentId: deployment._id,
+            status: deployment.status,
+            message: "AI review overridden successfully, deployment continuing"
+        }, "AI review override successful");
+        
+    } catch (error) {
+        logger.error(`Error overriding AI review: ${error.message}`, { error });
+        return res.apiServerError('Failed to override AI review', error.message);
+    }
+};
+
+/**
  * Export deployment controller functions
  * @module deployController
  * @description Provides comprehensive deployment management including creation, monitoring,
@@ -641,4 +730,5 @@ module.exports = {
     updateDeploymentStatus,
     deleteDeployment,
     redeployDeployment,
+    overrideAiReview,
 };

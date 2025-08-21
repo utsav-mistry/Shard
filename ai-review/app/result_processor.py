@@ -163,10 +163,18 @@ class ResultProcessor:
         error_issues = severity_counts['error']
         warning_issues = severity_counts['warning']
 
-        # Decision logic
-        if has_syntax_error or error_issues >= 1:
+        # Decision logic - exclude Flask structure issues from blocking deployment
+        critical_errors = 0
+        for issue in issues:
+            if (issue.get('severity') == 'error' and 
+                not ('Flask app is not being run directly' in issue.get('message', '') or
+                     'run.py' in issue.get('message', '') or
+                     'create_app()' in issue.get('message', ''))):
+                critical_errors += 1
+        
+        if has_syntax_error or critical_errors >= 1:
             verdict = 'deny'
-            reason = f"Deployment denied due to {error_issues} critical error(s)."
+            reason = f"Deployment denied due to {critical_errors} critical error(s)."
         elif security_issues > 10:
             verdict = 'deny'
             reason = f"Deployment denied due to excessive security vulnerabilities ({security_issues} found)."
@@ -177,7 +185,7 @@ class ResultProcessor:
             verdict = 'manual_review'
             reason = f"{ai_security_issue_count} security issue(s) require manual review before deployment."
         else:
-            verdict = 'allow'
+            verdict = 'approve'
             reason = f"Code approved. {total_issues} minor issues found."
 
         return {

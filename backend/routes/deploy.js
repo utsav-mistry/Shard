@@ -101,7 +101,7 @@
  */
 
 const express = require("express");
-const { createDeployment, getDeployments, updateDeploymentStatus, updateDeploymentStep, deleteDeployment, redeployDeployment } = require("../controllers/deployController");
+const { createDeployment, getDeployments, updateDeploymentStatus, updateDeploymentStep, deleteDeployment, redeployDeployment, overrideAiReview } = require("../controllers/deployController");
 const { authenticate } = require("../middleware/auth");
 const { validateDeployment, sanitizeBody } = require("../utils/validation");
 
@@ -389,6 +389,55 @@ router.delete("/:id", protect, deleteDeployment);
  *         $ref: '#/components/responses/NotFound'
  */
 router.post("/:id/redeploy", protect, redeployDeployment);
+
+/**
+ * @swagger
+ * /api/deploy/{deploymentId}/override-ai-review:
+ *   post:
+ *     summary: Override AI review manual_review status and continue deployment
+ *     tags: [Deployments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: deploymentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Deployment ID to override AI review for
+ *     responses:
+ *       200:
+ *         description: AI review overridden successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     deploymentId:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                     message:
+ *                       type: string
+ *                 message:
+ *                   type: string
+ *                   example: AI review override successful
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.post("/:deploymentId/override-ai-review", protect, overrideAiReview);
 
 // Update deployment with AI review results
 router.post('/ai-results', protect, async (req, res) => {

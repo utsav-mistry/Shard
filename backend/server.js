@@ -165,20 +165,22 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
 
 const authRoutes = require('./routes/auth');
 const deployRoutes = require('./routes/deploy');
-const projectRoutes = require('./routes/project');
+const integrationRoutes = require('./routes/integrations');
+const billingRoutes = require('./routes/billing');
 const healthRoutes = require('./routes/health');
 const adminRoutes = require('./routes/admin');
 const envRoutes = require('./routes/env');
 const logsRoutes = require('./routes/logs');
 const githubRoutes = require('./routes/github');
 const notificationRoutes = require('./routes/notifications');
+const projectRoutes = require('./routes/project');
 
 // Mount routes
 app.use('/api/auth', authRoutes);
-app.use('/api/integrations', require('./routes/integrations'));
 app.use('/api/projects', projectRoutes);
-app.use('/api/deploy', deployRoutes);
-app.use('/api/deployments', deployRoutes); // Also mount at /api/deployments for frontend compatibility
+app.use('/api/deployments', deployRoutes);
+app.use('/api/integrations', integrationRoutes);
+app.use('/api/billing', billingRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/projects/:projectId/env', envRoutes);
 app.use('/api/logs', logsRoutes);

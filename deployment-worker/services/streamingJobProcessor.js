@@ -34,7 +34,7 @@ const __dirname = path.dirname(__filename);
  */
 const updateDeploymentWithAIResults = async (deploymentId, aiResults, token) => {
     try {
-        const response = await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deploy/ai-results`, {
+        const response = await axios.post(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deployments/ai-results`, {
             deploymentId,
             aiReviewResults: aiResults
         }, {
@@ -69,7 +69,7 @@ const updateDeploymentWithAIResults = async (deploymentId, aiResults, token) => 
  */
 const updateDeploymentWithCommitInfo = async (deploymentId, commitInfo, token) => {
     try {
-        const response = await axios.patch(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deploy/${deploymentId}`, {
+        const response = await axios.patch(`${process.env.BACKEND_URL || 'http://localhost:5000'}/api/deployments/${deploymentId}`, {
             commitHash: commitInfo.commitHash,
             commitMessage: commitInfo.commitMessage,
             author: commitInfo.author,
@@ -137,8 +137,12 @@ const processJobWithStreaming = async (job, socket = null) => {
         subdomain,
         userEmail,
         deploymentId,
-        token
+        token,
+        enableAiReview = false,
+        aiModel = 'deepseek_lite'
     } = job;
+
+    console.log(`[DEBUG] Streaming Deployment Worker received - enableAiReview: ${enableAiReview}, aiModel: ${aiModel}`);
 
     if (!token) throw new Error("Authentication token is required");
 
@@ -177,6 +181,9 @@ const processJobWithStreaming = async (job, socket = null) => {
         const repoInfo = await cloneRepo(repoUrl, projectId, 'main', socket);
         const localPath = repoInfo.path;
 
+        // Wait for repository to be fully written to disk
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
         // Update deployment with commit information
         await updateDeploymentWithCommitInfo(deploymentId, {
             commitHash: repoInfo.commitHash,
@@ -187,54 +194,77 @@ const processJobWithStreaming = async (job, socket = null) => {
 
         await logStep(projectId, deploymentId, "setup", `Repository cloned - ${repoInfo.commitMessage.substring(0, 50)}...`, token);
 
-        // === Step 2: AI Review ===
-        await logStep(projectId, deploymentId, "setup", "Starting AI code review", token);
-
-        if (streamLogger) {
-            streamLogger.emitLog("Starting AI code review", 'info', 'ai-review');
+        // Verify repository exists before proceeding
+        if (!require('fs').existsSync(localPath)) {
+            throw new Error(`Repository path does not exist: ${localPath}`);
         }
 
-        // Mark status: reviewing
-        await statusUpdater.updateDeploymentStatus(deploymentId, "reviewing", token);
-        const aiReviewResult = await analyzeRepo(localPath, deploymentId);
-        const { verdict, issues, issueCount, severity_breakdown, linter_count, ai_count } = aiReviewResult;
-
-        // Store AI review results for frontend display
-        await updateDeploymentWithAIResults(deploymentId, aiReviewResult, token);
-
-        if (verdict === "deny") {
-            const denyMessage = `AI denied deployment: ${severity_breakdown?.security || 0} security, ${severity_breakdown?.error || 0} errors`;
-            await logStep(projectId, deploymentId, "error", denyMessage, token);
+        // === Step 2: AI Review (conditional) ===
+        if (enableAiReview) {
+            await logStep(projectId, deploymentId, "setup", `Starting AI code review with ${aiModel}`, token);
 
             if (streamLogger) {
-                streamLogger.emitLog(`ERROR: ${denyMessage}`, 'error', 'ai-review');
+                streamLogger.emitLog(`Starting AI code review with ${aiModel}`, 'info', 'ai-review');
             }
 
-            fs.appendFileSync(logPath, `AI_REVIEW_DENIED: ${JSON.stringify(aiReviewResult, null, 2)}\n`);
-            await sendDeploymentNotification(userEmail, projectId, "ai_denied");
-            await statusUpdater.updateDeploymentStatus(deploymentId, "failed", token);
-            return;
-        }
+            // Mark status: reviewing
+            await statusUpdater.updateDeploymentStatus(deploymentId, "reviewing", token);
+            
+            // AI review can take several minutes - wait for complete analysis
+            if (streamLogger) {
+                streamLogger.emitLog("AI analysis in progress - this may take several minutes...", 'info', 'ai-review');
+            }
+            
+            const aiReviewResult = await analyzeRepo(localPath, projectId, aiModel);
+            const { verdict, issues, issueCount, severity_breakdown, linter_count, ai_count } = aiReviewResult;
 
-        if (verdict === "manual_review") {
-            const manualMessage = `AI flagged for manual review: ${issueCount} issues found (${linter_count} linter, ${ai_count} AI)`;
-            await logStep(projectId, deploymentId, "warning", manualMessage, token);
+            // Store AI review results for frontend display
+            await updateDeploymentWithAIResults(deploymentId, aiReviewResult, token);
+            
+            if (streamLogger) {
+                streamLogger.emitLog("AI analysis completed", 'success', 'ai-review');
+            }
+
+            if (verdict === "deny") {
+                const denyMessage = `AI denied deployment: ${severity_breakdown?.security || 0} security, ${severity_breakdown?.error || 0} errors`;
+                await logStep(projectId, deploymentId, "error", denyMessage, token);
+
+                if (streamLogger) {
+                    streamLogger.emitLog(`ERROR: ${denyMessage}`, 'error', 'ai-review');
+                }
+
+                fs.appendFileSync(logPath, `AI_REVIEW_DENIED: ${JSON.stringify(aiReviewResult, null, 2)}\n`);
+                await sendDeploymentNotification(userEmail, projectId, "ai_denied");
+                await statusUpdater.updateDeploymentStatus(deploymentId, "failed", token);
+                return;
+            }
+
+            if (verdict === "manual_review") {
+                const manualMessage = `AI flagged for manual review: ${issueCount} issues found (${linter_count} linter, ${ai_count} AI)`;
+                await logStep(projectId, deploymentId, "warning", manualMessage, token);
+
+                if (streamLogger) {
+                    streamLogger.emitLog(`WARNING: ${manualMessage}`, 'warning', 'ai-review');
+                }
+
+                fs.appendFileSync(logPath, `AI_REVIEW_MANUAL: ${JSON.stringify(aiReviewResult, null, 2)}\n`);
+                await sendDeploymentNotification(userEmail, projectId, "ai_manual_review");
+                await statusUpdater.updateDeploymentStatus(deploymentId, "pending_review", token);
+                return;
+            }
+
+            const passMessage = `AI review passed: ${issueCount} minor issues found`;
+            await logStep(projectId, deploymentId, "setup", passMessage, token);
 
             if (streamLogger) {
-                streamLogger.emitLog(`WARNING: ${manualMessage}`, 'warning', 'ai-review');
+                streamLogger.emitLog(`SUCCESS: ${passMessage}`, 'success', 'ai-review');
             }
+        } else {
+            await logStep(projectId, deploymentId, "setup", "AI code review disabled - proceeding with deployment", token);
 
-            fs.appendFileSync(logPath, `AI_REVIEW_MANUAL: ${JSON.stringify(aiReviewResult, null, 2)}\n`);
-            await sendDeploymentNotification(userEmail, projectId, "ai_manual_review");
-            await statusUpdater.updateDeploymentStatus(deploymentId, "pending_review", token);
-            return;
-        }
-
-        const passMessage = `AI review passed: ${issueCount} minor issues found`;
-        await logStep(projectId, deploymentId, "setup", passMessage, token);
-
-        if (streamLogger) {
-            streamLogger.emitLog(`SUCCESS: ${passMessage}`, 'success', 'ai-review');
+            if (streamLogger) {
+                streamLogger.emitLog("AI code review disabled - proceeding with deployment", 'info', 'ai-review');
+            }
         }
 
         // === Step 3: Fetch and Inject Environment Variables ===

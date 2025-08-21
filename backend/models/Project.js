@@ -22,7 +22,11 @@ const ProjectSchema = new mongoose.Schema(
             envVars: [{
                 type: mongoose.Schema.Types.ObjectId,
                 ref: 'EnvVar'
-            }]
+            }],
+            aiOptOut: {
+                type: Boolean,
+                default: false
+            }
         },
         name: {
             type: String,
