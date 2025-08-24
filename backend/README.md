@@ -1,194 +1,102 @@
 # Shard Backend API
+## Enterprise AI-Powered Deployment Platform - Node.js API Server
 
-This is the backend API server for Shard, a modern deployment platform for web applications. Built with Node.js, Express, and MongoDB, it provides a robust and scalable backend for the Shard platform.
+**Vaultify Internal Project** - Production-ready Express.js backend with MongoDB, JWT authentication, AI integration, and enterprise-grade security for the Shard deployment platform.
 
-## Features
+## Technology Stack
 
-- **Authentication System**
-  - JWT-based authentication
-  - Email/password registration and login
-  - OAuth integration with GitHub and Google
-  - Password reset functionality
-  - API key generation and management
+<table border="1" style="border-collapse: collapse; width: 100%;">
+<tr>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #333333; color: white;"><strong>Component</strong></th>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #333333; color: white;"><strong>Technology</strong></th>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #333333; color: white;"><strong>Purpose</strong></th>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px;"><strong>Runtime</strong></td>
+<td style="border: 1px solid #ddd; padding: 8px;">Node.js + Express.js 5.x</td>
+<td style="border: 1px solid #ddd; padding: 8px;">High-performance JavaScript runtime and web framework</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px;"><strong>Database</strong></td>
+<td style="border: 1px solid #ddd; padding: 8px;">MongoDB + Mongoose ODM</td>
+<td style="border: 1px solid #ddd; padding: 8px;">Document database with schema validation</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px;"><strong>Authentication</strong></td>
+<td style="border: 1px solid #ddd; padding: 8px;">JWT + Passport.js + bcrypt</td>
+<td style="border: 1px solid #ddd; padding: 8px;">Token-based auth with OAuth and password hashing</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px;"><strong>Real-time Communication</strong></td>
+<td style="border: 1px solid #ddd; padding: 8px;">Socket.io</td>
+<td style="border: 1px solid #ddd; padding: 8px;">WebSocket connections for live updates</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px;"><strong>Security</strong></td>
+<td style="border: 1px solid #ddd; padding: 8px;">Helmet + CORS + Rate Limiting</td>
+<td style="border: 1px solid #ddd; padding: 8px;">HTTP security headers and abuse prevention</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px;"><strong>Validation</strong></td>
+<td style="border: 1px solid #ddd; padding: 8px;">Joi + Express Validator</td>
+<td style="border: 1px solid #ddd; padding: 8px;">Input validation and schema enforcement</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px;"><strong>Logging</strong></td>
+<td style="border: 1px solid #ddd; padding: 8px;">Winston + Morgan</td>
+<td style="border: 1px solid #ddd; padding: 8px;">Structured logging with request tracking</td>
+</tr>
+</table>
 
-- **Project Management**
-  - CRUD operations for projects
-  - GitHub repository integration
-  - Support for multiple technology stacks
-  - Custom subdomain configuration
+## Enterprise Features
 
-- **Deployment System**
-  - Deployment creation and management
-  - Integration with deployment worker
-  - Environment variable injection
-  - Deployment logs management
+### **Advanced Authentication & Authorization**
+- **Dual OAuth System** - Separate GitHub apps for authentication vs repository integration
+- **JWT Token Management** - Secure authentication with automatic refresh and expiration
+- **Role-Based Access Control** - User and admin roles with granular permissions
+- **Multi-Provider OAuth** - GitHub, Google authentication with proper user linking
+- **API Key Management** - Generate and manage API keys for programmatic access
+- **Password Security** - bcrypt hashing with salt rounds and reset functionality
 
-- **Environment Variable Management**
-  - Secure storage of environment variables
-  - Support for regular and secret variables
-  - Variable encryption for sensitive data
+### **Enterprise Project Management**
+- **GitHub Repository Integration** - Automatic framework detection and repository analysis
+- **Multi-Stack Support** - MERN, Django, Flask with intelligent configuration
+- **Atomic Project Creation** - Transaction-safe project creation with rollback mechanisms
+- **Custom Subdomain Generation** - Unique project URLs with collision detection
+- **Project Analytics** - Deployment metrics and performance tracking
+- **Cascade Deletion Protection** - Prevents orphaned records with proper cleanup
 
-- **Security Features**
-  - Rate limiting to prevent abuse
-  - Helmet for HTTP header security
-  - CORS configuration
-  - Input validation with Joi
-  - Global error handling
+### **AI-Powered Deployment Pipeline**
+- **AI Review Integration** - Seamless integration with 6 AI models for code analysis
+- **Deployment Worker Communication** - RESTful API for deployment job management
+- **Real-Time Status Updates** - WebSocket-based live deployment progress
+- **Environment Variable Injection** - AES-256 encrypted variable management
+- **Deployment History** - Complete audit trail with status tracking
+- **Rollback Mechanisms** - Transaction-safe deployment operations
 
-## Getting Started
+### **Advanced Environment Management**
+- **AES-256 Encryption** - All sensitive environment variables encrypted at rest
+- **UPPER_SNAKE_CASE Validation** - Automatic format enforcement with duplicate detection
+- **Secret Flagging** - Special handling for sensitive data with masked display
+- **Runtime Injection** - Secure .env file generation for Docker containers
+- **Transaction Safety** - MongoDB sessions with proper rollback handling
+- **Variable Versioning** - Track changes and modifications over time
 
-### Prerequisites
+### **Enterprise Monitoring & Logging**
+- **Structured Logging** - Winston-based logging with correlation IDs
+- **Request Tracking** - Morgan middleware for HTTP request logging
+- **Error Handling** - Global error handler with proper status codes
+- **Health Checks** - System health endpoints for monitoring
+- **Performance Metrics** - Response time tracking and resource utilization
+- **Audit Trails** - Complete operation history for compliance
 
-- Node.js (v14 or later)
-- MongoDB (local or Atlas)
-- npm or yarn
-
-### Installation
-
-1. Clone the repository
-2. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-3. Install dependencies:
-   ```bash
-   npm install
-   # or
-   yarn
-   ```
-4. Create a `.env` file in the root directory with the following variables:
-   ```
-   # Server Configuration
-   PORT=5000
-   NODE_ENV=development
-   FRONTEND_URL=http://localhost:3000
-
-   # MongoDB Connection
-   MONGODB_URI=mongodb://localhost:27017/shard
-
-   # JWT Authentication
-   JWT_SECRET=your_jwt_secret_key
-   JWT_EXPIRE=30d
-
-   # OAuth Configuration
-   GITHUB_CLIENT_ID=your_github_client_id
-   GITHUB_CLIENT_SECRET=your_github_client_secret
-   GITHUB_CALLBACK_URL=http://localhost:5000/auth/github/callback
-
-   GOOGLE_CLIENT_ID=your_google_client_id
-   GOOGLE_CLIENT_SECRET=your_google_client_secret
-   GOOGLE_CALLBACK_URL=http://localhost:5000/auth/google/callback
-
-   # Email Configuration (Brevo/SMTP)
-   SMTP_HOST=smtp-relay.brevo.com
-   SMTP_PORT=587
-   SMTP_USER=your_smtp_username
-   SMTP_PASS=your_smtp_password
-   EMAIL_FROM=noreply@shard.dev
-
-   # S3 Storage (Optional)
-   S3_REGION=us-east-1
-   S3_BUCKET=shard-logs
-   S3_ACCESS_KEY=your_s3_access_key
-   S3_SECRET_KEY=your_s3_secret_key
-   ```
-
-### Running the Development Server
-
-```bash
-npm run dev
-# or
-yarn dev
-```
-
-The API server will be available at [http://localhost:5000](http://localhost:5000).
-
-### Running in Production
-
-```bash
-npm start
-# or
-yarn start
-```
-
-## Project Structure
-
-```
-backend/
-├── config/           # Configuration files
-│   ├── db.js         # Database connection
-│   ├── passport.js   # OAuth strategies
-│   └── smtp.js       # Email configuration
-├── controllers/      # Route controllers
-│   ├── authController.js    # Authentication logic
-│   ├── projectController.js # Project management
-│   ├── deployController.js  # Deployment operations
-│   ├── envController.js     # Environment variables
-│   └── logController.js     # Logging functionality
-├── models/           # Mongoose models
-│   ├── User.js       # User model
-│   ├── Project.js    # Project model
-│   ├── Deployment.js # Deployment model
-│   └── EnvVar.js     # Environment variable model
-├── routes/           # API routes
-│   ├── auth.js       # Authentication routes
-│   ├── project.js    # Project routes
-│   ├── deploy.js     # Deployment routes
-│   ├── env.js        # Environment variable routes
-│   └── logs.js       # Logging routes
-├── services/         # External services
-│   └── storageService.js # S3 storage integration
-├── utils/            # Utility functions
-│   ├── authMiddleware.js  # Authentication middleware
-│   ├── errorHandler.js    # Error handling
-│   └── validators.js      # Input validation
-├── server.js         # Main application entry
-└── package.json      # Dependencies and scripts
-```
-
-## API Endpoints
-
-### Authentication
-
-- `POST /auth/register` - Register a new user
-- `POST /auth/login` - Login with email/password
-- `GET /auth/github` - GitHub OAuth login
-- `GET /auth/google` - Google OAuth login
-- `POST /auth/logout` - Logout user
-- `POST /auth/reset-password` - Request password reset
-- `PUT /auth/reset-password/:token` - Reset password with token
-- `GET /auth/me` - Get current user profile
-- `PUT /auth/me` - Update user profile
-- `POST /auth/apikey` - Generate new API key
-- `GET /auth/apikey` - List user API keys
-- `DELETE /auth/apikey/:id` - Revoke API key
-
-### Projects
-
-- `GET /projects` - List all projects
-- `POST /projects` - Create new project
-- `GET /projects/:id` - Get project details
-- `PUT /projects/:id` - Update project
-- `DELETE /projects/:id` - Delete project
-
-### Deployments
-
-- `POST /deploy` - Create new deployment
-- `GET /deploy/:id` - Get deployment details
-- `GET /deploy/project/:projectId` - List deployments for project
-- `POST /deploy/:id/retry` - Retry failed deployment
-
-### Environment Variables
-
-- `GET /env/project/:projectId` - List environment variables for project
-- `POST /env` - Create new environment variable
-- `PUT /env/:id` - Update environment variable
-- `DELETE /env/:id` - Delete environment variable
-
-### Logs
-
-- `GET /logs/:deploymentId` - Get logs for deployment
-- `GET /logs/download/:deploymentId` - Download deployment logs
+### **Production Security Features**
+- **HTTP Security Headers** - Helmet.js for comprehensive security headers
+- **CORS Configuration** - Proper cross-origin resource sharing setup
+- **Rate Limiting** - Express rate limit for abuse prevention
+- **Input Validation** - Joi schemas for all API endpoints
+- **SQL Injection Prevention** - Mongoose ODM with parameterized queries
+- **XSS Protection** - Input sanitization and output encoding
 
 ## Technologies Used
 
@@ -213,10 +121,3 @@ The backend API integrates with the following services:
 - **Deployment Worker** - Handles the actual deployment process
 - **AI Review Service** - Provides code analysis and security scanning
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License.

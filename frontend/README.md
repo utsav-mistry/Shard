@@ -1,121 +1,98 @@
 # Shard Frontend
+## Enterprise AI-Powered Deployment Platform - React Dashboard
 
-This is the frontend application for Shard, a modern deployment platform for web applications. Built with React, Tailwind CSS, and modern JavaScript, Shard provides a seamless experience for deploying and managing your web projects.
+**Vaultify Internal Project** - Production-ready React frontend for the Shard deployment platform with integrated AI code review, real-time monitoring, and enterprise-grade user experience.
 
-## Features
+## Technology Stack
 
-- **User Authentication**
-  - Email/password login and registration
-  - Social authentication with GitHub and Google
-  - Protected routes for authenticated users
-  - User profile management
-  - API key generation and management
+<table border="1" style="border-collapse: collapse; width: 100%;">
+<tr>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #333333; color: white;"><strong>Component</strong></th>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #333333; color: white;"><strong>Technology</strong></th>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: left; background-color: #333333; color: white;"><strong>Purpose</strong></th>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px;"><strong>Frontend Framework</strong></td>
+<td style="border: 1px solid #ddd; padding: 8px;">React with Context API</td>
+<td style="border: 1px solid #ddd; padding: 8px;">Modern SPA with component architecture</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px;"><strong>Styling</strong></td>
+<td style="border: 1px solid #ddd; padding: 8px;">Tailwind CSS + PostCSS</td>
+<td style="border: 1px solid #ddd; padding: 8px;">Utility-first CSS with dark mode support</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px;"><strong>Routing</strong></td>
+<td style="border: 1px solid #ddd; padding: 8px;">React Router v6</td>
+<td style="border: 1px solid #ddd; padding: 8px;">Client-side routing with protected routes</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px;"><strong>HTTP Client</strong></td>
+<td style="border: 1px solid #ddd; padding: 8px;">Axios</td>
+<td style="border: 1px solid #ddd; padding: 8px;">API requests with interceptors</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px;"><strong>Icons</strong></td>
+<td style="border: 1px solid #ddd; padding: 8px;">Lucide React</td>
+<td style="border: 1px solid #ddd; padding: 8px;">SVG icon library</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px;"><strong>UI Components</strong></td>
+<td style="border: 1px solid #ddd; padding: 8px;">Headless UI</td>
+<td style="border: 1px solid #ddd; padding: 8px;">Accessible component primitives</td>
+</tr>
+</table>
 
-- **Project Management**
-  - Create new projects with GitHub repository integration
-  - Support for multiple technology stacks (MERN, Django, Flask)
-  - Custom subdomain configuration
-  - Project details view with statistics
-  - Project editing and deletion
+## Enterprise Features
 
-- **Deployment Management**
-  - Deploy projects from specific branches and commits
-  - View deployment status and details
-  - Real-time deployment logs with filtering by log type
-  - Retry failed deployments
-  - Download deployment logs
+### **Advanced Authentication System**
+- **Multi-Provider OAuth** - GitHub, Google, and email/password authentication
+- **Role-Based Access Control** - User and admin roles with granular permissions
+- **JWT Token Management** - Secure authentication with automatic refresh
+- **Session Persistence** - Maintains user state across browser sessions
+- **Admin Dashboard Access** - Automatic role detection and admin redirects
 
-- **Environment Variable Management**
-  - Create, edit, and delete environment variables
-  - Support for regular and secret variables
-  - Select which variables to include in deployments
+### **Industry-Grade Deployment Experience**
+- **One-Click Deployments** - Deploy from project detail page instantly
+- **Real-Time Progress Tracking** - Visual deployment pipeline with live updates
+- **AI Review Integration** - Code analysis results displayed in deployment flow
+- **Branch & Commit Selection** - Deploy from specific Git references
+- **Deployment History** - Complete deployment timeline with status tracking
 
-- **User Experience**
-  - Dark/light mode toggle with system preference detection
-  - Responsive design for mobile and desktop
-  - Interactive dashboard with project and deployment statistics
-  - Real-time updates for deployment status
+### **AI-Powered Code Review Dashboard**
+- **Multi-Model Analysis Results** - Display results from 6 different AI models
+- **Security Vulnerability Visualization** - OWASP compliance and CVE integration
+- **Code Quality Metrics** - Maintainability scoring and performance insights
+- **Automated Verdict Display** - Approve/deny/manual review recommendations
+- **Repository Context Analysis** - Cross-file relationship mapping
 
-## Getting Started
+### **Enterprise Project Management**
+- **GitHub Repository Integration** - Automatic framework detection and setup
+- **Multi-Stack Support** - MERN, Django, Flask with auto-configuration
+- **Custom Subdomain Generation** - Unique project URLs with SSL
+- **Environment Variable Management** - AES-256 encrypted variable storage
+- **Project Analytics** - Deployment success rates and performance metrics
 
-### Prerequisites
+### **Advanced Environment Management**
+- **Secure Variable Storage** - Masked display with reveal functionality
+- **UPPER_SNAKE_CASE Validation** - Automatic format enforcement
+- **Duplicate Detection** - Prevents variable conflicts
+- **Runtime Injection Preview** - Shows how variables will be deployed
+- **Secret Flagging** - Special handling for sensitive data
 
-- Node.js (v14 or later)
-- npm or yarn
-- Backend API server running (see backend directory)
+### **Real-Time Monitoring & Logs**
+- **Live Deployment Logs** - WebSocket-based streaming with filtering
+- **System Health Dashboard** - Service status and performance metrics
+- **Error Tracking** - Comprehensive error logging and analysis
+- **Performance Analytics** - Response times and resource utilization
+- **Audit Trails** - Complete operation history for compliance
 
-### Installation
-
-1. Clone the repository
-2. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-3. Install dependencies:
-   ```bash
-   npm install
-   # or
-   yarn
-   ```
-4. Configure environment variables in the `.env` file:
-   ```
-   REACT_APP_API_URL=http://localhost:5000/api
-   REACT_APP_GITHUB_CLIENT_ID=your_github_client_id
-   REACT_APP_GOOGLE_CLIENT_ID=your_google_client_id
-   ```
-
-### Running the Development Server
-
-```bash
-npm start
-# or
-yarn start
-```
-
-The application will be available at [http://localhost:3000](http://localhost:3000).
-
-### Building for Production
-
-```bash
-npm run build
-# or
-yarn build
-```
-
-The build artifacts will be stored in the `build/` directory.
-
-## Project Structure
-
-```
-src/
-├── components/       # Reusable UI components
-│   ├── auth/         # Authentication related components (ProtectedRoute)
-│   └── layout/       # Layout components (Sidebar, Navbar, MainLayout, AuthLayout)
-├── context/          # React context providers
-│   └── AuthContext.js # Authentication context with user management
-├── pages/            # Page components
-│   ├── Auth/         # Authentication pages (Login, Register)
-│   ├── Dashboard.js  # Main dashboard with statistics
-│   ├── projects/     # Project management pages
-│   │   ├── ProjectsList.js    # List of all projects
-│   │   ├── ProjectDetail.js   # Detailed view of a project
-│   │   └── NewProject.js      # Create new project form
-│   ├── deployments/  # Deployment management pages
-│   │   ├── DeploymentsList.js  # List of all deployments
-│   │   ├── DeploymentDetail.js # Detailed view of a deployment
-│   │   ├── DeploymentLogs.js   # Real-time logs viewer
-│   │   └── NewDeployment.js    # Create new deployment form
-│   ├── environment/  # Environment variable management
-│   │   ├── EnvironmentVariables.js    # List of environment variables
-│   │   ├── NewEnvironmentVariable.js  # Create new variable form
-│   │   └── EditEnvironmentVariable.js # Edit existing variable
-│   ├── logs/         # System logs viewing pages
-│   └── Settings.js   # User settings and preferences
-├── App.js            # Main application component with routing
-├── index.js          # Application entry point
-└── index.css         # Global styles with Tailwind CSS
-```
-
+### **Modern User Experience**
+- **Dark/Light Mode** - System preference detection with manual toggle
+- **Responsive Design** - Mobile-first approach with desktop optimization
+- **Accessibility** - WCAG compliant with keyboard navigation
+- **Progressive Loading** - Skeleton screens and optimistic updates
+- **Contextual Help** - In-app guidance and tooltips
 ## Key Features Implementation
 
 ### Authentication Flow
@@ -162,11 +139,3 @@ The frontend communicates with the backend API for:
 - Log retrieval and filtering
 
 API requests are authenticated using JWT tokens stored in localStorage.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License.

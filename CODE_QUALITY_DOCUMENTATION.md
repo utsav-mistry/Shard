@@ -1,4 +1,7 @@
 # Code Quality & Technical Documentation
+<small>Held upon by vigoruos testing of different code large contect repo and doc scanners like Claude Opus, Sonet, GPT and Copilot collectively.</small>
+<br>
+<i>This is an auto-generated report by code quality scanners, services and LLM's used for code quality analysis.</i>
 
 ## Table of Contents
 - [Architectural Mastery](#architectural-mastery)
